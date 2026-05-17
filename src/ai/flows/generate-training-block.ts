@@ -45,6 +45,14 @@ const GenerateTrainingBlockOutputSchema = z.object({
       distance: z.string(),
       paceZone: z.string(),
       description: z.string(),
+      rpe: z.number().describe('Nível de esforço percebido de 1 a 10.'),
+      estimatedDuration: z.string().describe('Duração estimada do treino em minutos.'),
+      phases: z.array(z.object({
+        name: z.string(),
+        distance: z.string(),
+        pace: z.string().optional(),
+        description: z.string()
+      })).optional()
     })),
     strength: z.string(),
     notes: z.string(),
@@ -64,7 +72,8 @@ export async function generateTrainingBlock(input: GenerateTrainingBlockInput): 
     4. Disponibilidade: ${input.weeklyAvailability}.
     5. Zonas de FC: Z1<${input.hrZone1End}, Z2<${input.hrZone2End}, Z3<${input.hrZone3End}, Z4<${input.hrZone4End}.
     6. Jamais prescreva treinos de alta intensidade no dia seguinte ao Leg Day (${input.legDay || 'Não definido'}).
-    7. A semana deve começar no DOMINGO.`;
+    7. A semana deve começar no DOMINGO.
+    8. Para treinos de qualidade (Intervalados, Tempo Run), divida sempre em fases: Aquecimento, Principal e Desaquecimento.`;
 
   const { output } = await aiInstance.generate({
     model: 'googleai/gemini-2.5-flash',
@@ -72,7 +81,7 @@ export async function generateTrainingBlock(input: GenerateTrainingBlockInput): 
     prompt: `Gere um bloco de treinamento de performance para o atleta seguindo rigorosamente os dados fornecidos. 
     Bloco: ${input.trainingBlockType}. 
     Histórico: ${input.injuryHistory}.
-    Referência: ${input.referenceFileDataUri ? `Use este arquivo: ${input.referenceFileDataUri}` : 'Nenhuma'}`,
+    Referência: ${input.referenceFileDataUri ? `Use este arquivo como base visual para o plano: ${input.referenceFileDataUri}` : 'Nenhuma'}`,
     output: { schema: GenerateTrainingBlockOutputSchema },
   });
 
