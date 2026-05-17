@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -26,7 +27,9 @@ import {
   Info,
   FileDown,
   Activity,
-  ArrowRight
+  ArrowRight,
+  Calendar as CalendarIcon,
+  RefreshCcw
 } from "lucide-react";
 import { 
   Tooltip,
@@ -38,8 +41,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn, fileToDataURI } from '@/lib/utils';
-import type { Workout, TrainingPlan, AthleteProfile } from "@/lib/types";
+import type { Workout, TrainingPlan, AthleteProfile, WeeklyPlan } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc } from "firebase/firestore";
@@ -70,13 +74,6 @@ export default function TrainingPage() {
   const [uploadedFileUri, setUploadedFileUri] = React.useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const sortedWorkouts = React.useMemo(() => {
-    if (!plan) return [];
-    return plan.weeklyPlans.flatMap(week => week.runs).sort((a, b) => {
-      return dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
-    });
-  }, [plan]);
 
   const handleGenerate = async () => {
     if (!profile) {
@@ -153,6 +150,14 @@ export default function TrainingPage() {
     }
   };
 
+  const handleReschedule = (newDay: string) => {
+    if (!selectedWorkout) return;
+    const updatedWorkout = { ...selectedWorkout, day: newDay };
+    context?.updateWorkout(selectedWorkout.id, updatedWorkout);
+    setSelectedWorkout(updatedWorkout);
+    toast({ title: "Treino Reagendado", description: `Sessão movida para ${newDay}.` });
+  };
+
   const handleExportPDF = () => {
     if (!plan) return;
     toast({ title: "Gerando PDF...", description: "Preparando versão otimizada para impressão." });
@@ -162,136 +167,182 @@ export default function TrainingPage() {
   return (
     <DashboardLayout>
       <TooltipProvider>
-        <div className="space-y-6 md:space-y-8 max-w-5xl mx-auto pb-20 print:p-0">
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2 print:hidden">
+        <div className="space-y-6 md:space-y-10 max-w-6xl mx-auto pb-20 print:p-0">
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4 print:hidden">
             <div>
-              <h1 className="text-3xl md:text-5xl font-headline font-black uppercase italic tracking-tighter">
+              <h1 className="text-4xl md:text-6xl font-headline font-black uppercase italic tracking-tighter leading-none">
                 <span className="text-white">MEU</span> <span className="text-primary">PLANO</span>
               </h1>
-              <p className="text-xs md:text-sm text-muted-foreground mt-1 font-bold uppercase tracking-widest italic">
+              <p className="text-xs md:text-sm text-muted-foreground mt-2 font-black uppercase tracking-[0.3em] italic">
                 {syncLoading ? "SINCRONIZANDO LABORATÓRIO..." : "PLANILHA INTELIGENTE DE ALTA PERFORMANCE"}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               {plan && (
                 <Button 
                   onClick={handleExportPDF}
                   variant="outline"
-                  className="border-primary/30 text-primary h-12 px-6 font-black uppercase tracking-widest text-[10px] italic rounded-xl"
+                  className="border-white/10 bg-black/40 text-white h-14 px-8 font-black uppercase tracking-widest text-[11px] italic rounded-2xl hover:bg-white hover:text-black transition-all"
                 >
-                  <FileDown className="mr-2 size-4" /> Exportar PDF
+                  <FileDown className="mr-2 size-5" /> EXPORTAR PDF
                 </Button>
               )}
               <Button 
                 onClick={handleGenerate} 
                 disabled={localLoading || !profile}
-                className="bg-primary text-black hover:bg-primary/90 min-w-[180px] h-12 font-black uppercase tracking-widest text-[10px] italic rounded-xl shadow-lg shadow-primary/10"
+                className="bg-primary text-black hover:bg-white min-w-[200px] h-14 font-black uppercase tracking-widest text-[11px] italic rounded-2xl shadow-2xl shadow-primary/20 transition-all hover:scale-105"
               >
-                {localLoading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}
+                {localLoading ? <Loader2 className="mr-2 size-5 animate-spin" /> : <RefreshCcw className="mr-2 size-5" />}
                 {plan ? "RECALIBRAR CICLO" : "GERAR MEU CICLO"}
               </Button>
             </div>
           </header>
 
           {!plan && !syncLoading && (
-            <Card className="mx-2 border-primary/20 bg-primary/5 p-20 text-center rounded-3xl shadow-lg border-2 border-dashed print:hidden">
-              <CardContent className="flex flex-col items-center space-y-6">
-                  <div className="p-6 rounded-full bg-primary/10 animate-pulse">
-                      <CalendarDays className="h-12 w-12 text-primary" />
+            <Card className="mx-4 border-primary/20 bg-primary/5 p-24 text-center rounded-[3rem] shadow-2xl border-4 border-dashed print:hidden">
+              <CardContent className="flex flex-col items-center space-y-8">
+                  <div className="size-24 rounded-3xl bg-primary/10 flex items-center justify-center animate-pulse">
+                      <CalendarDays className="size-12 text-primary" />
                   </div>
-                  <div className="space-y-2">
-                      <h2 className="text-2xl font-black uppercase italic">Sem Plano Ativo</h2>
-                      <p className="text-muted-foreground max-w-xs mx-auto">Sincronize ou gere sua planilha personalizada no seu perfil para começar.</p>
+                  <div className="space-y-3">
+                      <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white">Laboratório Vazio</h2>
+                      <p className="text-muted-foreground max-w-sm mx-auto font-medium">Configure sua biometria e prova alvo no perfil para que o Gemini gere sua periodização.</p>
                   </div>
-                  <Button asChild size="lg" className="h-14 px-8 font-black uppercase tracking-widest bg-primary text-black rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-105">
-                      <Link href="/profile">CONFIGURAR MEU CICLO</Link>
+                  <Button asChild size="lg" className="h-16 px-12 font-black uppercase tracking-widest bg-primary text-black rounded-2xl shadow-2xl shadow-primary/30 transition-all hover:scale-105 hover:bg-white">
+                      <Link href="/profile">INICIAR PERIODIZAÇÃO <ArrowRight className="ml-3 size-5" /></Link>
                   </Button>
               </CardContent>
             </Card>
           )}
 
           {plan && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500 px-2 print:hidden">
-              {sortedWorkouts.map((w: Workout) => (
-                <Card 
-                  key={w.id} 
-                  className={cn(
-                      "group cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden rounded-2xl border-2",
-                      w.completed ? "bg-secondary/20 opacity-80 border-border" : "bg-card border-primary/5 shadow-2xl"
-                  )}
-                  onClick={() => setSelectedWorkout(w)}
-                >
-                  {w.completed && (
-                      <div className="absolute top-3 right-3">
-                          <CheckCircle2 className="h-5 w-5 text-primary" />
-                      </div>
-                  )}
-                  <CardHeader className="pb-2">
-                      <p className="text-[10px] font-black uppercase text-primary tracking-widest italic">{w.day}</p>
-                      <CardTitle className="font-headline text-2xl italic uppercase font-black truncate text-white">{w.type}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                      <p className="text-[11px] text-muted-foreground line-clamp-2 italic leading-relaxed font-bold">"{w.description}"</p>
-                      <div className="flex gap-2">
-                          <Badge variant="secondary" className="bg-primary/20 text-primary border-none font-black italic uppercase text-[10px]">{w.distance}</Badge>
-                          <Badge variant="outline" className="font-black border-border/50 italic uppercase text-[10px]">{w.paceZone}</Badge>
-                      </div>
-                  </CardContent>
-                  <CardFooter className="pt-0 border-t border-border/10 mt-2 flex justify-between items-center group-hover:bg-primary/5 transition-colors h-12">
-                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest italic">Ver Detalhes Técnicos</span>
-                      <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-                  </CardFooter>
-                </Card>
+            <div className="space-y-16 animate-in fade-in duration-700 px-4">
+              {plan.weeklyPlans.map((week, weekIdx) => (
+                <div key={weekIdx} className="space-y-8">
+                  <div className="flex items-end justify-between border-b-2 border-primary/20 pb-4">
+                    <div className="space-y-1">
+                      <h2 className="text-3xl font-headline font-black uppercase italic text-primary tracking-tighter">
+                        SEMANA {String(week.weekNumber).padStart(2, '0')}
+                      </h2>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic">Foco: {week.focus}</p>
+                    </div>
+                    <div className="text-right hidden md:block">
+                      <Badge variant="outline" className="border-primary/30 text-primary font-black italic uppercase text-[9px] px-3 py-1">
+                        {week.runs.length} SESSOES DE CORRIDA
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {week.runs
+                      .sort((a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day))
+                      .map((w: Workout) => (
+                      <Card 
+                        key={w.id} 
+                        className={cn(
+                            "group cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden rounded-[2rem] border-2 flex flex-col h-full bg-[#0a0c10] shadow-2xl",
+                            w.completed ? "opacity-60 border-border" : "border-white/5 hover:translate-y-[-4px]"
+                        )}
+                        onClick={() => setSelectedWorkout(w)}
+                      >
+                        {w.completed && (
+                            <div className="absolute top-6 right-6 z-10">
+                                <CheckCircle2 className="size-6 text-primary" />
+                            </div>
+                        )}
+                        <CardHeader className="p-8 pb-4">
+                            <p className="text-[11px] font-black uppercase text-primary tracking-[0.2em] italic mb-3">{w.day}</p>
+                            <CardTitle className="font-headline text-3xl italic uppercase font-black tracking-tighter text-white leading-tight">
+                              {w.type}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-8 pt-0 flex-1 space-y-6">
+                            <p className="text-xs text-muted-foreground italic leading-relaxed font-bold">"{w.description}"</p>
+                            <div className="flex flex-wrap gap-2">
+                                <Badge className="bg-primary text-black font-black italic uppercase text-[10px] h-7 px-4 rounded-full">{w.distance}</Badge>
+                                <Badge variant="outline" className="border-white/10 bg-white/5 font-black italic uppercase text-[10px] h-7 px-4 rounded-full text-white">{w.paceZone}</Badge>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="p-8 pt-0 border-t border-white/5 mt-auto flex justify-between items-center group-hover:bg-primary/5 transition-colors h-16">
+                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest italic">DETALHES TÉCNICOS</span>
+                            <ChevronRight className="size-5 text-primary transition-all group-hover:translate-x-1" />
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )}
 
           <Dialog open={!!selectedWorkout} onOpenChange={(open) => !open && setSelectedWorkout(null)}>
-              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar border-primary/20 bg-background rounded-[2rem] p-0 overflow-hidden shadow-2xl">
+              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar border-primary/20 bg-[#0a0c10] rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
                   {selectedWorkout && (
                       <div className="flex flex-col">
-                          <div className="p-8 space-y-2 bg-gradient-to-b from-secondary/30 to-background border-b border-border/50">
-                              <p className="text-[11px] font-black uppercase text-primary tracking-[0.2em] italic">{selectedWorkout.day}</p>
-                              <h2 className="font-headline text-4xl md:text-5xl font-black uppercase italic tracking-tighter text-white leading-none">
-                                {selectedWorkout.type}
-                              </h2>
+                          <div className="p-10 space-y-4 bg-gradient-to-b from-secondary/30 to-transparent border-b border-white/5 relative">
+                              <div className="flex justify-between items-start">
+                                <div className="space-y-1">
+                                  <p className="text-xs font-black uppercase text-primary tracking-[0.3em] italic">{selectedWorkout.day}</p>
+                                  <h2 className="font-headline text-5xl md:text-6xl font-black uppercase italic tracking-tighter text-white leading-none">
+                                    {selectedWorkout.type}
+                                  </h2>
+                                </div>
+                                {!selectedWorkout.completed && (
+                                  <div className="flex flex-col items-end gap-2">
+                                    <span className="text-[9px] font-black uppercase text-muted-foreground tracking-widest italic">REAGENDAR</span>
+                                    <Select onValueChange={handleReschedule} defaultValue={selectedWorkout.day}>
+                                      <SelectTrigger className="w-40 bg-black/40 border-primary/20 rounded-xl h-10 font-black italic uppercase text-[10px]">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-card border-border">
+                                        {dayOrder.map(day => (
+                                          <SelectItem key={day} value={day} className="font-black italic uppercase text-[10px]">{day}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                )}
+                              </div>
                           </div>
 
-                          <div className="p-8 space-y-8">
+                          <div className="p-10 space-y-10">
                             <Tabs defaultValue={selectedWorkout.completed ? "feedback" : "prescrito"} className="w-full">
-                                <TabsList className="grid w-full grid-cols-2 bg-secondary/30 h-14 p-1 rounded-2xl gap-2">
-                                    <TabsTrigger value="prescrito" className="font-black text-xs uppercase italic data-[state=active]:bg-primary data-[state=active]:text-black rounded-xl transition-all">PRESCRIÇÃO</TabsTrigger>
-                                    <TabsTrigger value="feedback" className="font-black text-xs uppercase italic data-[state=active]:bg-primary data-[state=active]:text-black rounded-xl transition-all">
+                                <TabsList className="grid w-full grid-cols-2 bg-black/40 h-16 p-1.5 rounded-2xl gap-2">
+                                    <TabsTrigger value="prescrito" className="font-black text-[11px] uppercase italic tracking-widest data-[state=active]:bg-primary data-[state=active]:text-black rounded-xl transition-all">PRESCRIÇÃO</TabsTrigger>
+                                    <TabsTrigger value="feedback" className="font-black text-[11px] uppercase italic tracking-widest data-[state=active]:bg-primary data-[state=active]:text-black rounded-xl transition-all">
                                         {selectedWorkout.completed ? 'ANÁLISE DO COACH' : 'REGISTRAR'}
                                     </TabsTrigger>
                                 </TabsList>
 
-                                <TabsContent value="prescrito" className="space-y-8 pt-8">
-                                    <div className="p-6 rounded-2xl bg-secondary/20 border-l-4 border-primary space-y-3">
-                                        <h4 className="text-[10px] font-black uppercase text-primary tracking-[0.2em] italic">OBJETIVO TÉCNICO</h4>
-                                        <p className="text-base italic font-bold leading-relaxed text-white">"{selectedWorkout.description}"</p>
+                                <TabsContent value="prescrito" className="space-y-10 pt-10">
+                                    <div className="p-8 rounded-3xl bg-primary/5 border-l-8 border-primary space-y-4">
+                                        <h4 className="text-[11px] font-black uppercase text-primary tracking-widest italic">OBJETIVO TÉCNICO</h4>
+                                        <p className="text-xl italic font-bold leading-relaxed text-white">"{selectedWorkout.description}"</p>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <MetricBoxElite icon={Route} label="DISTÂNCIA" value={selectedWorkout.distance} />
-                                        <MetricBoxElite icon={Clock} label="ZONA" value={selectedWorkout.paceZone} color="primary" />
+                                        <MetricBoxElite icon={Clock} label="ZONA PACE" value={selectedWorkout.paceZone} color="primary" />
                                     </div>
 
                                     {selectedWorkout.phases && selectedWorkout.phases.length > 0 && (
-                                      <div className="space-y-4">
-                                        <h4 className="text-xs font-black uppercase text-white italic tracking-widest">DIVISÃO POR FASES</h4>
-                                        <div className="grid gap-3">
+                                      <div className="space-y-6">
+                                        <div className="flex items-center gap-3">
+                                          <Activity className="size-5 text-primary" />
+                                          <h4 className="text-sm font-black uppercase text-white italic tracking-widest">DIVISÃO POR FASES</h4>
+                                        </div>
+                                        <div className="grid gap-4">
                                           {selectedWorkout.phases.map((phase, idx) => (
-                                            <div key={idx} className="flex gap-4 p-5 rounded-2xl bg-black/40 border border-border/50 hover:border-primary/20 transition-all group">
-                                              <div className="size-10 rounded-xl bg-secondary flex items-center justify-center shrink-0 text-primary font-black italic">
-                                                {idx + 1}
+                                            <div key={idx} className="flex gap-6 p-6 rounded-3xl bg-black/40 border border-white/5 hover:border-primary/20 transition-all group">
+                                              <div className="size-12 rounded-2xl bg-secondary flex items-center justify-center shrink-0 text-primary font-black italic text-lg shadow-xl">
+                                                {String(idx + 1).padStart(2, '0')}
                                               </div>
-                                              <div className="space-y-1 flex-1">
+                                              <div className="space-y-2 flex-1">
                                                 <div className="flex justify-between items-center">
-                                                  <span className="text-xs font-black uppercase italic text-white">{phase.name}</span>
-                                                  <span className="text-[10px] font-bold text-primary">{phase.distance}</span>
+                                                  <span className="text-sm font-black uppercase italic text-white tracking-tight">{phase.name}</span>
+                                                  <Badge className="bg-primary/10 text-primary border-none font-black italic">{phase.distance}</Badge>
                                                 </div>
-                                                <p className="text-[11px] text-muted-foreground leading-snug italic">{phase.description}</p>
+                                                <p className="text-xs text-muted-foreground leading-relaxed italic font-medium">{phase.description}</p>
                                               </div>
                                             </div>
                                           ))}
@@ -300,10 +351,10 @@ export default function TrainingPage() {
                                     )}
                                 </TabsContent>
 
-                                <TabsContent value="feedback" className="pt-8 space-y-8">
+                                <TabsContent value="feedback" className="pt-10 space-y-10">
                                     {selectedWorkout.completed && selectedWorkout.analysis ? (
-                                        <div className="space-y-8">
-                                            <div className="grid grid-cols-3 gap-3">
+                                        <div className="space-y-10">
+                                            <div className="grid grid-cols-3 gap-4">
                                                 <MetricBoxDetail label="Pace Médio" value={selectedWorkout.analysis.actualMetrics?.averagePace || '--'} unit="min/km" />
                                                 <MetricBoxDetail label="Cadência" value={selectedWorkout.analysis.actualMetrics?.averageCadence || '--'} unit="ppm" />
                                                 <MetricBoxDetail 
@@ -313,72 +364,72 @@ export default function TrainingPage() {
                                                 />
                                             </div>
 
-                                            <div className="space-y-4">
-                                                <div className="p-6 rounded-2xl bg-primary/5 border border-primary/20 space-y-4">
-                                                    <div className="flex items-center gap-3 text-primary"><BrainCircuit size={20}/><h4 className="text-sm font-black uppercase italic tracking-widest">DIAGNÓSTICO DO COACH IA</h4></div>
+                                            <div className="space-y-6">
+                                                <div className="p-8 rounded-3xl bg-primary/5 border border-primary/20 space-y-6">
+                                                    <div className="flex items-center gap-4 text-primary"><BrainCircuit size={24}/><h4 className="text-sm font-black uppercase italic tracking-[0.2em]">DIAGNÓSTICO DO COACH IA</h4></div>
                                                     <p className="text-sm leading-relaxed whitespace-pre-wrap italic font-bold text-muted-foreground">{selectedWorkout.analysis.analysisSummary}</p>
                                                 </div>
                                                 
-                                                <div className="p-6 rounded-2xl bg-accent/5 border border-accent/20 space-y-4">
-                                                    <div className="flex items-center gap-3 text-accent"><Zap size={20}/><h4 className="text-sm font-black uppercase italic tracking-widest">RECOMENDAÇÕES DE PERFORMANCE</h4></div>
-                                                    <p className="text-sm leading-relaxed text-white font-black italic">"{selectedWorkout.analysis.recommendations}"</p>
+                                                <div className="p-8 rounded-3xl bg-accent/5 border border-accent/20 space-y-6">
+                                                    <div className="flex items-center gap-4 text-accent"><Zap size={24}/><h4 className="text-sm font-black uppercase italic tracking-[0.2em]">RECOMENDAÇÕES DE PERFORMANCE</h4></div>
+                                                    <p className="text-base leading-relaxed text-white font-black italic">"{selectedWorkout.analysis.recommendations}"</p>
                                                 </div>
                                             </div>
 
-                                            <Button className="w-full bg-primary text-black font-black uppercase h-16 gap-3 rounded-2xl transition-all hover:scale-[1.02] text-sm italic" onClick={() => router.push('/coach')}>
-                                                <MessageSquare size={20}/> CONSULTAR COACH NO CHAT
+                                            <Button className="w-full bg-primary text-black font-black uppercase h-20 gap-4 rounded-3xl transition-all hover:scale-[1.02] hover:bg-white text-base italic shadow-2xl shadow-primary/20" onClick={() => router.push('/coach')}>
+                                                <MessageSquare size={24}/> CONSULTAR COACH NO CHAT
                                             </Button>
                                         </div>
                                     ) : (
-                                        <div className="space-y-8">
+                                        <div className="space-y-10">
                                             <div className="space-y-4">
-                                                <label className="text-[10px] font-black uppercase text-muted-foreground italic tracking-widest">RELATO SUBJETIVO DO ATLETA</label>
+                                                <label className="text-[11px] font-black uppercase text-muted-foreground italic tracking-[0.2em]">RELATO SUBJETIVO DO ATLETA</label>
                                                 <Textarea 
                                                     placeholder="Como foi o treino? Senti pernas pesadas, ritmo fluiu bem..." 
-                                                    className="bg-secondary/10 min-h-[150px] font-bold rounded-2xl border-border/50 italic text-sm p-6"
+                                                    className="bg-black/30 min-h-[180px] font-bold rounded-[2rem] border-white/10 italic text-base p-8 focus:border-primary"
                                                     value={athleteFeedback}
                                                     onChange={(e) => setAthleteFeedback(e.target.value)}
                                                 />
                                             </div>
 
                                             <div className="space-y-4">
-                                                <div className="flex items-center gap-2">
-                                                  <label className="text-[10px] font-black uppercase text-muted-foreground italic tracking-widest">EVIDÊNCIA TÉCNICA</label>
-                                                  <Tooltip><TooltipTrigger asChild><Info className="size-3 text-muted-foreground cursor-help opacity-50" /></TooltipTrigger><TooltipContent><p className="max-w-xs text-[10px]">Envie arquivo .FIT, print do Strava ou Garmin.</p></TooltipContent></Tooltip>
+                                                <div className="flex items-center gap-3">
+                                                  <label className="text-[11px] font-black uppercase text-muted-foreground italic tracking-[0.2em]">EVIDÊNCIA TÉCNICA</label>
+                                                  <Tooltip><TooltipTrigger asChild><Info className="size-4 text-muted-foreground cursor-help opacity-40 hover:opacity-100" /></TooltipTrigger><TooltipContent><p className="max-w-xs text-[10px]">Envie arquivo .FIT, print do Strava ou Garmin.</p></TooltipContent></Tooltip>
                                                 </div>
                                                 <div 
                                                     className={cn(
-                                                      "border-2 border-dashed rounded-[2rem] p-12 text-center space-y-6 cursor-pointer transition-all",
-                                                      uploadedFileUri ? "border-primary bg-primary/10" : "border-border/50 hover:bg-secondary/20"
+                                                      "border-4 border-dashed rounded-[3rem] p-16 text-center space-y-8 cursor-pointer transition-all",
+                                                      uploadedFileUri ? "border-primary bg-primary/5" : "border-white/5 hover:bg-white/5 hover:border-primary/30"
                                                     )}
                                                     onClick={() => fileInputRef.current?.click()}
                                                 >
                                                     <input type="file" ref={fileInputRef} className="sr-only" onChange={handleFileUpload} accept=".fit,.csv,image/*,.pdf" />
                                                     {uploadedFileUri ? (
-                                                      <div className="space-y-3 animate-in zoom-in-95">
+                                                      <div className="space-y-4 animate-in zoom-in-95">
                                                          <div className="flex justify-center">
                                                             <div className="relative">
-                                                              <div className="p-6 rounded-2xl bg-primary text-black shadow-2xl">
-                                                                {uploadedFileName?.endsWith('.pdf') ? <FileText size={40} /> : <ImageIcon size={40}/>}
+                                                              <div className="p-8 rounded-3xl bg-primary text-black shadow-2xl">
+                                                                {uploadedFileName?.endsWith('.pdf') ? <FileText size={50} /> : <ImageIcon size={50}/>}
                                                               </div>
-                                                              <Button variant="destructive" size="icon" className="absolute -top-3 -right-3 size-8 rounded-full shadow-2xl" onClick={clearFile}><X size={16}/></Button>
+                                                              <Button variant="destructive" size="icon" className="absolute -top-4 -right-4 size-10 rounded-full shadow-2xl hover:scale-110" onClick={clearFile}><X size={20}/></Button>
                                                             </div>
                                                          </div>
-                                                         <div>
-                                                            <p className="text-xs font-black uppercase italic text-primary">ARQUIVO PRONTO</p>
-                                                            <p className="text-[10px] text-muted-foreground truncate max-w-[250px] mx-auto italic font-bold">{uploadedFileName}</p>
+                                                         <div className="space-y-1">
+                                                            <p className="text-sm font-black uppercase italic text-primary tracking-widest">ARQUIVO CARREGADO</p>
+                                                            <p className="text-xs text-muted-foreground truncate max-w-[300px] mx-auto italic font-bold opacity-60">{uploadedFileName}</p>
                                                          </div>
                                                       </div>
                                                     ) : (
-                                                      <div className="space-y-6">
-                                                          <div className="flex justify-center gap-6">
-                                                              <div className="p-4 rounded-2xl bg-secondary/50 text-muted-foreground"><FileDigit size={32}/></div>
-                                                              <div className="p-4 rounded-2xl bg-primary/20 text-primary animate-bounce"><Upload size={32}/></div>
-                                                              <div className="p-4 rounded-2xl bg-secondary/50 text-muted-foreground"><ImageIcon size={32}/></div>
+                                                      <div className="space-y-8">
+                                                          <div className="flex justify-center gap-8">
+                                                              <div className="p-6 rounded-3xl bg-secondary/50 text-muted-foreground/30"><FileDigit size={40}/></div>
+                                                              <div className="p-6 rounded-3xl bg-primary/20 text-primary animate-bounce shadow-xl"><Upload size={40}/></div>
+                                                              <div className="p-6 rounded-3xl bg-secondary/50 text-muted-foreground/30"><ImageIcon size={40}/></div>
                                                           </div>
                                                           <div>
-                                                              <p className="text-sm font-black uppercase italic tracking-[0.2em] text-white">IMPORTAR DADOS SENSORES</p>
-                                                              <p className="text-[10px] text-muted-foreground mt-2 uppercase italic font-bold">PDF, .FIT OU PRINT DE TREINO</p>
+                                                              <p className="text-lg font-black uppercase italic tracking-[0.3em] text-white">IMPORTAR SENSORES</p>
+                                                              <p className="text-[11px] text-muted-foreground mt-3 uppercase italic font-bold tracking-widest">PDF, .FIT OU CAPTURA DE TELA</p>
                                                           </div>
                                                       </div>
                                                     )}
@@ -386,11 +437,11 @@ export default function TrainingPage() {
                                             </div>
 
                                             <Button 
-                                                className="w-full bg-primary text-black font-black uppercase h-16 tracking-widest text-lg shadow-2xl shadow-primary/20 rounded-2xl transition-all hover:scale-[1.02] italic"
+                                                className="w-full bg-primary text-black font-black uppercase h-20 tracking-[0.2em] text-xl shadow-2xl shadow-primary/20 rounded-3xl transition-all hover:scale-[1.02] hover:bg-white italic"
                                                 disabled={analyzing || !athleteFeedback.trim()}
                                                 onClick={handleFinalizeAnalysis}
                                             >
-                                                {analyzing ? <><Loader2 className="mr-3 h-6 w-6 animate-spin" /> PROCESSANDO...</> : 'REGISTRAR E ANALISAR'}
+                                                {analyzing ? <><Loader2 className="mr-4 size-7 animate-spin" /> ANALISANDO...</> : 'FINALIZAR SESSÃO'}
                                             </Button>
                                         </div>
                                     )}
@@ -409,16 +460,16 @@ export default function TrainingPage() {
 
 function MetricBoxElite({ icon: Icon, label, value, color = "default" }: { icon: any, label: string, value: string, color?: "default" | "primary" }) {
   return (
-    <div className="flex items-center gap-5 p-6 rounded-2xl bg-black/30 border border-border/50 group hover:border-primary/30 transition-all">
+    <div className="flex items-center gap-6 p-8 rounded-[2rem] bg-black/40 border border-white/5 group hover:border-primary/30 transition-all shadow-xl">
       <div className={cn(
-        "size-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg",
-        color === "primary" ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
+        "size-16 rounded-2xl flex items-center justify-center shrink-0 shadow-2xl transition-transform group-hover:scale-110",
+        color === "primary" ? "bg-primary text-black" : "bg-secondary text-muted-foreground"
       )}>
-        <Icon size={28} />
+        <Icon size={32} />
       </div>
       <div className="space-y-1">
-        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest italic">{label}</p>
-        <p className="text-2xl font-black uppercase italic text-white tracking-tighter">{value}</p>
+        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em] italic">{label}</p>
+        <p className="text-3xl font-black uppercase italic text-white tracking-tighter leading-none">{value}</p>
       </div>
     </div>
   );
@@ -426,13 +477,13 @@ function MetricBoxElite({ icon: Icon, label, value, color = "default" }: { icon:
 
 function MetricBoxDetail({ label, value, unit, highlight = 'default' }: { label: string, value: string, unit?: string, highlight?: 'default' | 'primary' | 'destructive' }) {
     return (
-        <div className="bg-secondary/10 border border-border/50 p-5 rounded-2xl text-center space-y-2 group transition-all hover:bg-secondary/20">
-            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest italic">{label}</p>
+        <div className="bg-black/40 border border-white/5 p-6 rounded-[1.5rem] text-center space-y-3 group transition-all hover:bg-secondary/20 shadow-lg">
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] italic">{label}</p>
             <p className={cn(
-                "text-lg md:text-xl font-black italic uppercase tracking-tighter leading-none",
+                "text-2xl md:text-3xl font-black italic uppercase tracking-tighter leading-none",
                 highlight === 'primary' ? 'text-primary' : highlight === 'destructive' ? 'text-rose-500' : 'text-white'
             )}>
-                {value} {unit && <span className="text-[10px] font-bold lowercase opacity-40">{unit}</span>}
+                {value} {unit && <span className="text-[11px] font-bold lowercase opacity-30 ml-1">{unit}</span>}
             </p>
         </div>
     );
