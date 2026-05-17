@@ -30,7 +30,9 @@ import {
   ArrowRight,
   Calendar as CalendarIcon,
   RefreshCcw,
-  Target
+  Target,
+  TrendingUp,
+  AlertTriangle
 } from "lucide-react";
 import { 
   Tooltip,
@@ -132,7 +134,7 @@ export default function TrainingPage() {
         analysis: result
       };
       
-      context?.updateWorkout(selectedWorkout.id, updatedWorkout);
+      await context?.updateWorkout(selectedWorkout.id, updatedWorkout);
       setSelectedWorkout(updatedWorkout as any);
       setUploadedFileUri(null);
       setUploadedFileName(null);
@@ -146,12 +148,12 @@ export default function TrainingPage() {
     }
   };
 
-  const handleReschedule = (newDay: string) => {
+  const handleReschedule = async (newDay: string) => {
     if (!selectedWorkout) return;
     const updatedWorkout = { ...selectedWorkout, day: newDay };
-    context?.updateWorkout(selectedWorkout.id, updatedWorkout);
+    await context?.updateWorkout(selectedWorkout.id, updatedWorkout);
     setSelectedWorkout(updatedWorkout);
-    toast({ title: "Treino Reagendado", description: `Sessão movida para ${newDay}.` });
+    toast({ title: "Reagendamento Concluído", description: `Sessão movida para ${newDay}.` });
   };
 
   const handleExportPDF = () => {
@@ -239,7 +241,7 @@ export default function TrainingPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {week.runs
-                      .filter(w => w.type !== "Descanso") // Filtra apenas dias de treino
+                      .filter(w => w.type !== "Descanso")
                       .sort((a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day))
                       .map((w: Workout) => (
                       <Card 
@@ -266,7 +268,6 @@ export default function TrainingPage() {
                             <div className="flex flex-wrap gap-2">
                                 <Badge className="bg-primary text-black font-black italic uppercase text-[10px] h-7 px-4 rounded-full">{w.distance}</Badge>
                                 <Badge variant="outline" className="border-white/10 bg-white/5 font-black italic uppercase text-[10px] h-7 px-4 rounded-full text-white">{w.paceZone}</Badge>
-                                {w.rpe && <Badge variant="secondary" className="text-[9px] font-black italic">RPE {w.rpe}/10</Badge>}
                             </div>
                         </CardContent>
                         <CardFooter className="p-8 pt-0 border-t border-white/5 mt-auto flex justify-between items-center group-hover:bg-primary/5 transition-colors h-16">
@@ -295,8 +296,8 @@ export default function TrainingPage() {
                                 </div>
                                 {!selectedWorkout.completed && (
                                   <div className="flex flex-col items-end gap-2">
-                                    <span className="text-[9px] font-black uppercase text-muted-foreground tracking-widest italic">REAGENDAR</span>
-                                    <Select onValueChange={handleReschedule} defaultValue={selectedWorkout.day}>
+                                    <span className="text-[9px] font-black uppercase text-muted-foreground tracking-widest italic">FLEXIBILIDADE</span>
+                                    <Select onValueChange={handleReschedule} value={selectedWorkout.day}>
                                       <SelectTrigger className="w-40 bg-black/40 border-primary/20 rounded-xl h-10 font-black italic uppercase text-[10px]">
                                         <SelectValue />
                                       </SelectTrigger>
@@ -327,19 +328,19 @@ export default function TrainingPage() {
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <MetricBoxElite icon={Route} label="DISTÂNCIA" value={selectedWorkout.distance} />
-                                        <MetricBoxElite icon={Clock} label="ZONA PACE" value={selectedWorkout.paceZone} color="primary" />
+                                        <MetricBoxElite icon={Route} label="DISTÂNCIA ALVO" value={selectedWorkout.distance} />
+                                        <MetricBoxElite icon={Target} label="ZONA DE PACE" value={selectedWorkout.paceZone} color="primary" />
                                     </div>
 
                                     {selectedWorkout.phases && selectedWorkout.phases.length > 0 && (
                                       <div className="space-y-6">
                                         <div className="flex items-center gap-3">
-                                          <Activity className="size-5 text-primary" />
-                                          <h4 className="text-sm font-black uppercase text-white italic tracking-widest">DIVISÃO POR FASES</h4>
+                                          <TrendingUp className="size-5 text-primary" />
+                                          <h4 className="text-sm font-black uppercase text-white italic tracking-widest">ESTRUTURA DA SESSÃO</h4>
                                         </div>
                                         <div className="grid gap-4">
                                           {selectedWorkout.phases.map((phase, idx) => (
-                                            <div key={idx} className="flex gap-6 p-6 rounded-3xl bg-black/40 border border-white/5 hover:border-primary/20 transition-all group">
+                                            <div key={idx} className="flex gap-6 p-6 rounded-3xl bg-black/40 border border-white/5 hover:border-primary/20 transition-all">
                                               <div className="size-12 rounded-2xl bg-secondary flex items-center justify-center shrink-0 text-primary font-black italic text-lg shadow-xl">
                                                 {String(idx + 1).padStart(2, '0')}
                                               </div>
@@ -361,18 +362,37 @@ export default function TrainingPage() {
                                     {selectedWorkout.completed && selectedWorkout.analysis ? (
                                         <div className="space-y-10">
                                             <div className="grid grid-cols-3 gap-4">
-                                                <MetricBoxDetail label="Pace Médio" value={selectedWorkout.analysis.actualMetrics?.averagePace || '--'} unit="min/km" />
-                                                <MetricBoxDetail label="Cadência" value={selectedWorkout.analysis.actualMetrics?.averageCadence || '--'} unit="ppm" />
+                                                <MetricBoxDetail 
+                                                  label="Pace Realizado" 
+                                                  value={selectedWorkout.analysis.actualMetrics?.averagePace || '--'} 
+                                                  unit="min/km" 
+                                                  highlight="primary"
+                                                />
+                                                <MetricBoxDetail 
+                                                  label="Cadência" 
+                                                  value={selectedWorkout.analysis.actualMetrics?.averageCadence || '--'} 
+                                                  unit="ppm" 
+                                                />
                                                 <MetricBoxDetail 
                                                     label="Razão Passada" 
                                                     value={selectedWorkout.analysis.actualMetrics?.strideRatio ? `${selectedWorkout.analysis.actualMetrics.strideRatio}%` : '--'} 
-                                                    highlight={Number(selectedWorkout.analysis.actualMetrics?.strideRatio) > 11 ? 'destructive' : 'primary'}
+                                                    highlight={Number(selectedWorkout.analysis.actualMetrics?.strideRatio) > 11 ? 'destructive' : 'default'}
                                                 />
                                             </div>
 
+                                            {Number(selectedWorkout.analysis.actualMetrics?.strideRatio) > 11 && (
+                                              <div className="p-6 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center gap-4 animate-pulse">
+                                                <AlertTriangle className="size-6 text-destructive shrink-0" />
+                                                <div className="text-xs space-y-1">
+                                                  <p className="font-black uppercase italic text-destructive">ALERTA DE INEFICIÊNCIA</p>
+                                                  <p className="text-muted-foreground italic font-medium">Sua oscilação vertical está elevada. Você está "pulando" muito em vez de projetar o corpo para frente.</p>
+                                                </div>
+                                              </div>
+                                            )}
+
                                             <div className="space-y-6">
                                                 <div className="p-8 rounded-3xl bg-primary/5 border border-primary/20 space-y-6">
-                                                    <div className="flex items-center gap-4 text-primary"><BrainCircuit size={24}/><h4 className="text-sm font-black uppercase italic tracking-[0.2em]">ANÁLISE DO COACH IA</h4></div>
+                                                    <div className="flex items-center gap-4 text-primary"><BrainCircuit size={24}/><h4 className="text-sm font-black uppercase italic tracking-[0.2em]">PARECER TÉCNICO</h4></div>
                                                     <p className="text-sm leading-relaxed whitespace-pre-wrap italic font-bold text-muted-foreground">
                                                       {selectedWorkout.analysis.analysisSummary.summary}
                                                       {"\n\n"}
@@ -381,21 +401,21 @@ export default function TrainingPage() {
                                                 </div>
                                                 
                                                 <div className="p-8 rounded-3xl bg-accent/5 border border-accent/20 space-y-6">
-                                                    <div className="flex items-center gap-4 text-accent"><Target size={24}/><h4 className="text-sm font-black uppercase italic tracking-[0.2em]">RECOMENDAÇÕES DE ELITE</h4></div>
+                                                    <div className="flex items-center gap-4 text-accent"><Target size={24}/><h4 className="text-sm font-black uppercase italic tracking-[0.2em]">AJUSTES DE CICLO</h4></div>
                                                     <p className="text-base leading-relaxed text-white font-black italic">"{selectedWorkout.analysis.recommendations}"</p>
                                                 </div>
                                             </div>
 
                                             <Button className="w-full bg-primary text-black font-black uppercase h-20 gap-4 rounded-3xl transition-all hover:scale-[1.02] hover:bg-white text-base italic shadow-2xl shadow-primary/20" onClick={() => router.push('/coach')}>
-                                                <MessageSquare size={24}/> CONVERSAR SOBRE ESTE TREINO
+                                                <MessageSquare size={24}/> CONVERSAR SOBRE ESTA SESSÃO
                                             </Button>
                                         </div>
                                     ) : (
                                         <div className="space-y-10">
                                             <div className="space-y-4">
-                                                <label className="text-[11px] font-black uppercase text-muted-foreground italic tracking-[0.2em]">RELATO SUBJETIVO DO ATLETA</label>
+                                                <label className="text-[11px] font-black uppercase text-muted-foreground italic tracking-[0.2em]">FEEDBACK DO ATLETA</label>
                                                 <Textarea 
-                                                    placeholder="Como foi o treino? Senti pernas pesadas, ritmo fluiu bem..." 
+                                                    placeholder="Como você se sentiu? Alguma dor específica ou percepção de esforço diferente?" 
                                                     className="bg-black/30 min-h-[180px] font-bold rounded-[2rem] border-white/10 italic text-base p-8 focus:border-primary"
                                                     value={athleteFeedback}
                                                     onChange={(e) => setAthleteFeedback(e.target.value)}
@@ -404,8 +424,7 @@ export default function TrainingPage() {
 
                                             <div className="space-y-4">
                                                 <div className="flex items-center gap-3">
-                                                  <label className="text-[11px] font-black uppercase text-muted-foreground italic tracking-[0.2em]">IMPORTAR DADOS (FIT, Strava, Foto)</label>
-                                                  <Tooltip><TooltipTrigger asChild><Info className="size-4 text-muted-foreground cursor-help opacity-40 hover:opacity-100" /></TooltipTrigger><TooltipContent><p className="max-w-xs text-[10px]">Aceitamos arquivos .FIT, .CSV ou foto do relógio.</p></TooltipContent></Tooltip>
+                                                  <label className="text-[11px] font-black uppercase text-muted-foreground italic tracking-[0.2em]">IMPORTAR SENSORES (FIT / STRAVA / FOTO)</label>
                                                 </div>
                                                 <div 
                                                     className={cn(
@@ -420,26 +439,26 @@ export default function TrainingPage() {
                                                          <div className="flex justify-center">
                                                             <div className="relative">
                                                               <div className="p-8 rounded-3xl bg-primary text-black shadow-2xl">
-                                                                {uploadedFileName?.endsWith('.pdf') ? <FileText size={50} /> : <ImageIcon size={50}/>}
+                                                                <FileDigit size={50}/>
                                                               </div>
                                                               <Button variant="destructive" size="icon" className="absolute -top-4 -right-4 size-10 rounded-full shadow-2xl hover:scale-110" onClick={clearFile}><X size={20}/></Button>
                                                             </div>
                                                          </div>
                                                          <div className="space-y-1">
-                                                            <p className="text-sm font-black uppercase italic text-primary tracking-widest">ARQUIVO CARREGADO</p>
+                                                            <p className="text-sm font-black uppercase italic text-primary tracking-widest">DADOS CARREGADOS</p>
                                                             <p className="text-xs text-muted-foreground truncate max-w-[300px] mx-auto italic font-bold opacity-60">{uploadedFileName}</p>
                                                          </div>
                                                       </div>
                                                     ) : (
                                                       <div className="space-y-8">
                                                           <div className="flex justify-center gap-8">
-                                                              <div className="p-6 rounded-3xl bg-secondary/50 text-muted-foreground/30"><FileDigit size={40}/></div>
+                                                              <div className="p-6 rounded-3xl bg-secondary/50 text-muted-foreground/30"><Route size={40}/></div>
                                                               <div className="p-6 rounded-3xl bg-primary/20 text-primary animate-bounce shadow-xl"><Upload size={40}/></div>
-                                                              <div className="p-6 rounded-3xl bg-secondary/50 text-muted-foreground/30"><ImageIcon size={40}/></div>
+                                                              <div className="p-6 rounded-3xl bg-secondary/50 text-muted-foreground/30"><Activity size={40}/></div>
                                                           </div>
                                                           <div>
-                                                              <p className="text-lg font-black uppercase italic tracking-[0.3em] text-white">CIÊNCIA DE DADOS</p>
-                                                              <p className="text-[11px] text-muted-foreground mt-3 uppercase italic font-bold tracking-widest">CLIQUE PARA IMPORTAR TREINO REALIZADO</p>
+                                                              <p className="text-lg font-black uppercase italic tracking-[0.3em] text-white">LABORATÓRIO DE DADOS</p>
+                                                              <p className="text-[11px] text-muted-foreground mt-3 uppercase italic font-bold tracking-widest">CLIQUE PARA ANEXAR ARQUIVO DE TREINO</p>
                                                           </div>
                                                       </div>
                                                     )}
@@ -451,7 +470,7 @@ export default function TrainingPage() {
                                                 disabled={analyzing || !athleteFeedback.trim()}
                                                 onClick={handleFinalizeAnalysis}
                                             >
-                                                {analyzing ? <><Loader2 className="mr-4 size-7 animate-spin" /> PROCESSANDO LABORATÓRIO...</> : 'FINALIZAR SESSÃO'}
+                                                {analyzing ? <><Loader2 className="mr-4 size-7 animate-spin" /> SINCRONIZANDO MÉTRICAS...</> : 'PROCESSAR ANÁLISE'}
                                             </Button>
                                         </div>
                                     )}
