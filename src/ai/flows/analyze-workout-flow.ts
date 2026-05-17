@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Fluxo Genkit para analisar o desempenho biomecânico do atleta.
@@ -20,7 +21,7 @@ const AnalyzeWorkoutOutputSchema = z.object({
   actualMetrics: z.object({
     averagePace: z.string(),
     averageCadence: z.string(),
-    strideRatio: z.number(),
+    strideRatio: z.number().describe('A razão entre oscilação vertical e comprimento de passada.'),
     groundContactTime: z.string().optional(),
     verticalOscillation: z.string().optional(),
   }),
@@ -42,6 +43,7 @@ export async function analyzeWorkout(input: AnalyzeWorkoutInput): Promise<Analyz
     system: `Você é um analista biomecânico de elite. Sua missão é extrair métricas de arquivos e feedbacks para avaliar a eficiência do atleta.
     Compare o que foi prescrito (${input.prescribedWorkout}) com o que foi realizado.
     Foque em métricas como Cadência e Razão de Passada para identificar desperdício de energia.
+    Se o arquivo for uma imagem do relógio, faça o OCR e extraia os valores.
     Responda em PORTUGUÊS (Brasil).`,
     prompt: [
       { text: `Analise o treino executado pelo atleta. Feedback: ${input.athleteFeedback}. Perfil: ${input.athleteProfile}.` },

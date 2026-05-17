@@ -91,17 +91,16 @@ export interface AiAnalysis {
 export interface Workout {
   id: string;
   day: string;
-  date: string;
   type: string;
   distance: string;
   paceZone: string;
   description: string;
-  objective?: string;
+  rpe?: number;
+  estimatedDuration?: string;
   phases: Array<{
     name: string;
     distance: string;
     pace?: string;
-    duration?: string;
     description: string;
   }>;
   completed?: boolean;

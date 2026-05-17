@@ -29,7 +29,8 @@ import {
   Activity,
   ArrowRight,
   Calendar as CalendarIcon,
-  RefreshCcw
+  RefreshCcw,
+  Target
 } from "lucide-react";
 import { 
   Tooltip,
@@ -77,7 +78,7 @@ export default function TrainingPage() {
 
   const handleGenerate = async () => {
     if (!profile) {
-      toast({ variant: "destructive", title: "Perfil Incompleto", description: "Configure seus dados em 'Meus Dados' primeiro." });
+      toast({ variant: "destructive", title: "Perfil Incompleto", description: "Configure seus dados no perfil primeiro." });
       return;
     }
     setLocalLoading(true);
@@ -114,7 +115,7 @@ export default function TrainingPage() {
     if (!selectedWorkout || !profile || !context?.apiKey) return;
     
     setAnalyzing(true);
-    toast({ title: "🧠 Gemini Coach está analisando...", description: "Processando arquivos e feedbacks." });
+    toast({ title: "🧠 Gemini Coach está analisando...", description: "Processando sensores e feedback." });
 
     try {
       const result = await analyzeWorkout({
@@ -128,12 +129,7 @@ export default function TrainingPage() {
       const updatedWorkout = { 
         ...selectedWorkout, 
         completed: true, 
-        analysis: {
-          actualMetrics: result.actualMetrics,
-          analysisSummary: result.analysisSummary.summary + "\n\n" + result.analysisSummary.technicalReview,
-          recommendations: result.recommendations,
-          areasOfImprovement: result.areasOfImprovement
-        }
+        analysis: result
       };
       
       context?.updateWorkout(selectedWorkout.id, updatedWorkout);
@@ -141,10 +137,10 @@ export default function TrainingPage() {
       setUploadedFileUri(null);
       setUploadedFileName(null);
       setAthleteFeedback("");
-      toast({ title: "✅ Treino Registrado!", description: "Sua análise de elite está pronta." });
+      toast({ title: "✅ Treino Registrado!", description: "Análise biomecânica concluída." });
     } catch (error) {
       console.error(error);
-      toast({ variant: 'destructive', title: "Erro na análise", description: "Verifique sua conexão e chave de API." });
+      toast({ variant: 'destructive', title: "Erro na análise", description: "Verifique sua chave de API." });
     } finally {
       setAnalyzing(false);
     }
@@ -162,6 +158,13 @@ export default function TrainingPage() {
     if (!plan) return;
     toast({ title: "Gerando PDF...", description: "Preparando versão otimizada para impressão." });
     window.print();
+  };
+
+  const calculateWeekVolume = (runs: Workout[]) => {
+    return runs.reduce((acc, run) => {
+      const d = parseFloat(run.distance.replace('km', '').replace(',', '.'));
+      return acc + (isNaN(d) ? 0 : d);
+    }, 0).toFixed(1);
   };
 
   return (
@@ -226,15 +229,17 @@ export default function TrainingPage() {
                       </h2>
                       <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic">Foco: {week.focus}</p>
                     </div>
-                    <div className="text-right hidden md:block">
-                      <Badge variant="outline" className="border-primary/30 text-primary font-black italic uppercase text-[9px] px-3 py-1">
-                        {week.runs.length} SESSOES DE CORRIDA
+                    <div className="text-right space-y-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic">VOLUME PLANEJADO</p>
+                      <Badge className="bg-primary text-black font-black italic uppercase text-sm px-4 py-1 rounded-lg">
+                        {calculateWeekVolume(week.runs)} KM
                       </Badge>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {week.runs
+                      .filter(w => w.type !== "Descanso") // Filtra apenas dias de treino
                       .sort((a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day))
                       .map((w: Workout) => (
                       <Card 
@@ -261,6 +266,7 @@ export default function TrainingPage() {
                             <div className="flex flex-wrap gap-2">
                                 <Badge className="bg-primary text-black font-black italic uppercase text-[10px] h-7 px-4 rounded-full">{w.distance}</Badge>
                                 <Badge variant="outline" className="border-white/10 bg-white/5 font-black italic uppercase text-[10px] h-7 px-4 rounded-full text-white">{w.paceZone}</Badge>
+                                {w.rpe && <Badge variant="secondary" className="text-[9px] font-black italic">RPE {w.rpe}/10</Badge>}
                             </div>
                         </CardContent>
                         <CardFooter className="p-8 pt-0 border-t border-white/5 mt-auto flex justify-between items-center group-hover:bg-primary/5 transition-colors h-16">
@@ -308,15 +314,15 @@ export default function TrainingPage() {
                           <div className="p-10 space-y-10">
                             <Tabs defaultValue={selectedWorkout.completed ? "feedback" : "prescrito"} className="w-full">
                                 <TabsList className="grid w-full grid-cols-2 bg-black/40 h-16 p-1.5 rounded-2xl gap-2">
-                                    <TabsTrigger value="prescrito" className="font-black text-[11px] uppercase italic tracking-widest data-[state=active]:bg-primary data-[state=active]:text-black rounded-xl transition-all">PRESCRIÇÃO</TabsTrigger>
+                                    <TabsTrigger value="prescrito" className="font-black text-[11px] uppercase italic tracking-widest data-[state=active]:bg-primary data-[state=active]:text-black rounded-xl transition-all">PRESCRIÇÃO TÉCNICA</TabsTrigger>
                                     <TabsTrigger value="feedback" className="font-black text-[11px] uppercase italic tracking-widest data-[state=active]:bg-primary data-[state=active]:text-black rounded-xl transition-all">
-                                        {selectedWorkout.completed ? 'ANÁLISE DO COACH' : 'REGISTRAR'}
+                                        {selectedWorkout.completed ? 'ANÁLISE BIOMECÂNICA' : 'REGISTRAR SESSÃO'}
                                     </TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="prescrito" className="space-y-10 pt-10">
                                     <div className="p-8 rounded-3xl bg-primary/5 border-l-8 border-primary space-y-4">
-                                        <h4 className="text-[11px] font-black uppercase text-primary tracking-widest italic">OBJETIVO TÉCNICO</h4>
+                                        <h4 className="text-[11px] font-black uppercase text-primary tracking-widest italic">OBJETIVO DA SESSÃO</h4>
                                         <p className="text-xl italic font-bold leading-relaxed text-white">"{selectedWorkout.description}"</p>
                                     </div>
 
@@ -366,18 +372,22 @@ export default function TrainingPage() {
 
                                             <div className="space-y-6">
                                                 <div className="p-8 rounded-3xl bg-primary/5 border border-primary/20 space-y-6">
-                                                    <div className="flex items-center gap-4 text-primary"><BrainCircuit size={24}/><h4 className="text-sm font-black uppercase italic tracking-[0.2em]">DIAGNÓSTICO DO COACH IA</h4></div>
-                                                    <p className="text-sm leading-relaxed whitespace-pre-wrap italic font-bold text-muted-foreground">{selectedWorkout.analysis.analysisSummary}</p>
+                                                    <div className="flex items-center gap-4 text-primary"><BrainCircuit size={24}/><h4 className="text-sm font-black uppercase italic tracking-[0.2em]">ANÁLISE DO COACH IA</h4></div>
+                                                    <p className="text-sm leading-relaxed whitespace-pre-wrap italic font-bold text-muted-foreground">
+                                                      {selectedWorkout.analysis.analysisSummary.summary}
+                                                      {"\n\n"}
+                                                      {selectedWorkout.analysis.analysisSummary.technicalReview}
+                                                    </p>
                                                 </div>
                                                 
                                                 <div className="p-8 rounded-3xl bg-accent/5 border border-accent/20 space-y-6">
-                                                    <div className="flex items-center gap-4 text-accent"><Zap size={24}/><h4 className="text-sm font-black uppercase italic tracking-[0.2em]">RECOMENDAÇÕES DE PERFORMANCE</h4></div>
+                                                    <div className="flex items-center gap-4 text-accent"><Target size={24}/><h4 className="text-sm font-black uppercase italic tracking-[0.2em]">RECOMENDAÇÕES DE ELITE</h4></div>
                                                     <p className="text-base leading-relaxed text-white font-black italic">"{selectedWorkout.analysis.recommendations}"</p>
                                                 </div>
                                             </div>
 
                                             <Button className="w-full bg-primary text-black font-black uppercase h-20 gap-4 rounded-3xl transition-all hover:scale-[1.02] hover:bg-white text-base italic shadow-2xl shadow-primary/20" onClick={() => router.push('/coach')}>
-                                                <MessageSquare size={24}/> CONSULTAR COACH NO CHAT
+                                                <MessageSquare size={24}/> CONVERSAR SOBRE ESTE TREINO
                                             </Button>
                                         </div>
                                     ) : (
@@ -394,8 +404,8 @@ export default function TrainingPage() {
 
                                             <div className="space-y-4">
                                                 <div className="flex items-center gap-3">
-                                                  <label className="text-[11px] font-black uppercase text-muted-foreground italic tracking-[0.2em]">EVIDÊNCIA TÉCNICA</label>
-                                                  <Tooltip><TooltipTrigger asChild><Info className="size-4 text-muted-foreground cursor-help opacity-40 hover:opacity-100" /></TooltipTrigger><TooltipContent><p className="max-w-xs text-[10px]">Envie arquivo .FIT, print do Strava ou Garmin.</p></TooltipContent></Tooltip>
+                                                  <label className="text-[11px] font-black uppercase text-muted-foreground italic tracking-[0.2em]">IMPORTAR DADOS (FIT, Strava, Foto)</label>
+                                                  <Tooltip><TooltipTrigger asChild><Info className="size-4 text-muted-foreground cursor-help opacity-40 hover:opacity-100" /></TooltipTrigger><TooltipContent><p className="max-w-xs text-[10px]">Aceitamos arquivos .FIT, .CSV ou foto do relógio.</p></TooltipContent></Tooltip>
                                                 </div>
                                                 <div 
                                                     className={cn(
@@ -428,8 +438,8 @@ export default function TrainingPage() {
                                                               <div className="p-6 rounded-3xl bg-secondary/50 text-muted-foreground/30"><ImageIcon size={40}/></div>
                                                           </div>
                                                           <div>
-                                                              <p className="text-lg font-black uppercase italic tracking-[0.3em] text-white">IMPORTAR SENSORES</p>
-                                                              <p className="text-[11px] text-muted-foreground mt-3 uppercase italic font-bold tracking-widest">PDF, .FIT OU CAPTURA DE TELA</p>
+                                                              <p className="text-lg font-black uppercase italic tracking-[0.3em] text-white">CIÊNCIA DE DADOS</p>
+                                                              <p className="text-[11px] text-muted-foreground mt-3 uppercase italic font-bold tracking-widest">CLIQUE PARA IMPORTAR TREINO REALIZADO</p>
                                                           </div>
                                                       </div>
                                                     )}
@@ -441,7 +451,7 @@ export default function TrainingPage() {
                                                 disabled={analyzing || !athleteFeedback.trim()}
                                                 onClick={handleFinalizeAnalysis}
                                             >
-                                                {analyzing ? <><Loader2 className="mr-4 size-7 animate-spin" /> ANALISANDO...</> : 'FINALIZAR SESSÃO'}
+                                                {analyzing ? <><Loader2 className="mr-4 size-7 animate-spin" /> PROCESSANDO LABORATÓRIO...</> : 'FINALIZAR SESSÃO'}
                                             </Button>
                                         </div>
                                     )}
