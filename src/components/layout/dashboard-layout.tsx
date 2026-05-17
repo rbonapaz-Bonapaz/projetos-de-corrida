@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -68,7 +67,7 @@ const items = [
   { title: "CALCULADORAS", url: "/calculators", icon: Calculator },
   { title: "DICIONÁRIO", url: "/dictionary", icon: BookOpen },
   { title: "INTEGRAÇÕES", url: "/integrations", icon: Link2 },
-  { title: "PERFIL ATLETA", url: "/profile", icon: UserIcon },
+  { title: "MEUS DADOS", url: "/profile", icon: UserIcon },
   { title: "SOBRE", url: "/about", icon: Info },
 ];
 
@@ -104,14 +103,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen bg-background w-full">
-        <Sidebar collapsible="icon" className="border-r border-border/50">
-          <SidebarHeader className="py-8 px-4 flex items-center justify-center overflow-hidden">
+        <Sidebar collapsible="icon" className="border-r border-border/50 bg-sidebar/50 backdrop-blur-xl">
+          <SidebarHeader className="py-10 px-4 flex items-center justify-center overflow-hidden">
             <LogoDisplay />
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupContent>
-                <SidebarMenu className="gap-1">
+                <SidebarMenu className="gap-2 px-2">
                   {items.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton 
@@ -119,13 +118,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                         isActive={pathname === item.url}
                         tooltip={item.title}
                         className={cn(
-                          "transition-all duration-200 h-10 px-6",
-                          pathname === item.url ? "bg-primary text-black" : "text-muted-foreground hover:text-white"
+                          "transition-all duration-300 h-11 px-6 rounded-xl",
+                          pathname === item.url 
+                            ? "bg-primary text-black shadow-lg shadow-primary/20" 
+                            : "text-muted-foreground hover:text-white hover:bg-white/5"
                         )}
                       >
                         <Link href={item.url}>
-                          <item.icon className="size-4" />
-                          <span className="font-headline font-bold text-[11px] tracking-wider">{item.title}</span>
+                          <item.icon className={cn("size-4", pathname === item.url ? "text-black" : "text-primary/70")} />
+                          <span className="font-headline font-black text-[11px] tracking-widest uppercase italic">{item.title}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -134,7 +135,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-          <SidebarFooter className="p-4 border-t border-border/20 space-y-2">
+          <SidebarFooter className="p-4 border-t border-border/20 space-y-3">
             <SidebarMenuItem>
               <SidebarMenuButton 
                 className={cn(
@@ -143,8 +144,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 )} 
                 onClick={() => setShowKeyModal(true)}
               >
-                <Key className="size-4" />
-                <span className="group-data-[collapsible=icon]:hidden font-headline font-bold text-[11px] tracking-wider uppercase">
+                <Key className="size-4 text-primary" />
+                <span className="group-data-[collapsible=icon]:hidden font-headline font-black text-[11px] tracking-widest uppercase italic">
                   {isIAActive ? "IA ATIVA" : "Configurar IA"}
                 </span>
               </SidebarMenuButton>
@@ -153,21 +154,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             {!user && (
                <SidebarMenuItem>
                 <SidebarMenuButton 
-                  className="w-full h-12 bg-white text-black hover:bg-primary rounded-xl" 
+                  className="w-full h-12 bg-white text-black hover:bg-primary rounded-xl transition-all shadow-xl" 
                   onClick={() => context?.login()}
                 >
                   <LogIn className="size-4" />
-                  <span className="group-data-[collapsible=icon]:hidden font-headline font-bold text-[11px] tracking-wider uppercase">Entrar / Salvar</span>
+                  <span className="group-data-[collapsible=icon]:hidden font-headline font-black text-[11px] tracking-widest uppercase italic">Entrar / Salvar</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
           </SidebarFooter>
         </Sidebar>
-        <SidebarInset className="flex-1 flex flex-col min-w-0">
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-6 sticky top-0 bg-background/80 backdrop-blur-md z-30 justify-between">
+        <SidebarInset className="flex-1 flex flex-col min-w-0 bg-[#06080a]">
+          <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/50 px-6 sticky top-0 bg-background/60 backdrop-blur-xl z-30 justify-between">
             <div className="flex items-center gap-4">
-              <SidebarTrigger className="text-muted-foreground hover:text-white" />
-              <div className="font-headline font-black text-lg uppercase italic tracking-tighter flex items-center gap-3">
+              <SidebarTrigger className="text-muted-foreground hover:text-primary transition-colors" />
+              <div className="font-headline font-black text-xl uppercase italic tracking-tighter flex items-center gap-3">
                 <span className="text-white">
                    {items.find(i => i.url === pathname)?.title || "PORTAL"}
                 </span>
@@ -175,56 +176,51 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3 pl-4">
+              <div className="flex items-center gap-3">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="flex items-center gap-3 focus:outline-none group">
                       <div className="text-right hidden md:block leading-none">
                         <p className="text-[10px] font-black text-white tracking-widest uppercase italic group-hover:text-primary transition-colors">
-                          {context?.activeProfile?.name || user?.displayName?.split(' ')[0] || 'CONVIDADO'}
+                          {context?.activeProfile?.name?.toUpperCase() || user?.displayName?.split(' ')[0].toUpperCase() || 'CONVIDADO'}
                         </p>
                         <p className={cn(
-                          "text-[9px] font-bold uppercase tracking-tighter",
+                          "text-[9px] font-bold uppercase tracking-tighter mt-1",
                           user ? "text-primary" : "text-muted-foreground"
                         )}>
                           {user ? "Sincronizado" : "Modo Local"}
                         </p>
                       </div>
-                      <div className="size-9 rounded-full bg-secondary border-2 border-border flex items-center justify-center font-headline font-black text-white shadow-lg overflow-hidden group-hover:border-primary transition-all">
+                      <div className="size-10 rounded-xl bg-secondary border border-border flex items-center justify-center font-headline font-black text-white shadow-2xl overflow-hidden group-hover:border-primary transition-all duration-300">
                         {user?.photoURL ? (
                           <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
                           <div className="flex items-center justify-center w-full h-full bg-secondary">
-                            {context?.activeProfile?.name?.[0] || <UserIcon size={16} />}
+                            {context?.activeProfile?.name?.[0] || <UserIcon size={18} className="text-primary" />}
                           </div>
                         )}
                       </div>
                       <ChevronDown size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 bg-card border-border shadow-2xl rounded-2xl p-2">
-                    <DropdownMenuLabel className="font-headline font-black uppercase italic text-[10px] tracking-widest px-2 py-1.5 text-muted-foreground">Meu Laboratório</DropdownMenuLabel>
+                  <DropdownMenuContent align="end" className="w-64 bg-card/95 backdrop-blur-xl border-border shadow-2xl rounded-2xl p-2">
+                    <DropdownMenuLabel className="font-headline font-black uppercase italic text-[10px] tracking-widest px-3 py-3 text-muted-foreground/60">Painel de Controle</DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-border/50" />
-                    <DropdownMenuItem asChild className="rounded-xl focus:bg-primary focus:text-black cursor-pointer">
-                      <Link href="/profile" className="flex items-center gap-2 font-bold text-xs uppercase italic py-2.5">
-                        <UserIcon className="size-4" /> Perfil Atleta
+                    <DropdownMenuItem asChild className="rounded-xl focus:bg-primary focus:text-black cursor-pointer py-3">
+                      <Link href="/profile" className="flex items-center gap-3 font-black text-[11px] uppercase italic tracking-widest">
+                        <UserIcon className="size-4" /> Meus Dados
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setShowKeyModal(true)} className="rounded-xl focus:bg-primary focus:text-black cursor-pointer flex items-center gap-2 font-bold text-xs uppercase italic py-2.5">
+                    <DropdownMenuItem onClick={() => setShowKeyModal(true)} className="rounded-xl focus:bg-primary focus:text-black cursor-pointer py-3 flex items-center gap-3 font-black text-[11px] uppercase italic tracking-widest">
                       <Key className="size-4" /> Configurar IA
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-border/50" />
                     {user ? (
-                      <>
-                        <DropdownMenuItem onClick={() => context?.login()} className="rounded-xl focus:bg-primary focus:text-black cursor-pointer flex items-center gap-2 font-bold text-xs uppercase italic py-2.5">
-                          <LogIn className="size-4" /> Trocar Perfil
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => context?.logout()} className="rounded-xl focus:bg-destructive/10 focus:text-destructive cursor-pointer flex items-center gap-2 font-bold text-xs uppercase italic text-destructive py-2.5">
-                          <LogOut className="size-4" /> Sair da Conta
-                        </DropdownMenuItem>
-                      </>
+                      <DropdownMenuItem onClick={() => context?.logout()} className="rounded-xl focus:bg-destructive/10 focus:text-destructive cursor-pointer py-3 flex items-center gap-3 font-black text-[11px] uppercase italic tracking-widest text-destructive">
+                        <LogOut className="size-4" /> Encerrar Sessão
+                      </DropdownMenuItem>
                     ) : (
-                      <DropdownMenuItem onClick={() => context?.login()} className="rounded-xl focus:bg-primary focus:text-black cursor-pointer flex items-center gap-2 font-bold text-xs uppercase italic text-primary py-2.5">
+                      <DropdownMenuItem onClick={() => context?.login()} className="rounded-xl focus:bg-primary focus:text-black cursor-pointer py-3 flex items-center gap-3 font-black text-[11px] uppercase italic tracking-widest text-primary">
                         <LogIn className="size-4" /> Entrar / Sincronizar
                       </DropdownMenuItem>
                     )}
@@ -233,47 +229,47 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </header>
-          <main className="flex-1 overflow-y-auto p-4 md:p-12 lg:p-16">
+          <main className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16 custom-scrollbar">
             {children}
           </main>
         </SidebarInset>
       </div>
 
       <Dialog open={showKeyModal} onOpenChange={setShowKeyModal}>
-        <DialogContent className="sm:max-w-[425px] bg-card border-border rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-primary font-headline italic font-black uppercase tracking-tighter text-2xl">Inteligência de Elite</DialogTitle>
-            <DialogDescription className="text-xs uppercase font-bold tracking-widest text-muted-foreground">
-              Configure sua chave para processamento cloud.
+        <DialogContent className="sm:max-w-[425px] bg-card border-border rounded-[2rem] shadow-2xl p-8">
+          <DialogHeader className="space-y-4">
+            <DialogTitle className="text-primary font-headline italic font-black uppercase tracking-tighter text-3xl">IA DE PERFORMANCE</DialogTitle>
+            <DialogDescription className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60 italic">
+              Conecte seu motor de processamento cloud.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
             <div className="space-y-4">
-              <p className="text-[10px] text-muted-foreground leading-relaxed italic">
-                Sua Gemini API Key garante o motor de geração de performance. Salva localmente e sincronizada na nuvem.
+              <p className="text-[11px] text-muted-foreground leading-relaxed italic font-medium">
+                Sua Gemini API Key alimenta as análises biomecânicas e a geração de planilhas. Tudo é salvo localmente e sincronizado na sua nuvem privada.
               </p>
-              <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 space-y-2">
-                <p className="text-[9px] font-black uppercase text-primary italic">Não tem uma chave?</p>
+              <div className="p-5 rounded-2xl bg-primary/10 border border-primary/20 space-y-3">
+                <p className="text-[10px] font-black uppercase text-primary italic tracking-widest">Link Oficial:</p>
                 <a 
                   href="https://aistudio.google.com/app/apikey" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between text-[11px] font-bold text-white hover:text-primary transition-colors group"
+                  className="flex items-center justify-between text-[11px] font-black uppercase italic text-white hover:text-primary transition-all group tracking-wider"
                 >
-                  Obter Chave no Google AI Studio
+                  Gerar Chave no Google Studio
                   <ExternalLink size={14} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                 </a>
               </div>
               <Input
-                placeholder="Cole sua API Key aqui..."
+                placeholder="Cole sua API Key (AIza...)"
                 value={tempKey}
                 onChange={(e) => setTempKey(e.target.value)}
-                className="bg-secondary/50 border-border h-14 font-mono text-xs rounded-xl focus:border-primary text-center"
+                className="bg-black/30 border-border h-14 font-mono text-xs rounded-xl focus:border-primary text-center tracking-widest"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleSaveKey} className="w-full font-black uppercase tracking-widest bg-primary text-black h-16 rounded-2xl shadow-xl shadow-primary/20 text-lg italic">Ativar Inteligência</Button>
+            <Button onClick={handleSaveKey} className="w-full font-black uppercase tracking-widest bg-primary text-black h-16 rounded-2xl shadow-2xl shadow-primary/20 text-sm italic hover:bg-white transition-all">Ativar Laboratório</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -294,7 +290,7 @@ function LogoDisplay() {
   }
 
   return (
-    <div className="font-headline font-black text-3xl italic tracking-tighter flex flex-col items-center leading-none">
+    <div className="font-headline font-black text-4xl italic tracking-tighter flex flex-col items-center leading-none">
       <span className="text-white">CORRE</span>
       <span className="text-primary">JUNTO</span>
     </div>

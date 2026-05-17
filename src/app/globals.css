@@ -4,34 +4,26 @@
 
 @layer base {
   :root {
-    --background: 160 15% 5%;
+    --background: 160 15% 4%;
     --foreground: 0 0% 100%;
-    --card: 160 15% 8%;
+    --card: 160 15% 7%;
     --card-foreground: 0 0% 100%;
-    --popover: 160 15% 8%;
+    --popover: 160 15% 7%;
     --popover-foreground: 0 0% 100%;
     --primary: 145 72% 56%; /* Verde JUNTO */
     --primary-foreground: 160 15% 5%;
-    --secondary: 160 15% 15%;
+    --secondary: 160 15% 12%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 160 15% 15%;
+    --muted: 160 15% 12%;
     --muted-foreground: 160 10% 60%;
     --accent: 145 72% 56%;
     --accent-foreground: 160 15% 5%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 160 15% 18%;
-    --input: 160 15% 18%;
+    --border: 160 15% 15%;
+    --input: 160 15% 15%;
     --ring: 145 72% 56%;
-    --radius: 1rem;
-    --sidebar-background: 160 15% 4%;
-    --sidebar-foreground: 160 10% 90%;
-    --sidebar-primary: 145 72% 56%;
-    --sidebar-primary-foreground: 160 15% 5%;
-    --sidebar-accent: 160 15% 12%;
-    --sidebar-accent-foreground: 145 72% 56%;
-    --sidebar-border: 160 15% 12%;
-    --sidebar-ring: 145 72% 56%;
+    --radius: 1.25rem;
   }
 }
 
@@ -40,9 +32,28 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-body antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-headline tracking-tight;
+    @apply font-headline tracking-tighter uppercase italic font-black;
   }
+}
+
+.glass-panel {
+  @apply bg-card/40 backdrop-blur-xl border border-white/5;
+}
+
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-white to-primary;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-background;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full hover:bg-primary/50 transition-colors;
 }
