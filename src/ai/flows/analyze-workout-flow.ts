@@ -4,6 +4,7 @@
  */
 
 import { getAiWithKey } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
 
 const AnalyzeWorkoutInputSchema = z.object({
@@ -38,7 +39,7 @@ export async function analyzeWorkout(input: AnalyzeWorkoutInput): Promise<Analyz
   const aiInstance = getAiWithKey(input.apiKey);
 
   const { output } = await aiInstance.generate({
-    model: 'googleai/gemini-1.5-flash',
+    model: googleAI.model('gemini-2.5-flash'),
     system: `Você é um analista biomecânico de elite. Sua missão é extrair métricas de arquivos e feedbacks para avaliar a eficiência do atleta.
     Compare o que foi prescrito (${input.prescribedWorkout}) com o que foi realizado.
     Foque em métricas como Cadência e Razão de Passada para identificar desperdício de energia.

@@ -26,8 +26,8 @@ const getEffectiveKey = (userKey?: string) => {
 };
 
 /**
- * Retorna uma instância configurada do Genkit utilizando a API v1beta.
- * A versão v1beta é necessária para suporte total a systemInstructions e structured output no SDK atual.
+ * Retorna uma instância configurada do Genkit.
+ * Padronizado para o motor Gemini 2.5 Flash para máxima performance e estabilidade.
  */
 export const getAiWithKey = (userApiKey?: string) => {
   const apiKey = getEffectiveKey(userApiKey);
@@ -38,6 +38,7 @@ export const getAiWithKey = (userApiKey?: string) => {
         apiKey
       })
     ],
+    model: googleAI.model('gemini-2.5-flash'),
   });
 };
 

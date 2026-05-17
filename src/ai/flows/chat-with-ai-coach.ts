@@ -4,6 +4,7 @@
  */
 
 import { getAiWithKey } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
 
 const ChatWithAICoachInputSchema = z.object({
@@ -29,7 +30,7 @@ export async function chatWithAICoach(input: ChatWithAICoachInput): Promise<{ fe
     .join('\n');
 
   const { text } = await aiInstance.generate({
-    model: 'googleai/gemini-1.5-flash',
+    model: googleAI.model('gemini-2.5-flash'),
     system: `Você é o Gemini Coach, um treinador de elite especialista em biomecânica e fisiologia do exercício.
     Responda em PORTUGUÊS (Brasil). Seja técnico, motivador e foque em dados de performance.
     Contexto do Atleta: ${input.workoutHistory}
