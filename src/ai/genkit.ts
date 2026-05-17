@@ -2,15 +2,10 @@ import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
 /**
- * Chave de API de fallback para o laboratório CorreJunto.
- */
-const DEFAULT_KEY = "AIzaSyDPO6BpCQC9jHhuavasgY2OhkJvleHL8v0";
-
-/**
  * Resolve a chave de API com base na prioridade: 
- * 1. Chave injetada manualmente pelo usuário no App
- * 2. GEMINI_API_KEY (Ambiente)
- * 3. Fallback fixo
+ * 1. Chave injetada manualmente pelo usuário no App (Client-side)
+ * 2. GEMINI_API_KEY (Ambiente do Servidor)
+ * 3. NEXT_PUBLIC_GEMINI_API_KEY (Ambiente do Cliente)
  */
 const getEffectiveKey = (userKey?: string) => {
   if (userKey && userKey.trim() !== "" && userKey.startsWith("AIza")) {
@@ -22,7 +17,7 @@ const getEffectiveKey = (userKey?: string) => {
     return envKey;
   }
   
-  return DEFAULT_KEY;
+  return ""; // Retorna vazio para forçar erro controlado ou uso de chave do usuário
 };
 
 /**
@@ -32,6 +27,10 @@ const getEffectiveKey = (userKey?: string) => {
 export const getAiWithKey = (userApiKey?: string) => {
   const apiKey = getEffectiveKey(userApiKey);
   
+  if (!apiKey) {
+    console.warn("Nenhuma API Key válida foi encontrada. Configure-a no menu lateral do CorreJunto.");
+  }
+
   return genkit({
     plugins: [
       googleAI({ 
