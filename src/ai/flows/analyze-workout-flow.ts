@@ -20,7 +20,7 @@ const AnalyzeWorkoutOutputSchema = z.object({
   actualMetrics: z.object({
     averagePace: z.string(),
     averageCadence: z.string(),
-    strideRatio: n.number(),
+    strideRatio: z.number(),
     groundContactTime: z.string().optional(),
     verticalOscillation: z.string().optional(),
   }),
