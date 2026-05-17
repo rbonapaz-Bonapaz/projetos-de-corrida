@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -24,9 +25,8 @@ import {
   X,
   FileDigit,
   Info,
-  Printer,
   FileDown,
-  Calendar
+  Calendar as CalendarIcon
 } from "lucide-react";
 import { 
   Tooltip,
@@ -39,26 +39,38 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { cn, fileToDataURI } from '@/lib/utils';
-import type { Workout } from "@/lib/types";
+import type { Workout, TrainingPlan, AthleteProfile } from "@/lib/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useUser, useFirestore, useDoc } from "@/firebase";
+import { doc } from "firebase/firestore";
 
 const dayOrder = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
 export default function TrainingPage() {
-  const context = React.useContext(TrainingContext);
   const router = useRouter();
   const { toast } = useToast();
-  const [loading, setLoading] = React.useState(false);
+  const context = React.useContext(TrainingContext);
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  // Conexão Direta: Carrega dados do Firestore baseados no usuário logado
+  const userDocRef = React.useMemo(() => 
+    user ? doc(firestore, 'user_data', user.uid) : null, 
+  [user, firestore]);
+  
+  const { data: userData, loading: syncLoading } = useDoc<any>(userDocRef);
+
+  const profile = (userData?.profile || context?.activeProfile) as AthleteProfile | null;
+  const plan = (userData?.trainingPlan || context?.trainingPlan) as TrainingPlan | null;
+
+  const [localLoading, setLocalLoading] = React.useState(false);
   const [analyzing, setAnalyzing] = React.useState(false);
   const [selectedWorkout, setSelectedWorkout] = React.useState<Workout | null>(null);
   const [athleteFeedback, setAthleteFeedback] = React.useState("");
   const [uploadedFileUri, setUploadedFileUri] = React.useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const profile = context?.activeProfile;
-  const plan = context?.trainingPlan;
 
   const sortedWorkouts = React.useMemo(() => {
     if (!plan) return [];
@@ -72,9 +84,14 @@ export default function TrainingPage() {
       toast({ variant: "destructive", title: "Perfil Incompleto", description: "Configure seus dados em 'Meus Dados' primeiro." });
       return;
     }
-    setLoading(true);
-    await context?.generateRunningPlanAsync(profile);
-    setLoading(false);
+    setLocalLoading(true);
+    try {
+      await context?.generateRunningPlanAsync(profile);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLocalLoading(false);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,7 +140,7 @@ export default function TrainingPage() {
         }
       };
       
-      context.updateWorkout(selectedWorkout.id, updatedWorkout);
+      context?.updateWorkout(selectedWorkout.id, updatedWorkout);
       setSelectedWorkout(updatedWorkout as any);
       setUploadedFileUri(null);
       setUploadedFileName(null);
@@ -138,7 +155,7 @@ export default function TrainingPage() {
   };
 
   const handleExportPDF = () => {
-    if (!plan || !profile) return;
+    if (!plan) return;
     toast({ title: "Gerando PDF...", description: "Preparando versão otimizada para impressão." });
     window.print();
   };
@@ -152,24 +169,26 @@ export default function TrainingPage() {
               <h1 className="text-3xl md:text-4xl font-headline font-black uppercase italic tracking-tight">
                 <span className="text-white">Meu</span> <span className="text-primary">Plano</span>
               </h1>
-              <p className="text-xs md:text-sm text-muted-foreground mt-1">Sua planilha inteligente baseada em ciência e performance.</p>
+              <p className="text-xs md:text-sm text-muted-foreground mt-1 italic">
+                {syncLoading ? "Sincronizando com a nuvem..." : "Sua planilha inteligente de alta performance."}
+              </p>
             </div>
             <div className="flex gap-2">
               {plan && (
                 <Button 
                   onClick={handleExportPDF}
                   variant="outline"
-                  className="border-primary/30 text-primary h-12 px-6 font-black uppercase tracking-widest text-[10px] italic"
+                  className="border-primary/30 text-primary h-12 px-6 font-black uppercase tracking-widest text-[10px] italic rounded-xl"
                 >
                   <FileDown className="mr-2 size-4" /> Exportar PDF
                 </Button>
               )}
               <Button 
                 onClick={handleGenerate} 
-                disabled={loading || !profile}
-                className="bg-primary text-black hover:bg-primary/90 min-w-[180px] h-12 font-black uppercase tracking-widest text-[10px] italic"
+                disabled={localLoading || !profile}
+                className="bg-primary text-black hover:bg-primary/90 min-w-[180px] h-12 font-black uppercase tracking-widest text-[10px] italic rounded-xl shadow-lg shadow-primary/10"
               >
-                {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}
+                {localLoading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}
                 {plan ? "Recalibrar Ciclo" : "Gerar Meu Ciclo"}
               </Button>
             </div>
@@ -205,7 +224,7 @@ export default function TrainingPage() {
             </div>
           </div>
 
-          {!plan && !loading && (
+          {!plan && !syncLoading && (
             <Card className="mx-2 border-primary/20 bg-primary/5 p-20 text-center rounded-3xl shadow-lg border-2 border-dashed print:hidden">
               <CardContent className="flex flex-col items-center space-y-6">
                   <div className="p-6 rounded-full bg-primary/10 animate-pulse">
@@ -213,18 +232,18 @@ export default function TrainingPage() {
                   </div>
                   <div className="space-y-2">
                       <h2 className="text-2xl font-black uppercase italic">Sem Plano Ativo</h2>
-                      <p className="text-muted-foreground max-w-xs mx-auto">Gere sua planilha personalizada no seu perfil para começar os treinos.</p>
+                      <p className="text-muted-foreground max-w-xs mx-auto">Sincronize ou gere sua planilha personalizada no seu perfil para começar.</p>
                   </div>
-                  <Button asChild size="lg" className="h-14 px-8 font-black uppercase tracking-widest bg-primary text-black">
+                  <Button asChild size="lg" className="h-14 px-8 font-black uppercase tracking-widest bg-primary text-black rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-105">
                       <Link href="/profile">CONFIGURAR MEU CICLO</Link>
                   </Button>
               </CardContent>
             </Card>
           )}
 
-          {plan && !loading && (
+          {plan && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in duration-500 px-2 print:hidden">
-              {sortedWorkouts.map((w: any) => (
+              {sortedWorkouts.map((w: Workout) => (
                 <Card 
                   key={w.id} 
                   className={cn(
@@ -234,7 +253,7 @@ export default function TrainingPage() {
                   onClick={() => setSelectedWorkout(w)}
                 >
                   {w.completed && (
-                      <div className="absolute top-2 right-2">
+                      <div className="absolute top-3 right-3">
                           <CheckCircle2 className="h-5 w-5 text-primary" />
                       </div>
                   )}
@@ -268,14 +287,14 @@ export default function TrainingPage() {
                                       <p className="text-[10px] font-black uppercase text-primary tracking-widest">{selectedWorkout.day}</p>
                                       <DialogTitle className="font-headline text-3xl font-black uppercase italic">{selectedWorkout.type}</DialogTitle>
                                   </div>
-                                  {selectedWorkout.completed && <Badge className="bg-emerald-500 text-white font-black">REALIZADO</Badge>}
+                                  {selectedWorkout.completed && <Badge className="bg-emerald-500 text-white font-black uppercase italic">REALIZADO</Badge>}
                               </div>
                           </DialogHeader>
 
                           <Tabs defaultValue={selectedWorkout.completed ? "feedback" : "prescrito"} className="w-full">
                               <TabsList className="grid w-full grid-cols-2 bg-secondary/30 h-12 p-1 rounded-xl">
-                                  <TabsTrigger value="prescrito" className="font-bold text-xs uppercase italic data-[state=active]:bg-primary data-[state=active]:text-black">Prescrição</TabsTrigger>
-                                  <TabsTrigger value="feedback" className="font-bold text-xs uppercase italic data-[state=active]:bg-primary data-[state=active]:text-black">
+                                  <TabsTrigger value="prescrito" className="font-bold text-xs uppercase italic data-[state=active]:bg-primary data-[state=active]:text-black rounded-lg transition-all">Prescrição</TabsTrigger>
+                                  <TabsTrigger value="feedback" className="font-bold text-xs uppercase italic data-[state=active]:bg-primary data-[state=active]:text-black rounded-lg transition-all">
                                       {selectedWorkout.completed ? 'Análise do Coach' : 'Registrar'}
                                   </TabsTrigger>
                               </TabsList>
@@ -287,12 +306,12 @@ export default function TrainingPage() {
                                   </div>
 
                                   <div className="grid grid-cols-2 gap-4">
-                                      <div className="bg-background/50 border p-3 rounded-xl flex items-center gap-3">
-                                          <div className="p-2 rounded-md bg-primary/10 text-primary"><Route size={18}/></div>
+                                      <div className="bg-background/50 border p-4 rounded-xl flex items-center gap-3">
+                                          <div className="p-2 rounded-md bg-primary/10 text-primary"><Route size={20}/></div>
                                           <div><p className="text-[9px] font-bold text-muted-foreground uppercase leading-none">Distância</p><p className="text-lg font-black">{selectedWorkout.distance}</p></div>
                                       </div>
-                                      <div className="bg-background/50 border p-3 rounded-xl flex items-center gap-3">
-                                          <div className="p-2 rounded-md bg-primary/10 text-primary"><Clock size={18}/></div>
+                                      <div className="bg-background/50 border p-4 rounded-xl flex items-center gap-3">
+                                          <div className="p-2 rounded-md bg-primary/10 text-primary"><Clock size={20}/></div>
                                           <div><p className="text-[9px] font-bold text-muted-foreground uppercase leading-none">Zona</p><p className="text-lg font-black uppercase">{selectedWorkout.paceZone}</p></div>
                                       </div>
                                   </div>
@@ -324,17 +343,17 @@ export default function TrainingPage() {
                                               </div>
                                           </div>
 
-                                          <Button className="w-full bg-primary text-black font-black uppercase h-12 gap-2 rounded-xl" onClick={() => router.push('/coach')}>
+                                          <Button className="w-full bg-primary text-black font-black uppercase h-12 gap-2 rounded-xl transition-all hover:scale-105" onClick={() => router.push('/coach')}>
                                               <MessageSquare size={18}/> CONVERSAR COM O COACH
                                           </Button>
                                       </div>
                                   ) : (
                                       <div className="space-y-6">
                                           <div className="space-y-3">
-                                              <label className="text-[10px] font-black uppercase text-muted-foreground">Como você se sentiu? (Feedback Subjetivo)</label>
+                                              <label className="text-[10px] font-black uppercase text-muted-foreground italic">Como você se sentiu? (Feedback Subjetivo)</label>
                                               <Textarea 
                                                   placeholder="Ex: Treino forte, senti um pouco de cansaço no final. Ritmo encaixou bem." 
-                                                  className="bg-secondary/10 min-h-[100px] font-medium rounded-xl border-border/50"
+                                                  className="bg-secondary/10 min-h-[100px] font-medium rounded-xl border-border/50 italic"
                                                   value={athleteFeedback}
                                                   onChange={(e) => setAthleteFeedback(e.target.value)}
                                               />
@@ -342,7 +361,7 @@ export default function TrainingPage() {
 
                                           <div className="space-y-3">
                                               <div className="flex items-center gap-2">
-                                                <label className="text-[10px] font-black uppercase text-muted-foreground">Anexar Evidência ou Orientação</label>
+                                                <label className="text-[10px] font-black uppercase text-muted-foreground italic">Anexar Evidência ou Orientação</label>
                                                 <Tooltip>
                                                   <TooltipTrigger asChild><Info className="size-3 text-muted-foreground cursor-help" /></TooltipTrigger>
                                                   <TooltipContent><p className="max-w-xs text-[10px]">Envie um arquivo .FIT do relógio, print do Strava ou um PDF com orientações do seu treinador/IA.</p></TooltipContent>
@@ -366,7 +385,7 @@ export default function TrainingPage() {
                                                     <div className="space-y-2 animate-in zoom-in-95">
                                                        <div className="flex justify-center">
                                                          <div className="relative">
-                                                            <div className="p-4 rounded-full bg-primary text-black">
+                                                            <div className="p-4 rounded-full bg-primary text-black shadow-lg">
                                                               {uploadedFileName?.endsWith('.pdf') ? (
                                                                 <FileText size={32} />
                                                               ) : uploadedFileName?.endsWith('.fit') || uploadedFileName?.endsWith('.csv') ? (
@@ -378,7 +397,7 @@ export default function TrainingPage() {
                                                             <Button 
                                                               variant="destructive" 
                                                               size="icon" 
-                                                              className="absolute -top-2 -right-2 size-6 rounded-full"
+                                                              className="absolute -top-2 -right-2 size-6 rounded-full shadow-lg"
                                                               onClick={clearFile}
                                                             >
                                                               <X size={14}/>
@@ -387,19 +406,19 @@ export default function TrainingPage() {
                                                        </div>
                                                        <div>
                                                           <p className="text-xs font-black uppercase italic text-primary">DOCUMENTO PRONTO</p>
-                                                          <p className="text-[10px] text-muted-foreground truncate max-w-[200px] mx-auto">{uploadedFileName}</p>
+                                                          <p className="text-[10px] text-muted-foreground truncate max-w-[200px] mx-auto italic">{uploadedFileName}</p>
                                                        </div>
                                                     </div>
                                                   ) : (
                                                     <>
                                                       <div className="flex justify-center gap-4">
                                                           <div className="p-3 rounded-full bg-secondary/50 text-muted-foreground"><FileText size={24}/></div>
-                                                          <div className="p-3 rounded-full bg-primary/10 text-primary"><Upload size={24}/></div>
+                                                          <div className="p-3 rounded-full bg-primary/10 text-primary shadow-inner"><Upload size={24}/></div>
                                                           <div className="p-3 rounded-full bg-secondary/50 text-muted-foreground"><ImageIcon size={24}/></div>
                                                       </div>
                                                       <div>
-                                                          <p className="text-xs font-black uppercase italic">Importar PDF, .FIT ou Print</p>
-                                                          <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-tighter">Analise treinos ou envie novas orientações</p>
+                                                          <p className="text-xs font-black uppercase italic tracking-widest">Importar PDF, .FIT ou Print</p>
+                                                          <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-tighter italic opacity-70">Analise treinos ou envie novas orientações</p>
                                                       </div>
                                                     </>
                                                   )}
@@ -407,7 +426,7 @@ export default function TrainingPage() {
                                           </div>
 
                                           <Button 
-                                              className="w-full bg-primary text-black font-black uppercase h-14 tracking-widest text-lg shadow-xl shadow-primary/20 rounded-xl"
+                                              className="w-full bg-primary text-black font-black uppercase h-14 tracking-widest text-lg shadow-xl shadow-primary/20 rounded-xl transition-all hover:scale-105"
                                               disabled={analyzing || !athleteFeedback.trim()}
                                               onClick={handleFinalizeAnalysis}
                                           >
@@ -429,21 +448,21 @@ export default function TrainingPage() {
 
 function MetricBox({ label, value, unit, highlight = 'default', tooltip }: { label: string, value: string, unit?: string, highlight?: 'default' | 'primary' | 'destructive', tooltip?: string }) {
     return (
-        <div className="bg-secondary/10 border p-3 rounded-xl text-center space-y-1 relative group">
+        <div className="bg-secondary/10 border p-3 rounded-xl text-center space-y-1 relative group transition-colors hover:bg-secondary/20">
             <div className="flex items-center justify-center gap-1">
-              <p className="text-[9px] font-bold text-muted-foreground uppercase leading-none">{label}</p>
+              <p className="text-[9px] font-bold text-muted-foreground uppercase leading-none italic">{label}</p>
               {tooltip && (
                 <Tooltip>
-                  <TooltipTrigger asChild><Info className="size-2 text-muted-foreground cursor-help" /></TooltipTrigger>
-                  <TooltipContent><p className="max-w-xs text-[9px]">{tooltip}</p></TooltipContent>
+                  <TooltipTrigger asChild><Info className="size-2 text-muted-foreground cursor-help opacity-50 hover:opacity-100" /></TooltipTrigger>
+                  <TooltipContent className="bg-popover border-border"><p className="max-w-xs text-[9px] italic">{tooltip}</p></TooltipContent>
                 </Tooltip>
               )}
             </div>
             <p className={cn(
-                "text-sm md:text-base font-black italic uppercase",
+                "text-sm md:text-base font-black italic uppercase tracking-tight",
                 highlight === 'primary' ? 'text-primary' : highlight === 'destructive' ? 'text-rose-500' : 'text-foreground'
             )}>
-                {value} {unit && <span className="text-[9px] font-normal opacity-50">{unit}</span>}
+                {value} {unit && <span className="text-[9px] font-normal opacity-50 lowercase">{unit}</span>}
             </p>
         </div>
     );
