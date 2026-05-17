@@ -38,7 +38,7 @@ export const getAiWithKey = (userApiKey?: string) => {
         apiKey
       })
     ],
-    model: googleAI.model('gemini-2.5-flash'),
+    model: 'googleai/gemini-2.5-flash',
   });
 };
 

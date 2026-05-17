@@ -166,7 +166,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     const currentKey = apiKey || localStorage.getItem(STORAGE_KEYS.API_KEY) || undefined;
     
     setPlanGenerationStatus('pending');
-    toast({ title: "Gerando Ciclo...", description: "Processando biometria de alta performance (v1)." });
+    toast({ title: "Gerando Ciclo...", description: "Processando biometria de performance (Gemini 2.5)." });
 
     try {
       let weeklyMileageGoal = 30;
@@ -208,12 +208,11 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       }
       
       setPlanGenerationStatus('success');
-      toast({ title: "Plano Gerado!", description: "Sua planilha está pronta para os 21.1 km." });
+      toast({ title: "Plano Gerado!", description: "Sua planilha de performance está pronta." });
     } catch (error: any) {
       console.error("Erro na geração:", error);
       setPlanGenerationStatus('error');
-      // Limpa erro para não expor URL interna
-      const errorMessage = "Falha técnica na API v1. Verifique sua chave ou tente novamente em instantes.";
+      const errorMessage = "Falha técnica na API Gemini 2.5. Verifique sua chave ou tente novamente.";
       toast({ variant: "destructive", title: "Erro na Geração", description: errorMessage });
     }
   };

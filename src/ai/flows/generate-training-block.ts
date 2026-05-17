@@ -4,7 +4,6 @@
  */
 
 import { getAiWithKey } from '@/ai/genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
 
 const GenerateTrainingBlockInputSchema = z.object({
@@ -68,7 +67,7 @@ export async function generateTrainingBlock(input: GenerateTrainingBlockInput): 
     7. A semana deve começar no DOMINGO.`;
 
   const { output } = await aiInstance.generate({
-    model: googleAI.model('gemini-2.5-flash'),
+    model: 'googleai/gemini-2.5-flash',
     system: systemPrompt,
     prompt: `Gere um bloco de treinamento de performance para o atleta seguindo rigorosamente os dados fornecidos. 
     Bloco: ${input.trainingBlockType}. 
