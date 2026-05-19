@@ -17,7 +17,7 @@ const getEffectiveKey = (userKey?: string) => {
     return envKey;
   }
   
-  return ""; // Retorna vazio para forçar erro controlado ou uso de chave do usuário
+  return ""; 
 };
 
 /**

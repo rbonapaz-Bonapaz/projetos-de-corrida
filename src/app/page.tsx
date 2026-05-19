@@ -84,7 +84,6 @@ export default function Home() {
     <DashboardLayout>
       <TooltipProvider>
         <div className="space-y-12 animate-in fade-in duration-700">
-          {/* Header Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat) => (
               <Card key={stat.label} className="bg-card/40 border-white/5 hover:border-primary/40 transition-all duration-300 shadow-2xl relative overflow-hidden group rounded-2xl">
@@ -121,7 +120,6 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Volume Chart */}
             <Card className="lg:col-span-2 bg-card/40 border-white/5 shadow-2xl rounded-3xl overflow-hidden">
               <CardHeader className="p-8 border-b border-white/5">
                 <div className="flex items-center justify-between">
@@ -189,7 +187,6 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            {/* Next Session & Quick Actions */}
             <div className="space-y-8">
               <Card className="bg-card/40 border-white/5 shadow-2xl rounded-3xl overflow-hidden flex flex-col h-full">
                 <CardHeader className="p-8">

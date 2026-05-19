@@ -281,7 +281,6 @@ export default function TrainingPage() {
               <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto custom-scrollbar border-primary/20 bg-[#06080a] rounded-[3rem] p-0 overflow-hidden shadow-2xl">
                   {selectedWorkout && (
                       <div className="flex flex-col">
-                          {/* Top Banner */}
                           <div className="p-12 space-y-6 bg-gradient-to-b from-secondary/40 to-transparent border-b border-white/5 relative">
                               <div className="flex justify-between items-start">
                                 <div className="space-y-2">
