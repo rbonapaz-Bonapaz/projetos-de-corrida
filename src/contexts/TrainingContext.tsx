@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useState, useEffect, type ReactNode, useCallback, useMemo } from 'react';
@@ -97,7 +98,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     const userRef = doc(db, 'user_data', user.uid);
     const unsubConfig = onSnapshot(userRef, (snap) => {
       if (snap.exists()) setRemoteConfig(snap.data());
-    }, async () => {
+    }, () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: userRef.path,
         operation: 'get',
@@ -109,7 +110,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     const unsubOwn = onSnapshot(qOwn, (snap) => {
       const docs = snap.docs.map(d => ({ ...d.data(), id: d.id } as AthleteProfile));
       setRemoteProfiles(docs);
-    }, async () => {
+    }, () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: athletesRef.path,
         operation: 'list',
@@ -147,43 +148,43 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       console.error(e);
       let errorMsg = "Erro no Login. Verifique o console.";
       if (e.message?.includes('requests-to-this-api')) {
-        errorMsg = "API Bloqueada! Vá na aba 'Credenciais' do Google Cloud e remova as restrições da sua Chave de API.";
+        errorMsg = "API Bloqueada! Vá na aba 'Credenciais' do Google Cloud e mude a restrição da chave para 'Nenhuma'.";
       } else if (e.message?.includes('unauthorized-domain')) {
         errorMsg = "Domínio não autorizado! Adicione o link deste laboratório no Console do Firebase (Authentication > Settings).";
       }
-      toast({ variant: 'destructive', title: "Bloqueio de Segurança", description: errorMsg });
+      toast({ variant: 'destructive', title: "Acesso Negado", description: errorMsg });
     }
   };
 
   const loginEmail = async (email: string, pass: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      toast({ title: "Acesso Liberado", description: "Laboratório sincronizado." });
+      toast({ title: "Bem-vindo de volta!", description: "Dados sincronizados com sucesso." });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: "Erro no Login", description: "Credenciais inválidas." });
+      toast({ variant: 'destructive', title: "Erro no Login", description: "Verifique seu e-mail e senha." });
     }
   };
 
   const registerEmail = async (email: string, pass: string) => {
     try {
       await createUserWithEmailAndPassword(auth, email, pass);
-      toast({ title: "Atleta Cadastrado!", description: "Seu espaço na nuvem foi criado." });
+      toast({ title: "Perfil Criado!", description: "Seu espaço na nuvem está pronto." });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: "Erro no Cadastro", description: "Verifique os dados ou a conexão." });
+      toast({ variant: 'destructive', title: "Erro no Cadastro", description: "Tente um e-mail diferente." });
     }
   };
 
   const logout = async () => {
     await signOut(auth);
     setLocalActiveProfileId(null);
-    toast({ title: "Sessão Finalizada", description: "Modo offline reativado." });
+    toast({ title: "Sessão Encerrada", description: "Modo offline ativado." });
   };
 
   const setApiKey = (key: string) => {
     const cleanKey = key.trim();
     if (user && db) {
       const userRef = doc(db, 'user_data', user.uid);
-      setDoc(userRef, { apiKey: cleanKey }, { merge: true }).catch(async () => {
+      setDoc(userRef, { apiKey: cleanKey }, { merge: true }).catch(() => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: userRef.path,
           operation: 'write',
@@ -194,13 +195,13 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEYS.API_KEY, cleanKey);
       setLocalApiKey(cleanKey);
     }
-    toast({ title: "IA Configurada", description: "Motor Gemini pronto." });
+    toast({ title: "IA Ativada", description: "Motor Gemini configurado." });
   };
 
   const switchProfile = (id: string | null) => {
     if (user && db) {
       const userRef = doc(db, 'user_data', user.uid);
-      setDoc(userRef, { lastActiveProfileId: id }, { merge: true }).catch(async () => {
+      setDoc(userRef, { lastActiveProfileId: id }, { merge: true }).catch(() => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: userRef.path,
           operation: 'write',
@@ -222,7 +223,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       const docRef = doc(db, 'athletes', id);
       setDoc(docRef, newProfile, { merge: true }).then(() => {
         if (!persistedActiveProfileId) switchProfile(id);
-      }).catch(async () => {
+      }).catch(() => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: docRef.path,
           operation: 'write',
@@ -248,7 +249,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
     if (user && db) {
       const docRef = doc(db, 'athletes', activeProfile.id);
-      updateDoc(docRef, { trainingPlan: updatedPlan }).catch(async () => {
+      updateDoc(docRef, { trainingPlan: updatedPlan }).catch(() => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: docRef.path,
           operation: 'update',
@@ -262,7 +263,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
   const generateRunningPlanAsync = async (profile: AthleteProfile) => {
     if (!effectiveApiKey) {
-      toast({ variant: "destructive", title: "IA Desativada", description: "Insira sua Gemini API Key." });
+      toast({ variant: "destructive", title: "IA Desativada", description: "Insira sua Gemini API Key no menu lateral." });
       return;
     }
     setPlanGenerationStatus('pending');
@@ -303,10 +304,10 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
       saveProfile({ ...profile, trainingPlan: result });
       setPlanGenerationStatus('success');
-      toast({ title: "Planilha Gerada", description: "Sincronizada em todos os dispositivos." });
+      toast({ title: "Ciclo Gerado!", description: "Dados sincronizados via Firestore." });
     } catch (error: any) {
       setPlanGenerationStatus('error');
-      toast({ variant: "destructive", title: "Erro na IA", description: "Falha na geração do ciclo." });
+      toast({ variant: "destructive", title: "Erro na IA", description: "Não foi possível gerar a planilha." });
     }
   };
 
