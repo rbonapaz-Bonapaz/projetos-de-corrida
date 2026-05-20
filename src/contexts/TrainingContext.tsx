@@ -1,27 +1,32 @@
 'use client';
 
-import { createContext, useState, useEffect, type ReactNode, useCallback } from 'react';
-import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
+import { createContext, useState, useEffect, type ReactNode, useCallback, useMemo } from 'react';
+import { doc, onSnapshot, setDoc, getDoc, collection, query, where, updateDoc } from 'firebase/firestore';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { useAuth, useFirestore, useUser } from '@/firebase';
+import { useAuth, useFirestore, useUser, useCollection } from '@/firebase';
 import type { AthleteProfile, TrainingPlan, Workout } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateTrainingBlock } from '@/ai/flows/generate-training-block';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type PlanGenerationStatus = 'idle' | 'pending' | 'success' | 'error';
 
 interface TrainingContextType {
   isHydrated: boolean;
-  activeProfile: AthleteProfile | null;
-  trainingPlan: TrainingPlan | null;
-  saveProfile: (data: Partial<AthleteProfile>) => Promise<void>;
-  updateWorkout: (workoutId: string, updates: Partial<Workout>) => Promise<void>;
-  generateRunningPlanAsync: (profile: AthleteProfile) => Promise<void>;
-  planGenerationStatus: PlanGenerationStatus;
   apiKey: string | null;
   setApiKey: (key: string) => Promise<void>;
+  profiles: AthleteProfile[];
+  activeProfile: AthleteProfile | null;
+  switchProfile: (profileId: string | null) => void;
+  saveProfile: (data: Partial<AthleteProfile>) => Promise<void>;
+  trainingPlan: TrainingPlan | null;
+  updateWorkout: (workoutId: string, updates: Partial<Workout>) => Promise<void>;
+  planGenerationStatus: PlanGenerationStatus;
+  generateRunningPlanAsync: (profile: AthleteProfile) => Promise<void>;
   login: () => Promise<void>;
   logout: () => Promise<void>;
+  toggleIntegration: (service: 'strava' | 'coros', connected: boolean) => void;
 }
 
 export const TrainingContext = createContext<TrainingContextType | null>(null);
@@ -29,144 +34,145 @@ export const TrainingContext = createContext<TrainingContextType | null>(null);
 const STORAGE_KEYS = {
   PROFILE: 'corre_junto_local_profile',
   PLAN: 'corre_junto_local_plan',
-  API_KEY: 'corre_junto_local_api_key'
+  API_KEY: 'corre_junto_local_api_key',
+  LAST_PROFILE_ID: 'corre_junto_last_profile_id'
 };
 
 export function TrainingProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
-  const firestore = useFirestore();
+  const db = useFirestore();
   const { user, loading: authLoading } = useUser();
   const { toast } = useToast();
 
-  const [activeProfile, setActiveProfile] = useState<AthleteProfile | null>(null);
-  const [trainingPlan, setTrainingPlan] = useState<TrainingPlan | null>(null);
-  const [apiKey, setApiKeyInternal] = useState<string | null>(null);
-  const [planGenerationStatus, setPlanGenerationStatus] = useState<PlanGenerationStatus>('idle');
   const [isHydrated, setIsHydrated] = useState(false);
+  const [localApiKey, setLocalApiKey] = useState<string | null>(null);
+  const [localActiveProfileId, setLocalActiveProfileId] = useState<string | null>(null);
+  const [planGenerationStatus, setPlanGenerationStatus] = useState<PlanGenerationStatus>('idle');
+
+  // 1. Configurações globais do usuário logado
+  const userConfigRef = useMemo(() => user ? doc(db, 'user_data', user.uid) : null, [db, user]);
+  
+  const [userConfig, setUserConfig] = useState<any>(null);
 
   useEffect(() => {
-    const localProfile = localStorage.getItem(STORAGE_KEYS.PROFILE);
-    const localPlan = localStorage.getItem(STORAGE_KEYS.PLAN);
-    const localKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
-
-    if (localProfile) setActiveProfile(JSON.parse(localProfile));
-    if (localPlan) setTrainingPlan(JSON.parse(localPlan));
-    if (localKey) setApiKeyInternal(localKey);
-    
+    // Carrega dados locais
+    const lKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
+    const lProfId = localStorage.getItem(STORAGE_KEYS.LAST_PROFILE_ID);
+    if (lKey) setLocalApiKey(lKey);
+    if (lProfId) setLocalActiveProfileId(lProfId);
     setIsHydrated(true);
-  }, []);
 
-  useEffect(() => {
-    if (authLoading || !isHydrated) return;
-    if (!user) return;
-
-    const docRef = doc(firestore, 'user_data', user.uid);
-    
-    const syncData = async () => {
-      try {
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.profile) setActiveProfile(data.profile);
-          if (data.trainingPlan) setTrainingPlan(data.trainingPlan);
-          if (data.apiKey) setApiKeyInternal(data.apiKey);
-        } else {
-          const migrationData: any = {};
-          if (activeProfile) migrationData.profile = activeProfile;
-          if (trainingPlan) migrationData.trainingPlan = trainingPlan;
-          if (apiKey) migrationData.apiKey = apiKey;
-
-          if (Object.keys(migrationData).length > 0) {
-            await setDoc(docRef, migrationData, { merge: true });
-          }
-        }
-      } catch (e) {
-        console.error("Erro ao sincronizar Firestore:", e);
-      }
-    };
-
-    syncData();
-
-    const unsubscribe = onSnapshot(docRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.profile) setActiveProfile(data.profile);
-        if (data.trainingPlan) setTrainingPlan(data.trainingPlan);
-        if (data.apiKey) setApiKeyInternal(data.apiKey);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [user, authLoading, isHydrated, firestore]);
-
-  const login = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Erro no Login", description: "Verifique sua conexão." });
+    if (user && db) {
+      const unsubscribe = onSnapshot(doc(db, 'user_data', user.uid), (snap) => {
+        if (snap.exists()) setUserConfig(snap.data());
+      });
+      return () => unsubscribe();
     }
+  }, [user, db]);
+
+  const effectiveApiKey = user ? (userConfig?.apiKey || null) : localApiKey;
+  const persistedActiveProfileId = user ? (userConfig?.lastActiveProfileId || null) : localActiveProfileId;
+
+  // 2. Busca perfis do usuário (como Coach ou como Atleta)
+  const coachProfilesQuery = useMemo(() => {
+    if (user) return query(collection(db, 'athletes'), where('ownerUid', '==', user.uid));
+    return query(collection(db, 'athletes'), where('ownerUid', '==', 'local-user'));
+  }, [db, user]);
+  const { data: coachProfiles } = useCollection<AthleteProfile>(coachProfilesQuery);
+
+  const athleteProfilesQuery = useMemo(() => {
+    if (user?.email) return query(collection(db, 'athletes'), where('athleteEmail', '==', user.email));
+    return null;
+  }, [db, user]);
+  const { data: athleteProfiles } = useCollection<AthleteProfile>(athleteProfilesQuery);
+
+  const profiles = useMemo(() => {
+    const map = new Map<string, AthleteProfile>();
+    (coachProfiles || []).forEach(p => map.set(p.id, p));
+    (athleteProfiles || []).forEach(p => map.set(p.id, p));
+    return Array.from(map.values());
+  }, [coachProfiles, athleteProfiles]);
+
+  const activeProfile = useMemo(() => {
+    return profiles.find(p => p.id === persistedActiveProfileId) || profiles[0] || null;
+  }, [profiles, persistedActiveProfileId]);
+
+  const trainingPlan = activeProfile?.trainingPlan || null;
+
+  // Ações
+  const setApiKey = async (key: string) => {
+    const cleanKey = key.trim();
+    if (user && userConfigRef) {
+      setDoc(userConfigRef, { apiKey: cleanKey }, { merge: true }).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userConfigRef.path,
+          operation: 'write',
+          requestResourceData: { apiKey: cleanKey }
+        }));
+      });
+    } else {
+      localStorage.setItem(STORAGE_KEYS.API_KEY, cleanKey);
+      setLocalApiKey(cleanKey);
+    }
+    toast({ title: "Motor Ativo", description: "Sua chave Gemini foi configurada." });
   };
 
-  const logout = async () => {
-    try {
-      await signOut(auth);
-      setActiveProfile(null);
-      setTrainingPlan(null);
-      toast({ title: "Sessão encerrada" });
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Erro ao sair" });
+  const switchProfile = (id: string | null) => {
+    if (user && userConfigRef) {
+      setDoc(userConfigRef, { lastActiveProfileId: id }, { merge: true });
+    } else {
+      localStorage.setItem(STORAGE_KEYS.LAST_PROFILE_ID, id || '');
+      setLocalActiveProfileId(id);
     }
   };
 
   const saveProfile = useCallback(async (data: Partial<AthleteProfile>) => {
-    const updatedProfile = { ...(activeProfile || {}), ...data } as AthleteProfile;
+    const id = data.id || activeProfile?.id || crypto.randomUUID();
+    const ownerUid = data.ownerUid || (user ? user.uid : 'local-user');
+    const docRef = doc(db, 'athletes', id);
     
-    setActiveProfile(updatedProfile);
-    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(updatedProfile));
+    const newProfile = { ...(activeProfile || {}), ...data, id, ownerUid } as AthleteProfile;
 
-    if (user && firestore) {
-      const docRef = doc(firestore, 'user_data', user.uid);
-      await setDoc(docRef, { profile: updatedProfile }, { merge: true });
-    }
-    toast({ title: 'Dados Salvos', description: 'Informações sincronizadas com sucesso.' });
-  }, [user, firestore, activeProfile, toast]);
+    setDoc(docRef, newProfile, { merge: true }).then(() => {
+      if (!persistedActiveProfileId) switchProfile(id);
+      toast({ title: 'Dados Sincronizados', description: 'Informações salvas na nuvem.' });
+    }).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'write',
+        requestResourceData: newProfile
+      }));
+    });
+  }, [user, db, activeProfile, persistedActiveProfileId, toast]);
 
   const updateWorkout = useCallback(async (workoutId: string, updates: Partial<Workout>) => {
-    if (!trainingPlan) return;
+    if (!activeProfile || !activeProfile.trainingPlan) return;
     
-    const newWeeklyPlans = trainingPlan.weeklyPlans.map((week) => ({
+    const currentPlan = activeProfile.trainingPlan;
+    const newWeeklyPlans = currentPlan.weeklyPlans.map((week) => ({
       ...week,
       runs: week.runs.map((run) => run.id === workoutId ? { ...run, ...updates } : run)
     }));
 
-    const updatedPlan = { ...trainingPlan, weeklyPlans: newWeeklyPlans };
-    setTrainingPlan(updatedPlan);
-    localStorage.setItem(STORAGE_KEYS.PLAN, JSON.stringify(updatedPlan));
-
-    if (user && firestore) {
-      const docRef = doc(firestore, 'user_data', user.uid);
-      await setDoc(docRef, { trainingPlan: updatedPlan }, { merge: true });
-    }
-  }, [user, firestore, trainingPlan]);
-
-  const setApiKey = async (key: string) => {
-    const cleanKey = key.trim();
-    setApiKeyInternal(cleanKey);
-    localStorage.setItem(STORAGE_KEYS.API_KEY, cleanKey);
-    
-    if (user && firestore) {
-      const docRef = doc(firestore, 'user_data', user.uid);
-      await setDoc(docRef, { apiKey: cleanKey }, { merge: true });
-    }
-    toast({ title: "Chave Configurada", description: "O motor de performance está ativo." });
-  };
+    const docRef = doc(db, 'athletes', activeProfile.id);
+    updateDoc(docRef, {
+      trainingPlan: { ...currentPlan, weeklyPlans: newWeeklyPlans }
+    }).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update'
+      }));
+    });
+  }, [db, activeProfile]);
 
   const generateRunningPlanAsync = async (profile: AthleteProfile) => {
-    const currentKey = apiKey || localStorage.getItem(STORAGE_KEYS.API_KEY) || undefined;
-    
+    if (!effectiveApiKey) {
+      toast({ variant: "destructive", title: "IA Offline", description: "Configure sua API Key no menu." });
+      return;
+    }
+
     setPlanGenerationStatus('pending');
-    toast({ title: "Gerando Ciclo...", description: "Processando biometria de performance (Gemini 2.5)." });
+    toast({ title: "Processando Biometria", description: "O Gemini Coach está desenhando seu ciclo..." });
 
     try {
       let weeklyMileageGoal = 30;
@@ -176,7 +182,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       else if (profile.experienceLevel === 'advanced') weeklyMileageGoal = 75;
 
       const result = await generateTrainingBlock({
-        apiKey: currentKey,
+        apiKey: effectiveApiKey,
         raceName: profile.raceName,
         currentVDOT: profile.vo2Max || 40,
         hrZone1End: Math.round((profile.thresholdHr || 160) * 0.8),
@@ -187,7 +193,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         trainingBlockType: 'Construction',
         planGenerationType: profile.planGenerationType || 'blocks',
         raceDate: profile.raceDate || new Date().toISOString().split('T')[0],
-        weeklyMileageGoal: weeklyMileageGoal,
+        weeklyMileageGoal,
         targetRaceDistance: profile.raceDistance || '10k',
         targetPace: profile.targetPace,
         targetTime: profile.targetTime,
@@ -199,28 +205,65 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         referenceFileDataUri: profile.referenceDocumentUri
       });
 
-      setTrainingPlan(result);
-      localStorage.setItem(STORAGE_KEYS.PLAN, JSON.stringify(result));
+      result.weeklyPlans.forEach(week => {
+        week.runs.forEach(run => { if (!run.id) run.id = crypto.randomUUID(); });
+      });
 
-      if (user && firestore) {
-        const docRef = doc(firestore, 'user_data', user.uid);
-        await setDoc(docRef, { trainingPlan: result }, { merge: true });
-      }
-      
+      await saveProfile({ ...profile, trainingPlan: result });
       setPlanGenerationStatus('success');
-      toast({ title: "Plano Gerado!", description: "Sua planilha de performance está pronta." });
+      toast({ title: "Ciclo Gerado!", description: "Sua planilha de elite está pronta." });
     } catch (error: any) {
-      console.error("Erro na geração:", error);
+      console.error(error);
       setPlanGenerationStatus('error');
-      const errorMessage = "Falha técnica na API Gemini 2.5. Verifique sua chave ou tente novamente.";
-      toast({ variant: "destructive", title: "Erro na Geração", description: errorMessage });
+      toast({ variant: "destructive", title: "Erro na IA", description: "Falha na conexão com o Gemini." });
     }
+  };
+
+  const login = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Erro no Login" });
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      setLocalActiveProfileId(null);
+      toast({ title: "Sessão encerrada" });
+    } catch (e) {
+      toast({ variant: 'destructive', title: "Erro ao sair" });
+    }
+  };
+
+  const toggleIntegration = (service: 'strava' | 'coros', connected: boolean) => {
+    if (!activeProfile) return;
+    saveProfile({ 
+      integrations: { 
+        ...activeProfile.integrations, 
+        [service]: { ...activeProfile.integrations?.[service], connected, autoSync: connected } 
+      } as any
+    });
   };
 
   return (
     <TrainingContext.Provider value={{
-      isHydrated, activeProfile, trainingPlan, saveProfile, updateWorkout,
-      generateRunningPlanAsync, planGenerationStatus, apiKey, setApiKey, login, logout
+      isHydrated: isHydrated && !authLoading, 
+      apiKey: effectiveApiKey, 
+      setApiKey,
+      profiles,
+      activeProfile,
+      switchProfile,
+      saveProfile,
+      trainingPlan,
+      updateWorkout,
+      planGenerationStatus,
+      generateRunningPlanAsync,
+      login,
+      logout,
+      toggleIntegration
     }}>
       {children}
     </TrainingContext.Provider>

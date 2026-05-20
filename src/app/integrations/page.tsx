@@ -1,9 +1,8 @@
-
 "use client";
 
 import * as React from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { AppContext } from "@/contexts/AppContext";
+import { TrainingContext } from "@/contexts/TrainingContext";
 import { cn } from "@/lib/utils";
 import { CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +21,7 @@ const CorosLogo = () => (
 );
 
 export default function IntegrationsPage() {
-  const context = React.useContext(AppContext);
+  const context = React.useContext(TrainingContext);
   const stravaConnected = !!context?.activeProfile?.integrations?.strava?.connected;
   const corosConnected = !!context?.activeProfile?.integrations?.coros?.connected;
 
