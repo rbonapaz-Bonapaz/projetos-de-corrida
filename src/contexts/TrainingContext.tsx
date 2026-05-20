@@ -64,7 +64,6 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   const [cloudProfiles, setRemoteProfiles] = useState<AthleteProfile[]>([]);
   const [localProfiles, setLocalProfiles] = useState<AthleteProfile[]>([]);
 
-  // 1. Inicialização de Auth e LocalStorage (Persistence)
   useEffect(() => {
     const init = async () => {
       try {
@@ -73,7 +72,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         console.warn("Auth Persistence error:", e);
       }
 
-      onAuthStateChanged(auth, (currentUser) => {
+      const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
         setUser(currentUser);
         setIsHydrated(true);
       });
@@ -82,11 +81,13 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       const lProfId = localStorage.getItem(STORAGE_KEYS.LAST_PROFILE_ID);
       if (lKey) setLocalApiKey(lKey);
       if (lProfId) setLocalActiveProfileId(lProfId);
+
+      return () => unsubAuth();
     };
     init();
   }, [auth]);
 
-  // 2. Sincronização em Tempo Real Cloud-First
+  // Sincronização em Tempo Real (Real-Time Sync)
   useEffect(() => {
     if (!user || !db) {
       setRemoteConfig(null);
@@ -94,7 +95,6 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Ouvinte para configurações globais (API Key, lastProfile)
     const userRef = doc(db, 'user_data', user.uid);
     const unsubConfig = onSnapshot(userRef, (snap) => {
       if (snap.exists()) setRemoteConfig(snap.data());
@@ -106,7 +106,6 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       errorEmitter.emit('permission-error', permissionError);
     });
 
-    // Ouvinte para Perfis de Atleta
     const athletesRef = collection(db, 'athletes');
     const qOwn = query(athletesRef, where('ownerUid', '==', user.uid));
     const unsubOwn = onSnapshot(qOwn, (snap) => {
@@ -126,7 +125,6 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     };
   }, [user, db]);
 
-  // Merge de perfis locais e remotos para garantir portabilidade
   const profiles = useMemo(() => {
     const map = new Map<string, AthleteProfile>();
     cloudProfiles.forEach(p => map.set(p.id, p));
@@ -147,13 +145,15 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      toast({ title: "Sincronização Ativa", description: "Seu laboratório agora está na nuvem." });
+      toast({ title: "Sincronização Ativa", description: "Seu laboratório está na nuvem." });
     } catch (e: any) {
       console.error(e);
       toast({ 
         variant: 'destructive', 
         title: "Erro no Login", 
-        description: "Falha na comunicação com o Google. Verifique sua conexão." 
+        description: e.message?.includes('requests-to-this-api') 
+          ? "API Bloqueada: Ative a 'Identity Toolkit API' no Google Cloud." 
+          : "Certifique-se de que o domínio está autorizado no console do Firebase." 
       });
     }
   };
@@ -161,7 +161,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   const loginEmail = async (email: string, pass: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      toast({ title: "Acesso Liberado", description: "Laboratório carregado com sucesso." });
+      toast({ title: "Acesso Liberado", description: "Laboratório sincronizado." });
     } catch (e: any) {
       toast({ variant: 'destructive', title: "Erro no Login", description: "Credenciais inválidas." });
     }
@@ -172,45 +172,43 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       await createUserWithEmailAndPassword(auth, email, pass);
       toast({ title: "Atleta Cadastrado!", description: "Seu espaço na nuvem foi criado." });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: "Erro no Cadastro", description: "E-mail em uso ou senha fraca." });
+      toast({ variant: 'destructive', title: "Erro no Cadastro", description: "Verifique os dados ou a conexão." });
     }
   };
 
   const logout = async () => {
     await signOut(auth);
     setLocalActiveProfileId(null);
-    toast({ title: "Sessão Finalizada", description: "Modo local reativado." });
+    toast({ title: "Sessão Finalizada", description: "Modo offline reativado." });
   };
 
   const setApiKey = (key: string) => {
     const cleanKey = key.trim();
     if (user && db) {
       const userRef = doc(db, 'user_data', user.uid);
-      setDoc(userRef, { apiKey: cleanKey }, { merge: true }).catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
+      setDoc(userRef, { apiKey: cleanKey }, { merge: true }).catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: userRef.path,
           operation: 'write',
           requestResourceData: { apiKey: cleanKey }
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
+        } satisfies SecurityRuleContext));
       });
     } else {
       localStorage.setItem(STORAGE_KEYS.API_KEY, cleanKey);
       setLocalApiKey(cleanKey);
     }
-    toast({ title: "IA Configurada", description: "Motor Gemini pronto para processamento." });
+    toast({ title: "IA Configurada", description: "Motor Gemini pronto." });
   };
 
   const switchProfile = (id: string | null) => {
     if (user && db) {
       const userRef = doc(db, 'user_data', user.uid);
-      setDoc(userRef, { lastActiveProfileId: id }, { merge: true }).catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
+      setDoc(userRef, { lastActiveProfileId: id }, { merge: true }).catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: userRef.path,
           operation: 'write',
           requestResourceData: { lastActiveProfileId: id }
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
+        } satisfies SecurityRuleContext));
       });
     } else {
       localStorage.setItem(STORAGE_KEYS.LAST_PROFILE_ID, id || '');
@@ -227,13 +225,12 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       const docRef = doc(db, 'athletes', id);
       setDoc(docRef, newProfile, { merge: true }).then(() => {
         if (!persistedActiveProfileId) switchProfile(id);
-      }).catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
+      }).catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: docRef.path,
           operation: 'write',
           requestResourceData: newProfile
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
+        } satisfies SecurityRuleContext));
       });
     } else {
       const newLocal = profiles.map(p => p.id === id ? newProfile : p);
@@ -254,13 +251,12 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
     if (user && db) {
       const docRef = doc(db, 'athletes', activeProfile.id);
-      updateDoc(docRef, { trainingPlan: updatedPlan }).catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
+      updateDoc(docRef, { trainingPlan: updatedPlan }).catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: docRef.path,
           operation: 'update',
           requestResourceData: { trainingPlan: updatedPlan }
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
+        } satisfies SecurityRuleContext));
       });
     } else {
       saveProfile({ trainingPlan: updatedPlan });
@@ -269,7 +265,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
   const generateRunningPlanAsync = async (profile: AthleteProfile) => {
     if (!effectiveApiKey) {
-      toast({ variant: "destructive", title: "IA Desativada", description: "Insira sua API Key no menu lateral." });
+      toast({ variant: "destructive", title: "IA Desativada", description: "Insira sua Gemini API Key." });
       return;
     }
     setPlanGenerationStatus('pending');
@@ -310,10 +306,10 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
       saveProfile({ ...profile, trainingPlan: result });
       setPlanGenerationStatus('success');
-      toast({ title: "Planilha Gerada", description: "Periodização sincronizada com sucesso." });
+      toast({ title: "Planilha Gerada", description: "Sincronizada em todos os dispositivos." });
     } catch (error: any) {
       setPlanGenerationStatus('error');
-      toast({ variant: "destructive", title: "Erro na IA", description: "Falha ao processar os dados biomecânicos." });
+      toast({ variant: "destructive", title: "Erro na IA", description: "Falha na geração do ciclo." });
     }
   };
 
