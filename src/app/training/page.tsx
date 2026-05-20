@@ -37,7 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn, fileToDataURI } from '@/lib/utils';
+import { cn, fileToDataURI } from '@/utils';
 import type { Workout } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import Link from "next/link";

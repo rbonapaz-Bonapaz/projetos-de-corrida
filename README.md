@@ -1,38 +1,32 @@
 # 🏃‍♂️ CORRE JUNTO - Laboratório de Performance
 
-Sua plataforma de elite para periodização e análise biomecânica, operando em arquitetura **Cloud-First** via Firebase Firestore.
+Sua plataforma de elite para periodização e análise biomecânica.
 
-## 🚀 RESOLVENDO O LOGIN E DEPLOY (Deploy via GitHub)
+## 🚀 RESOLVENDO O BLOQUEIO DE LOGIN (URGENTE)
 
-O app está configurado e pronto para uso com a sua nova chave de API.
+Se você vir o erro "requests-to-this-api... are blocked", siga estes passos:
 
-### 1. Desbloqueio da Chave (Obrigatório)
+### 1. Desbloqueio da Chave no Google Cloud
 1. Acesse o [Google Cloud Console - Credenciais](https://console.cloud.google.com/apis/credentials).
-2. Clique na chave `Assessoria Corre Junto`.
-3. Em **"Restrições de API"**, selecione **"Não restringir chave"** (Don't restrict key).
+2. Clique na sua chave `AIzaSyBTHlgY_B4gElAUJ_d85xcgSThfLWw6iFo`.
+3. Em **"Restrições de API"**, selecione a opção **"Nenhuma"** (Don't restrict key).
 4. Clique em **SALVAR**.
+   *Isso libera o Identity Toolkit usado pelo Firebase Auth.*
 
 ### 2. Autorizar o Domínio do Laboratório
 1. Acesse: [Firebase Console - Domínios Autorizados](https://console.firebase.google.com/project/studio-1669701209-88700/authentication/settings).
 2. Clique em **"Adicionar domínio"**.
-3. Adicione os domínios do seu print:
+3. Adicione os domínios:
    - `studio-1669701209-88700.web.app`
    - `studio-1669701209-88700.firebaseapp.com`
-4. **Importante:** Isso libera o Login com Google no navegador.
 
 ### 3. Deploy Automático via GitHub
-Para que o seu repositório seja publicado automaticamente:
+Para sincronização contínua:
 1. No Firebase Console, vá em **App Hosting**.
 2. Clique em **"Começar"**.
-3. Conecte sua conta do GitHub e selecione o repositório `Assessoria-Corre-Junto`.
-4. O Firebase detectará automaticamente que é um app **Next.js** e fará o deploy.
-5. Repositório: `https://github.com/rbonapaz-Bonapaz/Assessoria-Corre-Junto`
+3. Conecte seu GitHub: `https://github.com/rbonapaz-Bonapaz/Assessoria-Corre-Junto`
+4. O Firebase fará o build automaticamente usando as variáveis configuradas.
 
-## 📱 Sincronização em Tempo Real
-O CorreJunto usa o motor **Firestore Real-Time**:
-- **No PC:** Use para planejar ciclos longos e análise técnica.
-- **No Celular:** Use na pista. Seus treinos aparecem instantaneamente.
-- **Dica:** Use o login por **E-mail e Senha** se preferir não usar a conta Google no celular.
-
-## 🧠 Gemini Coach
-O treinador IA tem acesso ao seu histórico para ajustar o T-Pace automaticamente através da sua Gemini API Key configurada no app.
+## 📱 Sincronização Cloud
+- **Sincronização:** PC e Celular conversam em tempo real via Firestore.
+- **Biometria IA:** O Gemini Coach analisa seus arquivos .FIT e feedbacks instantaneamente.
