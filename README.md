@@ -5,7 +5,7 @@ Laboratório de performance para atletas operando em arquitetura **Cloud-First**
 
 ## 🚀 Como resolver o erro de Login ("The requested action is invalid")
 
-Se você vir o erro "The requested action is invalid" ou "Falha na Autenticação", siga estes passos obrigatórios no seu Console do Firebase:
+Se você vir o erro "The requested action is invalid" ou "Falha na Autenticação" ao tentar o login com Google, siga estes passos obrigatórios no seu Console do Firebase:
 
 ### 1. Ativar o serviço de Autenticação
 1. Acesse o [Firebase Console](https://console.firebase.google.com/project/studio-1669701209-88700/authentication).
@@ -18,12 +18,12 @@ Se você vir o erro "The requested action is invalid" ou "Falha na Autenticaçã
 3. Clique em **"Add Domain"** e cole o endereço (remova o `https://` e tudo que vem depois do `.dev`). 
    - Exemplo: `9002-workstation-xxx.cluster-xxx.cloudworkstations.dev`
 
-## 📱 Funcionalidades
-- **Assessoria na Nuvem:** Sincronização automática entre PC e Celular via Firestore.
+## 📱 Funcionalidades Cloud-First
+- **Assessoria na Nuvem:** Sincronização automática entre PC e Celular via Firestore em tempo real.
 - **Herança de IA:** Atleta usa própria chave API ou a do treinador como fallback automático.
-- **Modelo Coach:** Treinador gerencia múltiplos atletas via e-mail.
+- **Modelo Coach:** Treinador gerencia múltiplos atletas via e-mail ou Google login.
 - **Análise Biomecânica:** Gemini interpreta métricas de arquivos .FIT e imagens do relógio.
 
 ## 🎨 Branding
-- **CORRE:** Branco
-- **JUNTO:** Verde (Primary)
+- **CORRE:** Branco (#FFFFFF)
+- **JUNTO:** Verde Neon (#4ADE80)

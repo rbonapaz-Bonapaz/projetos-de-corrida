@@ -1,8 +1,6 @@
-'use client';
-
 /**
  * Configuração oficial do Firebase para o projeto CorreJunto.
- * Sincronizado com o projeto: studio-1669701209-88700
+ * Chave de API extraída do console fornecido pelo usuário.
  */
 export const firebaseConfig = {
   apiKey: "AIzaSyAym--fjMSov5UfeR_iUjYasEgH9cEgLjc",

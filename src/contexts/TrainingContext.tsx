@@ -1,8 +1,7 @@
-
 'use client';
 
 import { createContext, useState, useEffect, type ReactNode, useCallback, useMemo } from 'react';
-import { doc, onSnapshot, setDoc, collection, query, where, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, collection, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   signInWithPopup, 
   GoogleAuthProvider, 
@@ -65,21 +64,29 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   const [cloudProfiles, setRemoteProfiles] = useState<AthleteProfile[]>([]);
   const [localProfiles, setLocalProfiles] = useState<AthleteProfile[]>([]);
 
+  // 1. Inicialização de Auth e LocalStorage
   useEffect(() => {
-    setPersistence(auth, browserLocalPersistence);
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setIsHydrated(true);
-    });
+    const init = async () => {
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+      } catch (e) {
+        console.warn("Persistence error:", e);
+      }
 
-    const lKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
-    const lProfId = localStorage.getItem(STORAGE_KEYS.LAST_PROFILE_ID);
-    if (lKey) setLocalApiKey(lKey);
-    if (lProfId) setLocalActiveProfileId(lProfId);
+      onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
+        setIsHydrated(true);
+      });
 
-    return () => unsubscribeAuth();
+      const lKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
+      const lProfId = localStorage.getItem(STORAGE_KEYS.LAST_PROFILE_ID);
+      if (lKey) setLocalApiKey(lKey);
+      if (lProfId) setLocalActiveProfileId(lProfId);
+    };
+    init();
   }, [auth]);
 
+  // 2. Sincronização em Tempo Real (Firestore)
   useEffect(() => {
     if (!user || !db) {
       setRemoteConfig(null);
@@ -125,14 +132,19 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       await signInWithPopup(auth, provider);
       toast({ title: "Laboratório Sincronizado", description: "Google Cloud Ativo." });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: "Falha na Autenticação", description: "Verifique o console do Firebase." });
+      console.error(e);
+      toast({ 
+        variant: 'destructive', 
+        title: "Falha na Autenticação", 
+        description: "Verifique os domínios autorizados no console do Firebase conforme o README." 
+      });
     }
   };
 
   const loginEmail = async (email: string, pass: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      toast({ title: "Bem-vindo de volta!", description: "Sincronização via e-mail ativa." });
+      toast({ title: "Acesso Liberado", description: "Sincronização via e-mail ativa." });
     } catch (e: any) {
       toast({ variant: 'destructive', title: "Erro no Login", description: "Verifique suas credenciais." });
     }
@@ -141,9 +153,9 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   const registerEmail = async (email: string, pass: string) => {
     try {
       await createUserWithEmailAndPassword(auth, email, pass);
-      toast({ title: "Conta Criada!", description: "Seu laboratório agora está na nuvem." });
+      toast({ title: "Laboratório Criado!", description: "Seus dados agora vivem na nuvem." });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: "Erro no Registro", description: e.message });
+      toast({ variant: 'destructive', title: "Erro no Registro", description: "Não foi possível criar sua conta." });
     }
   };
 
@@ -156,17 +168,30 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   const setApiKey = async (key: string) => {
     const cleanKey = key.trim();
     if (user && db) {
-      setDoc(doc(db, 'user_data', user.uid), { apiKey: cleanKey }, { merge: true });
+      const userRef = doc(db, 'user_data', user.uid);
+      setDoc(userRef, { apiKey: cleanKey }, { merge: true }).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'write',
+          requestResourceData: { apiKey: cleanKey }
+        }));
+      });
     } else {
       localStorage.setItem(STORAGE_KEYS.API_KEY, cleanKey);
       setLocalApiKey(cleanKey);
     }
-    toast({ title: "IA Calibrada", description: "Motor Gemini 2.5 Ativo." });
+    toast({ title: "IA Calibrada", description: "Motor pronto para análise." });
   };
 
   const switchProfile = (id: string | null) => {
     if (user && db) {
-      setDoc(doc(db, 'user_data', user.uid), { lastActiveProfileId: id }, { merge: true });
+      const userRef = doc(db, 'user_data', user.uid);
+      setDoc(userRef, { lastActiveProfileId: id }, { merge: true }).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'write'
+        }));
+      });
     } else {
       localStorage.setItem(STORAGE_KEYS.LAST_PROFILE_ID, id || '');
       setLocalActiveProfileId(id);
@@ -220,7 +245,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
   const generateRunningPlanAsync = async (profile: AthleteProfile) => {
     if (!effectiveApiKey) {
-      toast({ variant: "destructive", title: "IA Indisponível", description: "Insira sua API Key no menu lateral." });
+      toast({ variant: "destructive", title: "IA Indisponível", description: "Insira sua Gemini API Key no menu lateral." });
       return;
     }
     setPlanGenerationStatus('pending');
@@ -261,10 +286,10 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
       await saveProfile({ ...profile, trainingPlan: result });
       setPlanGenerationStatus('success');
-      toast({ title: "Planilha Sincronizada", description: "Novo ciclo salvo na nuvem." });
+      toast({ title: "Planilha Sincronizada", description: "Novo ciclo de elite salvo na nuvem." });
     } catch (error: any) {
       setPlanGenerationStatus('error');
-      toast({ variant: "destructive", title: "Erro na IA", description: "Verifique sua API Key." });
+      toast({ variant: "destructive", title: "Erro na IA", description: "Verifique sua API Key ou conexão." });
     }
   };
 
