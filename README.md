@@ -4,20 +4,21 @@ Sua plataforma de elite para periodização e análise biomecânica, operando em
 
 ## 🚀 RESOLVENDO O LOGIN E DEPLOY (Deploy via GitHub)
 
-O app está configurado para a sua nova chave de API: `AIzaSyBTHlgY_B4gElAUJ_d85xcgSThfLWw6iFo`. 
+O app está configurado e pronto para uso com a sua nova chave de API.
 
 ### 1. Desbloqueio da Chave (Obrigatório)
 1. Acesse o [Google Cloud Console - Credenciais](https://console.cloud.google.com/apis/credentials).
-2. Clique na chave `Assessoria Corre Junto` (`AIzaSyBTHlgY_B4gElAUJ_d85xcgSThfLWw6iFo`).
-3. Role até **"Restrições de API"**.
-4. Selecione **"Não restringir chave"** (Don't restrict key).
-5. Clique em **SALVAR**.
+2. Clique na chave `Assessoria Corre Junto`.
+3. Em **"Restrições de API"**, selecione **"Não restringir chave"** (Don't restrict key).
+4. Clique em **SALVAR**.
 
 ### 2. Autorizar o Domínio do Laboratório
 1. Acesse: [Firebase Console - Domínios Autorizados](https://console.firebase.google.com/project/studio-1669701209-88700/authentication/settings).
 2. Clique em **"Adicionar domínio"**.
-3. Adicione o seu link do laboratório (ex: `studio-1669701209...cloudworkstations.dev`).
-4. **Importante:** Quando você fizer o deploy definitivo, adicione também o domínio final gerado pelo Firebase Hosting.
+3. Adicione os domínios do seu print:
+   - `studio-1669701209-88700.web.app`
+   - `studio-1669701209-88700.firebaseapp.com`
+4. **Importante:** Isso libera o Login com Google no navegador.
 
 ### 3. Deploy Automático via GitHub
 Para que o seu repositório seja publicado automaticamente:
