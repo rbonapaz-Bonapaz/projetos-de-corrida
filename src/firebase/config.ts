@@ -1,3 +1,4 @@
+
 /**
  * Configuração oficial do Firebase para o projeto CorreJunto.
  * Sincronizado com o projeto: studio-1669701209-88700

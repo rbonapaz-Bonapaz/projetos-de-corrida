@@ -29,15 +29,14 @@
         "planGenerationType": { "type": "string", "enum": ["full", "blocks"] },
         "experienceLevel": { "type": "string" },
         "trainingHistory": { "type": "string" },
-        "referenceDocumentUri": { "type": "string" }
+        "referenceDocumentUri": { "type": "string" },
+        "trainingPlan": { "type": "object" }
       }
     },
     "UserData": {
       "title": "Dados do Usuário",
       "type": "object",
       "properties": {
-        "profile": { "$ref": "#/backend/entities/AthleteProfile" },
-        "trainingPlan": { "type": "object" },
         "apiKey": { "type": "string" },
         "lastActiveProfileId": { "type": "string" }
       }
@@ -49,11 +48,11 @@
   "firestore": {
     "/user_data/{userId}": {
       "schema": { "$ref": "#/backend/entities/UserData" },
-      "description": "Dados mestre do usuário sincronizados entre dispositivos."
+      "description": "Configurações de API e estado do usuário."
     },
     "/athletes/{athleteId}": {
       "schema": { "$ref": "#/backend/entities/AthleteProfile" },
-      "description": "Perfis de atletas gerenciados pelo usuário."
+      "description": "Perfis e planilhas de treinamento dos atletas."
     }
   }
 }
