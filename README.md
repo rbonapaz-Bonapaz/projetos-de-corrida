@@ -5,21 +5,19 @@ Laboratório de performance operando em arquitetura **Cloud-First** via Firebase
 
 ## 🚀 RESOLVENDO O BLOQUEIO DE LOGIN (Visto no seu Print)
 
-Pelo print enviado, a sua chave de API está restringindo o acesso apenas à Gemini API. Siga estes passos na tela **"Editar chave de API"** que você abriu ao clicar em "Assessoria Corre Junto":
+Pelo seu print, o Google não deixa você marcar a caixa porque as APIs selecionadas estão entrando em conflito. A solução definitiva é:
 
-### 1. Adicionar APIs de Identidade na Chave
-1. Na seção **"Restrições de API"**, clique no seletor onde aparece **"1 API"** (Gemini API).
-2. Procure por **Identity Toolkit API** na lista e marque-a.
-3. Procure também por **Token Service API** e marque-a.
-4. Clique em **SALVAR** no botão azul no rodapé.
+### 1. Remover a Restrição da Chave (O mais fácil)
+1. Na tela de edição da chave **"Assessoria Corre Junto"**, procure a seção **"Restrições de API"**.
+2. Em vez de selecionar APIs manualmente, marque a opção **"Nenhuma"** (ou "Don't restrict key").
+3. Clique em **SALVAR** no rodapé azul. Isso libera o login e o Gemini instantaneamente.
 
 ### 2. Autorizar o Domínio no Firebase (Obrigatório)
-Mesmo com a chave corrigida, o Google bloqueia o login se o link do site não estiver na "Lista Branca".
+Mesmo com a chave liberada, o login falhará se o domínio não estiver autorizado:
 1. Acesse o [Firebase Console - Authorized Domains](https://console.firebase.google.com/project/studio-1669701209-88700/authentication/settings).
-2. Vá em **Authentication > Settings > Authorized Domains**.
-3. Clique em **"Add Domain"**.
-4. Cole o link do seu laboratório (o link que você vê na barra de endereços, ex: `https://studio-1669701209...cloudworkstations.dev`).
-5. Clique em **Add**.
+2. Clique em **"Add Domain"**.
+3. Cole o link do seu laboratório (ex: `https://studio-1669701209...cloudworkstations.dev`).
+4. Clique em **Add**.
 
 ## 📱 Sincronização em Tempo Real
 - O app usa Firestore `onSnapshot`. 
