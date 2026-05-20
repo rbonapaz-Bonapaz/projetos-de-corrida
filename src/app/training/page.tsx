@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, 
   CalendarDays,
-  Zap,
   ChevronRight,
   CheckCircle2,
   Upload,

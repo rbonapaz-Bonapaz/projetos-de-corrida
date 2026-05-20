@@ -21,11 +21,12 @@ O app está configurado para a sua nova chave de API: `AIzaSyBTHlgY_B4gElAUJ_d85
 4. **Importante:** Quando você fizer o deploy definitivo, adicione também o domínio final gerado pelo Firebase Hosting.
 
 ### 3. Deploy Automático via GitHub
-Para que o seu repositório `https://github.com/rbonapaz-Bonapaz/Acessoria-Corre-Junto` seja publicado automaticamente:
+Para que o seu repositório seja publicado automaticamente:
 1. No Firebase Console, vá em **App Hosting**.
 2. Clique em **"Começar"**.
-3. Conecte sua conta do GitHub e selecione o repositório `Acessoria-Corre-Junto`.
+3. Conecte sua conta do GitHub e selecione o repositório `Assessoria-Corre-Junto`.
 4. O Firebase detectará automaticamente que é um app **Next.js** e fará o deploy.
+5. Repositório: `https://github.com/rbonapaz-Bonapaz/Assessoria-Corre-Junto`
 
 ## 📱 Sincronização em Tempo Real
 O CorreJunto usa o motor **Firestore Real-Time**:
