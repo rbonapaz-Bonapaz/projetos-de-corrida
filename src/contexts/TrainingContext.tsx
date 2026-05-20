@@ -87,7 +87,6 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     init();
   }, [auth]);
 
-  // Sincronização em Tempo Real (Real-Time Sync)
   useEffect(() => {
     if (!user || !db) {
       setRemoteConfig(null);
@@ -98,12 +97,11 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     const userRef = doc(db, 'user_data', user.uid);
     const unsubConfig = onSnapshot(userRef, (snap) => {
       if (snap.exists()) setRemoteConfig(snap.data());
-    }, async (serverError) => {
-      const permissionError = new FirestorePermissionError({
+    }, async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: userRef.path,
         operation: 'get',
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
+      } satisfies SecurityRuleContext));
     });
 
     const athletesRef = collection(db, 'athletes');
@@ -111,12 +109,11 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     const unsubOwn = onSnapshot(qOwn, (snap) => {
       const docs = snap.docs.map(d => ({ ...d.data(), id: d.id } as AthleteProfile));
       setRemoteProfiles(docs);
-    }, async (serverError) => {
-      const permissionError = new FirestorePermissionError({
+    }, async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: athletesRef.path,
         operation: 'list',
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
+      } satisfies SecurityRuleContext));
     });
 
     return () => {
@@ -148,13 +145,13 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       toast({ title: "Sincronização Ativa", description: "Seu laboratório está na nuvem." });
     } catch (e: any) {
       console.error(e);
-      toast({ 
-        variant: 'destructive', 
-        title: "Erro no Login", 
-        description: e.message?.includes('requests-to-this-api') 
-          ? "API Bloqueada: Ative a 'Identity Toolkit API' no Google Cloud." 
-          : "Certifique-se de que o domínio está autorizado no console do Firebase." 
-      });
+      let errorMsg = "Erro no Login. Verifique o console.";
+      if (e.message?.includes('requests-to-this-api')) {
+        errorMsg = "API Bloqueada! Vá na aba 'Credenciais' do Google Cloud e remova as restrições da sua Chave de API.";
+      } else if (e.message?.includes('unauthorized-domain')) {
+        errorMsg = "Domínio não autorizado! Adicione o link deste laboratório no Console do Firebase (Authentication > Settings).";
+      }
+      toast({ variant: 'destructive', title: "Bloqueio de Segurança", description: errorMsg });
     }
   };
 

@@ -3,23 +3,21 @@
 
 Laboratório de performance operando em arquitetura **Cloud-First** via Firebase Firestore.
 
-## 🚀 Como resolver o erro de Login (Passo a Passo do Print)
+## 🚀 Como resolver o erro de Bloqueio (Erro 403 no Print)
 
-Se você vir o erro "requests-to-this-api-identitytoolkit...-are-blocked", siga estes passos obrigatórios na sua tela do Google Cloud:
+Se a API já está **Ativada** e o erro persiste (como mostram os erros 403 no seu gráfico), siga estes 2 passos na sua tela do Google Cloud:
 
-### 1. Ativar a API de Identidade
-1. Na barra de pesquisa no topo da tela, digite **"Identity Toolkit"**.
-2. Selecione **Identity Toolkit API**.
-3. Clique no botão **ATIVAR**.
+### 1. Remover Restrições da Chave de API
+1. Na tela que você enviou, clique na aba **"Credenciais"** (ao lado de "Cotas e limites").
+2. Clique na chave de API chamada **"Browser key (auto created by Firebase)"** ou similar.
+3. Em **"Restrições de API"**, mude para **"Não restringir chave"** (Don't restrict key) ou adicione a **Identity Toolkit API** na lista de permitidas.
+4. Clique em **SALVAR**.
 
-### 2. Ativar o serviço de Autenticação no Firebase
-1. Acesse o [Firebase Console](https://console.firebase.google.com/project/studio-1669701209-88700/authentication).
-2. Clique em **"Get Started"**.
-3. Vá na aba **"Sign-in method"**, ative o **Google** e o **E-mail/Password**.
-
-### 3. Autorizar o Domínio
-1. No Firebase Console, vá em **Authentication > Settings > Authorized Domains**.
-2. Clique em **"Add Domain"** e cole o link do seu laboratório (o link que termina em `.cloudworkstations.dev`).
+### 2. Autorizar o Domínio no Firebase (Obrigatório)
+1. Acesse o [Firebase Console](https://console.firebase.google.com/project/studio-1669701209-88700/authentication/settings).
+2. Vá em **Authentication > Settings > Authorized Domains**.
+3. Clique em **"Add Domain"**.
+4. Cole o link do seu laboratório (o link que você vê no navegador, que termina em `.cloudworkstations.dev`).
 
 ## 📱 Sincronização em Tempo Real
 - O app usa Firestore `onSnapshot`. Mudou no PC, mudou no Celular.
