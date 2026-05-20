@@ -3,26 +3,28 @@
 
 Laboratório de performance para atletas operando em arquitetura **Cloud-First** via Firebase Firestore.
 
-## 🚀 Como resolver o erro de Login ("The requested action is invalid")
+## 🚀 Como resolver o erro de Login / API Blocked
 
-Se você vir o erro "The requested action is invalid" ou "Falha na Autenticação" ao tentar o login com Google, siga estes passos obrigatórios no seu Console do Firebase:
+Se você vir o erro "requests-to-this-api-identitytoolkit...-are-blocked" ou "The requested action is invalid", siga estes passos obrigatórios:
 
-### 1. Ativar o serviço de Autenticação
+### 1. Ativar a API de Identidade (Passo Crítico para este Erro)
+1. Acesse o [Google Cloud Console](https://console.cloud.google.com/apis/library/identitytoolkit.googleapis.com).
+2. Verifique se o projeto selecionado é o `studio-1669701209-88700`.
+3. Clique no botão **ATIVAR** (ou "Enable"). Sem isso, o Firebase não consegue validar seu login.
+
+### 2. Ativar o serviço de Autenticação no Firebase
 1. Acesse o [Firebase Console](https://console.firebase.google.com/project/studio-1669701209-88700/authentication).
-2. Se aparecer um botão **"Get Started"** (ou "Começar"), você **PRECISA** clicar nele.
-3. Vá na aba **"Sign-in method"**, clique em **"Add new provider"**, escolha **Google** e ative-o (use seu e-mail de suporte se solicitado).
+2. Se aparecer um botão **"Get Started"**, clique nele.
+3. Vá na aba **"Sign-in method"**, ative o **Google** e o **E-mail/Password**.
 
-### 2. Autorizar o Domínio do Laboratório (Passo Crítico)
-1. No seu navegador, copie o endereço onde o app está rodando (ex: `https://9002-....cloudworkstations.dev`).
-2. No Firebase Console, vá em **Authentication > Settings > Authorized Domains**.
-3. Clique em **"Add Domain"** e cole o endereço (remova o `https://` e tudo que vem depois do `.dev`). 
-   - Exemplo: `9002-workstation-xxx.cluster-xxx.cloudworkstations.dev`
+### 3. Autorizar o Domínio do Laboratório
+1. No Firebase Console, vá em **Authentication > Settings > Authorized Domains**.
+2. Clique em **"Add Domain"** e cole o endereço do seu laboratório (ex: `9002-workstation...cloudworkstations.dev`).
 
 ## 📱 Funcionalidades Cloud-First
-- **Assessoria na Nuvem:** Sincronização automática entre PC e Celular via Firestore em tempo real.
-- **Herança de IA:** Atleta usa própria chave API ou a do treinador como fallback automático.
-- **Modelo Coach:** Treinador gerencia múltiplos atletas via e-mail ou Google login.
-- **Análise Biomecânica:** Gemini interpreta métricas de arquivos .FIT e imagens do relógio.
+- **Sincronização Real-Time:** PC e Celular sempre em paridade via Firestore `onSnapshot`.
+- **Login Híbrido:** Suporte a Google e E-mail/Senha para máxima resiliência.
+- **Motor Gemini:** Análise biomecânica de alta performance.
 
 ## 🎨 Branding
 - **CORRE:** Branco (#FFFFFF)
