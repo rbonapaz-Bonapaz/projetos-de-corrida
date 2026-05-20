@@ -8,7 +8,6 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Sparkles, 
   Loader2, 
   CalendarDays,
   Zap,
@@ -41,11 +40,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn, fileToDataURI } from '@/lib/utils';
-import type { Workout, TrainingPlan, AthleteProfile } from "@/lib/types";
+import type { Workout, TrainingPlan } from "@/lib/types";
 import { useRouter } from "next/navigation";
-import { useUser, useFirestore, useDoc } from "@/firebase";
-import { doc } from "firebase/firestore";
-import Link from "next/link";
 
 const dayOrder = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -53,17 +49,9 @@ export default function TrainingPage() {
   const router = useRouter();
   const { toast } = useToast();
   const context = React.useContext(TrainingContext);
-  const { user } = useUser();
-  const firestore = useFirestore();
 
-  const userDocRef = React.useMemo(() => 
-    user ? doc(firestore, 'user_data', user.uid) : null, 
-  [user, firestore]);
-  
-  const { data: userData, loading: syncLoading } = useDoc<any>(userDocRef);
-
-  const profile = (userData?.profile || context?.activeProfile) as AthleteProfile | null;
-  const plan = (userData?.trainingPlan || context?.trainingPlan) as TrainingPlan | null;
+  const profile = context?.activeProfile;
+  const plan = context?.trainingPlan;
 
   const [localLoading, setLocalLoading] = React.useState(false);
   const [analyzing, setAnalyzing] = React.useState(false);
@@ -73,6 +61,19 @@ export default function TrainingPage() {
   const [uploadedFileName, setUploadedFileName] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Sincronização do treino selecionado em tempo real
+  React.useEffect(() => {
+    if (selectedWorkout && plan) {
+      for (const week of plan.weeklyPlans) {
+        const found = week.runs.find(r => r.id === selectedWorkout.id);
+        if (found) {
+          setSelectedWorkout(found);
+          break;
+        }
+      }
+    }
+  }, [plan, selectedWorkout?.id]);
+
   const handleGenerate = async () => {
     if (!profile) {
       toast({ variant: "destructive", title: "Perfil Incompleto", description: "Configure seus dados no perfil primeiro." });
@@ -81,8 +82,6 @@ export default function TrainingPage() {
     setLocalLoading(true);
     try {
       await context?.generateRunningPlanAsync(profile);
-    } catch (err) {
-      console.error(err);
     } finally {
       setLocalLoading(false);
     }
@@ -95,7 +94,7 @@ export default function TrainingPage() {
       const uri = await fileToDataURI(file);
       setUploadedFileUri(uri);
       setUploadedFileName(file.name);
-      toast({ title: "DADOS CARREGADOS", description: `${file.name} pronto para inspeção IA.` });
+      toast({ title: "DADOS CARREGADOS", description: "Pronto para sincronização cloud." });
     } catch (err) {
       toast({ variant: 'destructive', title: "FALHA NO UPLOAD" });
     }
@@ -112,7 +111,7 @@ export default function TrainingPage() {
     if (!selectedWorkout || !profile || !context?.apiKey) return;
     
     setAnalyzing(true);
-    toast({ title: "🧠 PROCESSANDO DADOS...", description: "Gemini Coach analisando sensores." });
+    toast({ title: "🧠 ANALISANDO MÉTRICAS...", description: "Gemini Coach processando sensores." });
 
     try {
       const result = await analyzeWorkout({
@@ -130,11 +129,10 @@ export default function TrainingPage() {
       };
       
       await context?.updateWorkout(selectedWorkout.id, updatedWorkout);
-      setSelectedWorkout(updatedWorkout as any);
       setUploadedFileUri(null);
       setUploadedFileName(null);
       setAthleteFeedback("");
-      toast({ title: "✅ SESSÃO REGISTRADA", description: "Métricas biomecânicas salvas." });
+      toast({ title: "✅ SESSÃO REGISTRADA", description: "Sincronizado com todos os seus dispositivos." });
     } catch (error) {
       console.error(error);
       toast({ variant: 'destructive', title: "ERRO NA ANÁLISE" });
@@ -147,14 +145,7 @@ export default function TrainingPage() {
     if (!selectedWorkout) return;
     const updatedWorkout = { ...selectedWorkout, day: newDay };
     await context?.updateWorkout(selectedWorkout.id, updatedWorkout);
-    setSelectedWorkout(updatedWorkout);
     toast({ title: "REAGENDAMENTO OK", description: `Sessão movida para ${newDay.toUpperCase()}.` });
-  };
-
-  const handleExportPDF = () => {
-    if (!plan) return;
-    toast({ title: "GERANDO PDF...", description: "Versão otimizada para laboratório." });
-    window.print();
   };
 
   const calculateWeekVolume = (runs: Workout[]) => {
@@ -167,26 +158,17 @@ export default function TrainingPage() {
   return (
     <DashboardLayout>
       <TooltipProvider>
-        <div className="space-y-12 max-w-6xl mx-auto pb-20 print:p-0">
+        <div className="space-y-12 max-w-6xl mx-auto pb-20 print:p-0 animate-in fade-in duration-700">
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 px-4 print:hidden">
             <div>
               <h1 className="text-4xl md:text-7xl font-headline font-black uppercase italic tracking-tighter leading-[0.8]">
                 <span className="text-white">MEU</span> <br/> <span className="text-primary">PLANO</span>
               </h1>
               <p className="text-[10px] md:text-xs text-muted-foreground mt-4 font-black uppercase tracking-[0.4em] italic opacity-60">
-                {syncLoading ? "SINCRONIZANDO LABORATÓRIO..." : "PLANILHA INTELIGENTE DE ALTA PERFORMANCE"}
+                PLANILHA SINCRONIZADA EM TEMPO REAL NA NUVEM
               </p>
             </div>
             <div className="flex flex-wrap gap-4">
-              {plan && (
-                <Button 
-                  onClick={handleExportPDF}
-                  variant="outline"
-                  className="border-white/10 bg-black/40 text-white h-16 px-10 font-black uppercase tracking-widest text-[11px] italic rounded-2xl hover:bg-white hover:text-black transition-all shadow-2xl"
-                >
-                  <FileDown className="mr-3 size-5" /> EXPORTAR PDF
-                </Button>
-              )}
               <Button 
                 onClick={handleGenerate} 
                 disabled={localLoading || !profile}
@@ -198,7 +180,7 @@ export default function TrainingPage() {
             </div>
           </header>
 
-          {!plan && !syncLoading && (
+          {!plan && (
             <Card className="mx-4 border-primary/20 bg-primary/5 p-32 text-center rounded-[3rem] shadow-2xl border-4 border-dashed print:hidden">
               <CardContent className="flex flex-col items-center space-y-10">
                   <div className="size-28 rounded-[2rem] bg-primary/10 flex items-center justify-center animate-pulse shadow-2xl shadow-primary/10">
@@ -206,17 +188,17 @@ export default function TrainingPage() {
                   </div>
                   <div className="space-y-4">
                       <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">Laboratório Vazio</h2>
-                      <p className="text-muted-foreground max-w-sm mx-auto font-bold uppercase italic text-[11px] tracking-widest opacity-60">Configure sua biometria de performance no perfil.</p>
+                      <p className="text-muted-foreground max-w-sm mx-auto font-bold uppercase italic text-[11px] tracking-widest opacity-60">Sua biometria será salva na nuvem e sincronizada com seu celular.</p>
                   </div>
                   <Button asChild size="lg" className="h-20 px-16 font-black uppercase tracking-widest bg-primary text-black rounded-[1.5rem] shadow-2xl shadow-primary/30 transition-all hover:scale-105 hover:bg-white text-base">
-                      <Link href="/profile">INICIAR PERIODIZAÇÃO <ArrowRight className="ml-4 size-6" /></Link>
+                      <a href="/profile">INICIAR PERIODIZAÇÃO <ArrowRight className="ml-4 size-6" /></a>
                   </Button>
               </CardContent>
             </Card>
           )}
 
           {plan && (
-            <div className="space-y-24 animate-in fade-in duration-700 px-4">
+            <div className="space-y-24 px-4">
               {plan.weeklyPlans.map((week, weekIdx) => (
                 <div key={weekIdx} className="space-y-10">
                   <div className="flex items-end justify-between border-b-4 border-primary/20 pb-6 relative">
@@ -227,7 +209,7 @@ export default function TrainingPage() {
                       <p className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 italic">{week.focus.toUpperCase()}</p>
                     </div>
                     <div className="text-right space-y-2">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 italic">VOLUME PLANEJADO</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 italic">VOLUME DA SEMANA</p>
                       <Badge className="bg-primary text-black font-black italic uppercase text-base px-6 py-2 rounded-xl shadow-xl shadow-primary/10">
                         {calculateWeekVolume(week.runs)} KM
                       </Badge>
@@ -266,7 +248,7 @@ export default function TrainingPage() {
                             </div>
                         </CardContent>
                         <CardFooter className="p-10 pt-0 border-t border-white/5 mt-auto flex justify-between items-center group-hover:bg-primary/5 transition-colors h-20">
-                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest italic opacity-40">DETALHES TÉCNICOS</span>
+                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest italic opacity-40">VER DETALHES TÉCNICOS</span>
                             <ChevronRight className="size-6 text-primary transition-all group-hover:translate-x-2" />
                         </CardFooter>
                       </Card>
@@ -334,7 +316,7 @@ export default function TrainingPage() {
                                       <div className="space-y-8">
                                         <div className="flex items-center gap-4">
                                           <TrendingUp className="size-6 text-primary" />
-                                          <h4 className="text-base font-black uppercase text-white italic tracking-tighter">ESTRUTURA DO MICRO-ESTÍMULO</h4>
+                                          <h4 className="text-base font-black uppercase text-white italic tracking-tighter">ESTRUTURA DA SESSÃO</h4>
                                         </div>
                                         <div className="grid gap-6">
                                           {selectedWorkout.phases.map((phase, idx) => (
@@ -383,18 +365,15 @@ export default function TrainingPage() {
                                                 <AlertTriangle className="size-8 text-rose-500 shrink-0" />
                                                 <div className="space-y-1">
                                                   <p className="font-black uppercase italic text-rose-500 tracking-widest text-[11px]">ALERTA DE INEFICIÊNCIA BIOMECÂNICA</p>
-                                                  <p className="text-muted-foreground italic font-bold text-sm leading-tight">Oscilação vertical excessiva detectada. Ajuste sua postura para projetar o centro de massa à frente.</p>
+                                                  <p className="text-muted-foreground italic font-bold text-sm leading-tight">Oscilação vertical excessiva detectada. Tente projetar o centro de massa levemente à frente.</p>
                                                 </div>
                                               </div>
                                             )}
 
                                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                                 <div className="p-10 rounded-[2.5rem] bg-primary/5 border border-primary/20 space-y-8 shadow-2xl relative overflow-hidden">
-                                                    <Sparkles className="absolute -top-4 -right-4 size-24 opacity-10 text-primary" />
-                                                    <div className="flex items-center gap-4 text-primary">
-                                                      <BrainCircuit size={28}/>
-                                                      <h4 className="text-base font-black uppercase italic tracking-[0.2em]">PARECER TÉCNICO</h4>
-                                                    </div>
+                                                    <BrainCircuit className="size-8 text-primary" />
+                                                    <h4 className="text-base font-black uppercase italic tracking-[0.2em] text-primary">PARECER TÉCNICO IA</h4>
                                                     <p className="text-sm leading-relaxed whitespace-pre-wrap italic font-bold text-muted-foreground/90">
                                                       {selectedWorkout.analysis.analysisSummary.summary}
                                                       {"\n\n"}
@@ -403,10 +382,8 @@ export default function TrainingPage() {
                                                 </div>
                                                 
                                                 <div className="p-10 rounded-[2.5rem] bg-accent/5 border border-accent/20 space-y-8 shadow-2xl">
-                                                    <div className="flex items-center gap-4 text-accent">
-                                                      <Target size={28}/>
-                                                      <h4 className="text-base font-black uppercase italic tracking-[0.2em]">RECOMENDAÇÃO COACH</h4>
-                                                    </div>
+                                                    <Target className="size-8 text-accent" />
+                                                    <h4 className="text-base font-black uppercase italic tracking-[0.2em] text-accent">RECOMENDAÇÃO DO COACH</h4>
                                                     <p className="text-lg leading-relaxed text-white font-black italic">"{selectedWorkout.analysis.recommendations}"</p>
                                                     <div className="pt-4 flex flex-wrap gap-2">
                                                       {selectedWorkout.analysis.areasOfImprovement?.map((area, idx) => (
@@ -423,9 +400,9 @@ export default function TrainingPage() {
                                     ) : (
                                         <div className="space-y-12">
                                             <div className="space-y-4">
-                                                <label className="text-[11px] font-black uppercase text-muted-foreground/60 italic tracking-[0.3em]">FEEDBACK SUBJETIVO DO ATLETA</label>
+                                                <label className="text-[11px] font-black uppercase text-muted-foreground/60 italic tracking-[0.3em]">FEEDBACK SUBJETIVO</label>
                                                 <Textarea 
-                                                    placeholder="Relate sua percepção de esforço, dores ou condições climáticas..." 
+                                                    placeholder="Como você se sentiu hoje? Relate dores, clima ou percepção de esforço..." 
                                                     className="bg-black/40 min-h-[220px] font-bold rounded-[2rem] border-white/5 italic text-lg p-10 focus:border-primary shadow-inner"
                                                     value={athleteFeedback}
                                                     onChange={(e) => setAthleteFeedback(e.target.value)}
@@ -433,7 +410,7 @@ export default function TrainingPage() {
                                             </div>
 
                                             <div className="space-y-6">
-                                                <label className="text-[11px] font-black uppercase text-muted-foreground/60 italic tracking-[0.3em]">SINC. SENSORES (FIT / CSV / PRINT)</label>
+                                                <label className="text-[11px] font-black uppercase text-muted-foreground/60 italic tracking-[0.3em]">IMPORTAR SENSORES (FIT / CSV / PRINT)</label>
                                                 <div 
                                                     className={cn(
                                                       "border-4 border-dashed rounded-[3rem] p-20 text-center space-y-10 cursor-pointer transition-all duration-500",
@@ -453,7 +430,7 @@ export default function TrainingPage() {
                                                             </div>
                                                          </div>
                                                          <div className="space-y-2">
-                                                            <p className="text-base font-black uppercase italic text-primary tracking-widest">DADOS CARREGADOS</p>
+                                                            <p className="text-base font-black uppercase italic text-primary tracking-widest">ARQUIVO CARREGADO</p>
                                                             <p className="text-[11px] text-muted-foreground truncate max-w-[400px] mx-auto italic font-bold opacity-60 uppercase">{uploadedFileName}</p>
                                                          </div>
                                                       </div>
@@ -466,7 +443,7 @@ export default function TrainingPage() {
                                                           </div>
                                                           <div className="space-y-3">
                                                               <p className="text-2xl font-black uppercase italic tracking-[0.4em] text-white">LABORATÓRIO DE DADOS</p>
-                                                              <p className="text-[11px] text-muted-foreground uppercase italic font-black tracking-widest opacity-40">CLIQUE PARA ANEXAR ARQUIVO DE SENSOR</p>
+                                                              <p className="text-[11px] text-muted-foreground uppercase italic font-black tracking-widest opacity-40">CLIQUE PARA ANEXAR ARQUIVO DO RELÓGIO</p>
                                                           </div>
                                                       </div>
                                                     )}
@@ -478,7 +455,7 @@ export default function TrainingPage() {
                                                 disabled={analyzing || !athleteFeedback.trim()}
                                                 onClick={handleFinalizeAnalysis}
                                             >
-                                                {analyzing ? <><Loader2 className="mr-5 size-8 animate-spin" /> SINCRONIZANDO MÉTRICAS...</> : 'PROCESSAR ANÁLISE'}
+                                                {analyzing ? <><Loader2 className="mr-5 size-8 animate-spin" /> SINCRONIZANDO COM A NUVEM...</> : 'PROCESSAR ANÁLISE'}
                                             </Button>
                                         </div>
                                     )}
