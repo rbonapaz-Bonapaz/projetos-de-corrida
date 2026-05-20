@@ -41,6 +41,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn, fileToDataURI } from '@/lib/utils';
 import type { Workout } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const dayOrder = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -60,7 +61,6 @@ export default function TrainingPage() {
   const [uploadedFileName, setUploadedFileName] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Sincronização em tempo real do treino selecionado
   React.useEffect(() => {
     if (selectedWorkout && plan) {
       for (const week of plan.weeklyPlans) {
