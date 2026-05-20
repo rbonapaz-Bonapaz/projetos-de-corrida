@@ -18,20 +18,20 @@ import type { AthleteProfile, TrainingPlan, Workout } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateTrainingBlock } from '@/ai/flows/generate-training-block';
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 type PlanGenerationStatus = 'idle' | 'pending' | 'success' | 'error';
 
 interface TrainingContextType {
   isHydrated: boolean;
   apiKey: string | null;
-  setApiKey: (key: string) => Promise<void>;
+  setApiKey: (key: string) => void;
   profiles: AthleteProfile[];
   activeProfile: AthleteProfile | null;
   switchProfile: (profileId: string | null) => void;
-  saveProfile: (data: Partial<AthleteProfile>) => Promise<void>;
+  saveProfile: (data: Partial<AthleteProfile>) => void;
   trainingPlan: TrainingPlan | null;
-  updateWorkout: (workoutId: string, updates: Partial<Workout>) => Promise<void>;
+  updateWorkout: (workoutId: string, updates: Partial<Workout>) => void;
   planGenerationStatus: PlanGenerationStatus;
   generateRunningPlanAsync: (profile: AthleteProfile) => Promise<void>;
   loginGoogle: () => Promise<void>;
@@ -86,7 +86,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     init();
   }, [auth]);
 
-  // 2. Sincronização em Tempo Real (Firestore onSnapshot)
+  // 2. Sincronização em Tempo Real Cloud-First
   useEffect(() => {
     if (!user || !db) {
       setRemoteConfig(null);
@@ -94,16 +94,30 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Configurações globais (API Key, lastProfile)
-    const unsubConfig = onSnapshot(doc(db, 'user_data', user.uid), (snap) => {
+    // Ouvinte para configurações globais (API Key, lastProfile)
+    const userRef = doc(db, 'user_data', user.uid);
+    const unsubConfig = onSnapshot(userRef, (snap) => {
       if (snap.exists()) setRemoteConfig(snap.data());
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'get',
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
     });
 
-    // Perfis do Atleta
-    const qOwn = query(collection(db, 'athletes'), where('ownerUid', '==', user.uid));
+    // Ouvinte para Perfis de Atleta
+    const athletesRef = collection(db, 'athletes');
+    const qOwn = query(athletesRef, where('ownerUid', '==', user.uid));
     const unsubOwn = onSnapshot(qOwn, (snap) => {
       const docs = snap.docs.map(d => ({ ...d.data(), id: d.id } as AthleteProfile));
       setRemoteProfiles(docs);
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: athletesRef.path,
+        operation: 'list',
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
     });
 
     return () => {
@@ -112,7 +126,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     };
   }, [user, db]);
 
-  // Merge de perfis locais e remotos
+  // Merge de perfis locais e remotos para garantir portabilidade
   const profiles = useMemo(() => {
     const map = new Map<string, AthleteProfile>();
     cloudProfiles.forEach(p => map.set(p.id, p));
@@ -133,13 +147,13 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      toast({ title: "Laboratório Sincronizado", description: "Sincronização via Google ativa." });
+      toast({ title: "Sincronização Ativa", description: "Seu laboratório agora está na nuvem." });
     } catch (e: any) {
       console.error(e);
       toast({ 
         variant: 'destructive', 
         title: "Erro no Login", 
-        description: "Verifique os 'Authorized Domains' no console do Firebase." 
+        description: "Falha na comunicação com o Google. Verifique sua conexão." 
       });
     }
   };
@@ -147,7 +161,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   const loginEmail = async (email: string, pass: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      toast({ title: "Acesso Liberado", description: "Sincronização Cloud Ativa." });
+      toast({ title: "Acesso Liberado", description: "Laboratório carregado com sucesso." });
     } catch (e: any) {
       toast({ variant: 'destructive', title: "Erro no Login", description: "Credenciais inválidas." });
     }
@@ -156,44 +170,47 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   const registerEmail = async (email: string, pass: string) => {
     try {
       await createUserWithEmailAndPassword(auth, email, pass);
-      toast({ title: "Atleta Cadastrado!", description: "Seu laboratório cloud foi criado." });
+      toast({ title: "Atleta Cadastrado!", description: "Seu espaço na nuvem foi criado." });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: "Erro no Cadastro", description: "Tente um e-mail diferente." });
+      toast({ variant: 'destructive', title: "Erro no Cadastro", description: "E-mail em uso ou senha fraca." });
     }
   };
 
   const logout = async () => {
     await signOut(auth);
     setLocalActiveProfileId(null);
-    toast({ title: "Sessão Encerrada", description: "Modo Local Ativo." });
+    toast({ title: "Sessão Finalizada", description: "Modo local reativado." });
   };
 
-  const setApiKey = async (key: string) => {
+  const setApiKey = (key: string) => {
     const cleanKey = key.trim();
     if (user && db) {
       const userRef = doc(db, 'user_data', user.uid);
-      setDoc(userRef, { apiKey: cleanKey }, { merge: true }).catch(err => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
+      setDoc(userRef, { apiKey: cleanKey }, { merge: true }).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
           path: userRef.path,
           operation: 'write',
           requestResourceData: { apiKey: cleanKey }
-        }));
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
       });
     } else {
       localStorage.setItem(STORAGE_KEYS.API_KEY, cleanKey);
       setLocalApiKey(cleanKey);
     }
-    toast({ title: "IA Calibrada", description: "Motor de análise biomecânica pronto." });
+    toast({ title: "IA Configurada", description: "Motor Gemini pronto para processamento." });
   };
 
   const switchProfile = (id: string | null) => {
     if (user && db) {
       const userRef = doc(db, 'user_data', user.uid);
-      setDoc(userRef, { lastActiveProfileId: id }, { merge: true }).catch(err => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
+      setDoc(userRef, { lastActiveProfileId: id }, { merge: true }).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
           path: userRef.path,
-          operation: 'write'
-        }));
+          operation: 'write',
+          requestResourceData: { lastActiveProfileId: id }
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
       });
     } else {
       localStorage.setItem(STORAGE_KEYS.LAST_PROFILE_ID, id || '');
@@ -201,7 +218,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const saveProfile = useCallback(async (data: Partial<AthleteProfile>) => {
+  const saveProfile = useCallback((data: Partial<AthleteProfile>) => {
     const id = data.id || activeProfile?.id || crypto.randomUUID();
     const ownerUid = user ? user.uid : (data.ownerUid || 'local-user');
     const newProfile = { ...(activeProfile || {}), ...data, id, ownerUid } as AthleteProfile;
@@ -210,12 +227,13 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       const docRef = doc(db, 'athletes', id);
       setDoc(docRef, newProfile, { merge: true }).then(() => {
         if (!persistedActiveProfileId) switchProfile(id);
-      }).catch(err => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
+      }).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
           path: docRef.path,
           operation: 'write',
           requestResourceData: newProfile
-        }));
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
       });
     } else {
       const newLocal = profiles.map(p => p.id === id ? newProfile : p);
@@ -225,7 +243,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     }
   }, [user, db, activeProfile, persistedActiveProfileId, profiles]);
 
-  const updateWorkout = useCallback(async (workoutId: string, updates: Partial<Workout>) => {
+  const updateWorkout = useCallback((workoutId: string, updates: Partial<Workout>) => {
     if (!activeProfile || !activeProfile.trainingPlan) return;
     const currentPlan = activeProfile.trainingPlan;
     const newWeeklyPlans = currentPlan.weeklyPlans.map((week) => ({
@@ -236,11 +254,13 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
     if (user && db) {
       const docRef = doc(db, 'athletes', activeProfile.id);
-      updateDoc(docRef, { trainingPlan: updatedPlan }).catch(err => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
+      updateDoc(docRef, { trainingPlan: updatedPlan }).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
           path: docRef.path,
-          operation: 'update'
-        }));
+          operation: 'update',
+          requestResourceData: { trainingPlan: updatedPlan }
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
       });
     } else {
       saveProfile({ trainingPlan: updatedPlan });
@@ -249,7 +269,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
   const generateRunningPlanAsync = async (profile: AthleteProfile) => {
     if (!effectiveApiKey) {
-      toast({ variant: "destructive", title: "IA Desconectada", description: "Insira sua API Key no menu lateral." });
+      toast({ variant: "destructive", title: "IA Desativada", description: "Insira sua API Key no menu lateral." });
       return;
     }
     setPlanGenerationStatus('pending');
@@ -288,12 +308,12 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         week.runs.forEach(run => { if (!run.id) run.id = crypto.randomUUID(); });
       });
 
-      await saveProfile({ ...profile, trainingPlan: result });
+      saveProfile({ ...profile, trainingPlan: result });
       setPlanGenerationStatus('success');
-      toast({ title: "Ciclo Gerado!", description: "Sua planilha biomecânica foi salva na nuvem." });
+      toast({ title: "Planilha Gerada", description: "Periodização sincronizada com sucesso." });
     } catch (error: any) {
       setPlanGenerationStatus('error');
-      toast({ variant: "destructive", title: "Erro na IA", description: "Verifique sua conexão ou API Key." });
+      toast({ variant: "destructive", title: "Erro na IA", description: "Falha ao processar os dados biomecânicos." });
     }
   };
 

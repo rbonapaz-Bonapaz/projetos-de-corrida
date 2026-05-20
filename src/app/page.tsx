@@ -136,12 +136,6 @@ export default function Home() {
                 <div className="h-[380px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="colorReal" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
                       <XAxis 
                         dataKey="day" 
                         stroke="hsl(var(--muted-foreground))" 
@@ -167,8 +161,7 @@ export default function Home() {
                         type="monotone" 
                         dataKey="real" 
                         stroke="hsl(var(--primary))" 
-                        fillOpacity={1} 
-                        fill="url(#colorReal)" 
+                        fill="hsl(var(--primary)/0.1)" 
                         strokeWidth={4} 
                       />
                       <Area 
@@ -193,7 +186,7 @@ export default function Home() {
                   <CardTitle className="font-headline font-black uppercase italic text-xl tracking-tight text-white flex items-center gap-2">
                     <Zap size={20} className="text-primary" /> PRÓXIMA SESSÃO
                   </CardTitle>
-                  <CardDescription className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 italic">Sincronizado na Nuvem</CardDescription>
+                  <CardDescription className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 italic">Sincronizado via Firestore</CardDescription>
                 </CardHeader>
                 <CardContent className="px-8 pb-8 flex-1 flex flex-col">
                   {plan ? (
@@ -227,7 +220,9 @@ export default function Home() {
                   )}
                   <div className="pt-8">
                     <Button asChild className="w-full h-14 bg-white text-black font-black uppercase italic tracking-widest rounded-2xl shadow-xl hover:bg-primary transition-all">
-                      <Link href="/training" className="flex items-center justify-center gap-2">VER PLANILHA COMPLETA <ArrowRight className="size-5" /></Link>
+                      <Link href="/training" className="flex items-center justify-center gap-2">
+                        VER PLANILHA COMPLETA <ArrowRight className="size-5" />
+                      </Link>
                     </Button>
                   </div>
                 </CardContent>

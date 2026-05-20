@@ -19,7 +19,6 @@ import {
   Route,
   X,
   FileDigit,
-  FileDown,
   Activity,
   ArrowRight,
   RefreshCcw,
@@ -40,7 +39,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn, fileToDataURI } from '@/lib/utils';
-import type { Workout, TrainingPlan } from "@/lib/types";
+import type { Workout } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
 const dayOrder = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -61,7 +60,7 @@ export default function TrainingPage() {
   const [uploadedFileName, setUploadedFileName] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Sincronização do treino selecionado em tempo real
+  // Sincronização em tempo real do treino selecionado
   React.useEffect(() => {
     if (selectedWorkout && plan) {
       for (const week of plan.weeklyPlans) {
@@ -94,9 +93,9 @@ export default function TrainingPage() {
       const uri = await fileToDataURI(file);
       setUploadedFileUri(uri);
       setUploadedFileName(file.name);
-      toast({ title: "DADOS CARREGADOS", description: "Pronto para sincronização cloud." });
+      toast({ title: "Arquivo Preparado", description: "Pronto para análise biomecânica." });
     } catch (err) {
-      toast({ variant: 'destructive', title: "FALHA NO UPLOAD" });
+      toast({ variant: 'destructive', title: "Erro no Upload" });
     }
   };
 
@@ -111,7 +110,7 @@ export default function TrainingPage() {
     if (!selectedWorkout || !profile || !context?.apiKey) return;
     
     setAnalyzing(true);
-    toast({ title: "🧠 ANALISANDO MÉTRICAS...", description: "Gemini Coach processando sensores." });
+    toast({ title: "🧠 Analisando Sensores...", description: "Extraindo métricas de performance." });
 
     try {
       const result = await analyzeWorkout({
@@ -128,24 +127,24 @@ export default function TrainingPage() {
         analysis: result
       };
       
-      await context?.updateWorkout(selectedWorkout.id, updatedWorkout);
+      context?.updateWorkout(selectedWorkout.id, updatedWorkout);
       setUploadedFileUri(null);
       setUploadedFileName(null);
       setAthleteFeedback("");
-      toast({ title: "✅ SESSÃO REGISTRADA", description: "Sincronizado com todos os seus dispositivos." });
+      toast({ title: "✅ Sessão Sincronizada", description: "Dados registrados na nuvem com sucesso." });
     } catch (error) {
       console.error(error);
-      toast({ variant: 'destructive', title: "ERRO NA ANÁLISE" });
+      toast({ variant: 'destructive', title: "Erro na Análise" });
     } finally {
       setAnalyzing(false);
     }
   };
 
-  const handleReschedule = async (newDay: string) => {
+  const handleReschedule = (newDay: string) => {
     if (!selectedWorkout) return;
     const updatedWorkout = { ...selectedWorkout, day: newDay };
-    await context?.updateWorkout(selectedWorkout.id, updatedWorkout);
-    toast({ title: "REAGENDAMENTO OK", description: `Sessão movida para ${newDay.toUpperCase()}.` });
+    context?.updateWorkout(selectedWorkout.id, updatedWorkout);
+    toast({ title: "Treino Reagendado", description: `Sessão movida para ${newDay.toUpperCase()}.` });
   };
 
   const calculateWeekVolume = (runs: Workout[]) => {
@@ -165,7 +164,7 @@ export default function TrainingPage() {
                 <span className="text-white">MEU</span> <br/> <span className="text-primary">PLANO</span>
               </h1>
               <p className="text-[10px] md:text-xs text-muted-foreground mt-4 font-black uppercase tracking-[0.4em] italic opacity-60">
-                PLANILHA SINCRONIZADA EM TEMPO REAL NA NUVEM
+                PLANILHA SINCRONIZADA EM TEMPO REAL VIA CLOUD
               </p>
             </div>
             <div className="flex flex-wrap gap-4">
@@ -188,10 +187,12 @@ export default function TrainingPage() {
                   </div>
                   <div className="space-y-4">
                       <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">Laboratório Vazio</h2>
-                      <p className="text-muted-foreground max-w-sm mx-auto font-bold uppercase italic text-[11px] tracking-widest opacity-60">Sua biometria será salva na nuvem e sincronizada com seu celular.</p>
+                      <p className="text-muted-foreground max-w-sm mx-auto font-bold uppercase italic text-[11px] tracking-widest opacity-60">
+                        Inicie sua periodização para ver seus treinos aqui.
+                      </p>
                   </div>
                   <Button asChild size="lg" className="h-20 px-16 font-black uppercase tracking-widest bg-primary text-black rounded-[1.5rem] shadow-2xl shadow-primary/30 transition-all hover:scale-105 hover:bg-white text-base">
-                      <a href="/profile">INICIAR PERIODIZAÇÃO <ArrowRight className="ml-4 size-6" /></a>
+                      <Link href="/profile">INICIAR PERIODIZAÇÃO <ArrowRight className="ml-4 size-6" /></Link>
                   </Button>
               </CardContent>
             </Card>
@@ -209,7 +210,7 @@ export default function TrainingPage() {
                       <p className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 italic">{week.focus.toUpperCase()}</p>
                     </div>
                     <div className="text-right space-y-2">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 italic">VOLUME DA SEMANA</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 italic">VOLUME SEMANAL</p>
                       <Badge className="bg-primary text-black font-black italic uppercase text-base px-6 py-2 rounded-xl shadow-xl shadow-primary/10">
                         {calculateWeekVolume(week.runs)} KM
                       </Badge>
@@ -248,7 +249,7 @@ export default function TrainingPage() {
                             </div>
                         </CardContent>
                         <CardFooter className="p-10 pt-0 border-t border-white/5 mt-auto flex justify-between items-center group-hover:bg-primary/5 transition-colors h-20">
-                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest italic opacity-40">VER DETALHES TÉCNICOS</span>
+                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest italic opacity-40">DETALHES TÉCNICOS</span>
                             <ChevronRight className="size-6 text-primary transition-all group-hover:translate-x-2" />
                         </CardFooter>
                       </Card>
@@ -276,7 +277,7 @@ export default function TrainingPage() {
                                 </div>
                                 {!selectedWorkout.completed && (
                                   <div className="flex flex-col items-end gap-3">
-                                    <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-[0.2em] italic">REAGENDAR SESSÃO</span>
+                                    <span className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-[0.2em] italic">MOVER SESSÃO</span>
                                     <Select onValueChange={handleReschedule} value={selectedWorkout.day}>
                                       <SelectTrigger className="w-48 bg-black/60 border-primary/30 rounded-2xl h-12 font-black italic uppercase text-[11px] tracking-widest shadow-2xl">
                                         <div className="flex items-center gap-2"><CalendarIcon size={14} className="text-primary"/><SelectValue /></div>
@@ -373,7 +374,7 @@ export default function TrainingPage() {
                                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                                 <div className="p-10 rounded-[2.5rem] bg-primary/5 border border-primary/20 space-y-8 shadow-2xl relative overflow-hidden">
                                                     <BrainCircuit className="size-8 text-primary" />
-                                                    <h4 className="text-base font-black uppercase italic tracking-[0.2em] text-primary">PARECER TÉCNICO IA</h4>
+                                                    <h4 className="text-base font-black uppercase italic tracking-[0.2em] text-primary">ANÁLISE DO COACH IA</h4>
                                                     <p className="text-sm leading-relaxed whitespace-pre-wrap italic font-bold text-muted-foreground/90">
                                                       {selectedWorkout.analysis.analysisSummary.summary}
                                                       {"\n\n"}
@@ -383,7 +384,7 @@ export default function TrainingPage() {
                                                 
                                                 <div className="p-10 rounded-[2.5rem] bg-accent/5 border border-accent/20 space-y-8 shadow-2xl">
                                                     <Target className="size-8 text-accent" />
-                                                    <h4 className="text-base font-black uppercase italic tracking-[0.2em] text-accent">RECOMENDAÇÃO DO COACH</h4>
+                                                    <h4 className="text-base font-black uppercase italic tracking-[0.2em] text-accent">RECOMENDAÇÃO TÉCNICA</h4>
                                                     <p className="text-lg leading-relaxed text-white font-black italic">"{selectedWorkout.analysis.recommendations}"</p>
                                                     <div className="pt-4 flex flex-wrap gap-2">
                                                       {selectedWorkout.analysis.areasOfImprovement?.map((area, idx) => (
@@ -394,15 +395,15 @@ export default function TrainingPage() {
                                             </div>
 
                                             <Button className="w-full bg-primary text-black font-black uppercase h-24 gap-4 rounded-[1.5rem] transition-all hover:scale-[1.02] hover:bg-white text-lg italic shadow-2xl shadow-primary/20" onClick={() => router.push('/coach')}>
-                                                <MessageSquare size={24}/> CONVERSAR SOBRE ESTA SESSÃO
+                                                <MessageSquare size={24}/> CONVERSAR COM O COACH
                                             </Button>
                                         </div>
                                     ) : (
                                         <div className="space-y-12">
                                             <div className="space-y-4">
-                                                <label className="text-[11px] font-black uppercase text-muted-foreground/60 italic tracking-[0.3em]">FEEDBACK SUBJETIVO</label>
+                                                <label className="text-[11px] font-black uppercase text-muted-foreground/60 italic tracking-[0.3em]">RELATO DA SESSÃO</label>
                                                 <Textarea 
-                                                    placeholder="Como você se sentiu hoje? Relate dores, clima ou percepção de esforço..." 
+                                                    placeholder="Como foi o treino? Relate esforço, clima ou qualquer dor..." 
                                                     className="bg-black/40 min-h-[220px] font-bold rounded-[2rem] border-white/5 italic text-lg p-10 focus:border-primary shadow-inner"
                                                     value={athleteFeedback}
                                                     onChange={(e) => setAthleteFeedback(e.target.value)}
@@ -410,7 +411,7 @@ export default function TrainingPage() {
                                             </div>
 
                                             <div className="space-y-6">
-                                                <label className="text-[11px] font-black uppercase text-muted-foreground/60 italic tracking-[0.3em]">IMPORTAR SENSORES (FIT / CSV / PRINT)</label>
+                                                <label className="text-[11px] font-black uppercase text-muted-foreground/60 italic tracking-[0.3em]">DADOS DOS SENSORES (.FIT / .CSV / PRINT)</label>
                                                 <div 
                                                     className={cn(
                                                       "border-4 border-dashed rounded-[3rem] p-20 text-center space-y-10 cursor-pointer transition-all duration-500",
@@ -418,7 +419,7 @@ export default function TrainingPage() {
                                                     )}
                                                     onClick={() => fileInputRef.current?.click()}
                                                 >
-                                                    <input type="file" ref={fileInputRef} className="sr-only" onChange={handleFileUpload} accept=".fit,.csv,image/*,.pdf" />
+                                                    <input type="file" ref={fileInputRef} className="sr-only" onChange={handleFileUpload} accept=".fit,.csv,image/*" />
                                                     {uploadedFileUri ? (
                                                       <div className="space-y-6 animate-in zoom-in-95">
                                                          <div className="flex justify-center">
@@ -442,8 +443,8 @@ export default function TrainingPage() {
                                                               <div className="p-8 rounded-[2rem] bg-secondary/40 text-muted-foreground/20"><Activity size={48}/></div>
                                                           </div>
                                                           <div className="space-y-3">
-                                                              <p className="text-2xl font-black uppercase italic tracking-[0.4em] text-white">LABORATÓRIO DE DADOS</p>
-                                                              <p className="text-[11px] text-muted-foreground uppercase italic font-black tracking-widest opacity-40">CLIQUE PARA ANEXAR ARQUIVO DO RELÓGIO</p>
+                                                              <p className="text-2xl font-black uppercase italic tracking-[0.4em] text-white">CENTRO DE IMPORTAÇÃO</p>
+                                                              <p className="text-[11px] text-muted-foreground uppercase italic font-black tracking-widest opacity-40">ANEXE O ARQUIVO DO SEU RELÓGIO</p>
                                                           </div>
                                                       </div>
                                                     )}
