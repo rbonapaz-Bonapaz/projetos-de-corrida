@@ -227,7 +227,7 @@ export default function Home() {
                   )}
                   <div className="pt-8">
                     <Button asChild className="w-full h-14 bg-white text-black font-black uppercase italic tracking-widest rounded-2xl shadow-xl hover:bg-primary transition-all">
-                      <Link href="/training">VER PLANILHA COMPLETA <ArrowRight className="ml-2 size-5" /></Link>
+                      <Link href="/training" className="flex items-center justify-center gap-2">VER PLANILHA COMPLETA <ArrowRight className="size-5" /></Link>
                     </Button>
                   </div>
                 </CardContent>
