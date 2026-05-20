@@ -3,7 +3,7 @@
  * Sincronizado com o projeto: studio-1669701209-88700
  */
 export const firebaseConfig = {
-  apiKey: "AIzaSyAym--fjMSov5UfeR_iUjYasEgH9cEgLjc",
+  apiKey: "AIzaSyBTHlgY_B4gElAUJ_d85xcgSThfLWw6iFo",
   authDomain: "studio-1669701209-88700.firebaseapp.com",
   projectId: "studio-1669701209-88700",
   storageBucket: "studio-1669701209-88700.firebasestorage.app",
