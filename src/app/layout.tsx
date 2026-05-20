@@ -1,4 +1,5 @@
-import type {Metadata} from 'next';
+
+import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { TrainingProvider } from '@/contexts/TrainingContext';
 import { Toaster } from '@/components/ui/toaster';
@@ -7,6 +8,20 @@ import { FirebaseClientProvider } from '@/firebase';
 export const metadata: Metadata = {
   title: 'CorreJunto - Performance Atlética Avançada',
   description: 'Periodização impulsionada por IA e análise de desempenho para atletas.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'CorreJunto',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#4ade80',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
