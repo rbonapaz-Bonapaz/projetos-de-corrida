@@ -1,9 +1,17 @@
 'use client';
 
 import { createContext, useState, useEffect, type ReactNode, useCallback, useMemo } from 'react';
-import { doc, onSnapshot, setDoc, collection, query, where, updateDoc } from 'firebase/firestore';
-import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { useAuth, useFirestore, useUser, useCollection } from '@/firebase';
+import { doc, onSnapshot, setDoc, collection, query, where, updateDoc, getDoc } from 'firebase/firestore';
+import { 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut, 
+  setPersistence, 
+  browserLocalPersistence,
+  onAuthStateChanged,
+  type User
+} from 'firebase/auth';
+import { useAuth, useFirestore } from '@/firebase';
 import type { AthleteProfile, TrainingPlan, Workout } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateTrainingBlock } from '@/ai/flows/generate-training-block';
@@ -27,6 +35,7 @@ interface TrainingContextType {
   login: () => Promise<void>;
   logout: () => Promise<void>;
   toggleIntegration: (service: 'strava' | 'coros', connected: boolean) => void;
+  user: User | null;
 }
 
 export const TrainingContext = createContext<TrainingContextType | null>(null);
@@ -39,53 +48,73 @@ const STORAGE_KEYS = {
 export function TrainingProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const db = useFirestore();
-  const { user, loading: authLoading } = useUser();
   const { toast } = useToast();
 
+  const [user, setUser] = useState<User | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [localApiKey, setLocalApiKey] = useState<string | null>(null);
   const [localActiveProfileId, setLocalActiveProfileId] = useState<string | null>(null);
   const [planGenerationStatus, setPlanGenerationStatus] = useState<PlanGenerationStatus>('idle');
-  const [userConfig, setUserConfig] = useState<any>(null);
+  
+  const [remoteConfig, setRemoteConfig] = useState<any>(null);
+  const [cloudProfiles, setRemoteProfiles] = useState<AthleteProfile[]>([]);
+  const [localProfiles, setLocalProfiles] = useState<AthleteProfile[]>([]);
 
-  // 1. Sincronização de Configurações Globais (Real-time)
+  // 1. Inicialização e Monitoramento de Auth
   useEffect(() => {
+    // Persistência local para evitar deslogar ao fechar o navegador/celular
+    setPersistence(auth, browserLocalPersistence);
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsHydrated(true);
+    });
+
+    // Carrega dados do localStorage para o modo Offline/Convidado
     const lKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
     const lProfId = localStorage.getItem(STORAGE_KEYS.LAST_PROFILE_ID);
     if (lKey) setLocalApiKey(lKey);
     if (lProfId) setLocalActiveProfileId(lProfId);
-    setIsHydrated(true);
 
-    if (user && db) {
-      const unsubscribe = onSnapshot(doc(db, 'user_data', user.uid), (snap) => {
-        if (snap.exists()) setUserConfig(snap.data());
-      });
-      return () => unsubscribe();
+    return () => unsubscribeAuth();
+  }, [auth]);
+
+  // 2. Sincronização em Tempo Real (Firestore)
+  useEffect(() => {
+    if (!user || !db) {
+      setRemoteConfig(null);
+      setRemoteProfiles([]);
+      return;
     }
+
+    // Ouvinte para configurações globais (API Key, etc)
+    const unsubConfig = onSnapshot(doc(db, 'user_data', user.uid), (snap) => {
+      if (snap.exists()) setRemoteConfig(snap.data());
+    });
+
+    // Ouvinte para perfis onde o usuário é dono
+    const qOwn = query(collection(db, 'athletes'), where('ownerUid', '==', user.uid));
+    const unsubOwn = onSnapshot(qOwn, (snap) => {
+      const docs = snap.docs.map(d => ({ ...d.data(), id: d.id } as AthleteProfile));
+      setRemoteProfiles(docs);
+    });
+
+    return () => {
+      unsubConfig();
+      unsubOwn();
+    };
   }, [user, db]);
 
-  const effectiveApiKey = user ? (userConfig?.apiKey || null) : localApiKey;
-  const persistedActiveProfileId = user ? (userConfig?.lastActiveProfileId || null) : localActiveProfileId;
-
-  // 2. Busca de Perfis com Sincronização Ativa (Real-time)
-  const coachProfilesQuery = useMemo(() => {
-    if (user) return query(collection(db, 'athletes'), where('ownerUid', '==', user.uid));
-    return query(collection(db, 'athletes'), where('ownerUid', '==', 'local-user'));
-  }, [db, user]);
-  const { data: coachProfiles } = useCollection<AthleteProfile>(coachProfilesQuery);
-
-  const athleteProfilesQuery = useMemo(() => {
-    if (user?.email) return query(collection(db, 'athletes'), where('athleteEmail', '==', user.email));
-    return null;
-  }, [db, user]);
-  const { data: athleteProfiles } = useCollection<AthleteProfile>(athleteProfilesQuery);
-
+  // 3. Combinação de Dados (Local + Nuvem)
   const profiles = useMemo(() => {
     const map = new Map<string, AthleteProfile>();
-    (coachProfiles || []).forEach(p => map.set(p.id, p));
-    (athleteProfiles || []).forEach(p => map.set(p.id, p));
+    cloudProfiles.forEach(p => map.set(p.id, p));
+    localProfiles.forEach(p => { if (!map.has(p.id)) map.set(p.id, p); });
     return Array.from(map.values());
-  }, [coachProfiles, athleteProfiles]);
+  }, [cloudProfiles, localProfiles]);
+
+  const effectiveApiKey = user ? (remoteConfig?.apiKey || null) : localApiKey;
+  const persistedActiveProfileId = user ? (remoteConfig?.lastActiveProfileId || null) : localActiveProfileId;
 
   const activeProfile = useMemo(() => {
     return profiles.find(p => p.id === persistedActiveProfileId) || profiles[0] || null;
@@ -93,26 +122,38 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
   const trainingPlan = activeProfile?.trainingPlan || null;
 
-  // Ações de Sincronização
+  // --- AÇÕES ---
+
+  const login = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      toast({ title: "Laboratório Sincronizado", description: "Dados agora salvos na nuvem CorreJunto." });
+    } catch (e: any) {
+      console.error(e);
+      toast({ variant: 'destructive', title: "Falha na Autenticação", description: "Verifique os domínios autorizados no console do Firebase." });
+    }
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+    setLocalActiveProfileId(null);
+    toast({ title: "Modo Local Ativo", description: "Sincronização pausada." });
+  };
+
   const setApiKey = async (key: string) => {
     const cleanKey = key.trim();
-    if (user) {
-      setDoc(doc(db, 'user_data', user.uid), { apiKey: cleanKey }, { merge: true }).catch(err => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: `user_data/${user.uid}`,
-          operation: 'write',
-          requestResourceData: { apiKey: cleanKey }
-        }));
-      });
+    if (user && db) {
+      setDoc(doc(db, 'user_data', user.uid), { apiKey: cleanKey }, { merge: true });
     } else {
       localStorage.setItem(STORAGE_KEYS.API_KEY, cleanKey);
       setLocalApiKey(cleanKey);
     }
-    toast({ title: "Motor Ativo", description: "Configuração sincronizada na nuvem." });
+    toast({ title: "IA Calibrada", description: "Motor de performance ativo." });
   };
 
   const switchProfile = (id: string | null) => {
-    if (user) {
+    if (user && db) {
       setDoc(doc(db, 'user_data', user.uid), { lastActiveProfileId: id }, { merge: true });
     } else {
       localStorage.setItem(STORAGE_KEYS.LAST_PROFILE_ID, id || '');
@@ -123,20 +164,31 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   const saveProfile = useCallback(async (data: Partial<AthleteProfile>) => {
     const id = data.id || activeProfile?.id || crypto.randomUUID();
     const ownerUid = data.ownerUid || (user ? user.uid : 'local-user');
-    const docRef = doc(db, 'athletes', id);
     
     const newProfile = { ...(activeProfile || {}), ...data, id, ownerUid } as AthleteProfile;
 
-    setDoc(docRef, newProfile, { merge: true }).then(() => {
-      if (!persistedActiveProfileId) switchProfile(id);
-    }).catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'write',
-        requestResourceData: newProfile
-      }));
-    });
-  }, [user, db, activeProfile, persistedActiveProfileId]);
+    if (user && db) {
+      const docRef = doc(db, 'athletes', id);
+      setDoc(docRef, newProfile, { merge: true }).then(() => {
+        if (!persistedActiveProfileId) switchProfile(id);
+      }).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'write',
+          requestResourceData: newProfile
+        }));
+      });
+    } else {
+      // Salva localmente se deslogado
+      const newLocal = profiles.map(p => p.id === id ? newProfile : p);
+      if (!profiles.find(p => p.id === id)) newLocal.push(newProfile);
+      setLocalProfiles(newLocal);
+      if (!persistedActiveProfileId) {
+         localStorage.setItem(STORAGE_KEYS.LAST_PROFILE_ID, id);
+         setLocalActiveProfileId(id);
+      }
+    }
+  }, [user, db, activeProfile, persistedActiveProfileId, profiles]);
 
   const updateWorkout = useCallback(async (workoutId: string, updates: Partial<Workout>) => {
     if (!activeProfile || !activeProfile.trainingPlan) return;
@@ -147,20 +199,24 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       runs: week.runs.map((run) => run.id === workoutId ? { ...run, ...updates } : run)
     }));
 
-    const docRef = doc(db, 'athletes', activeProfile.id);
-    updateDoc(docRef, {
-      trainingPlan: { ...currentPlan, weeklyPlans: newWeeklyPlans }
-    }).catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'update'
-      }));
-    });
-  }, [db, activeProfile]);
+    const updatedPlan = { ...currentPlan, weeklyPlans: newWeeklyPlans };
+
+    if (user && db) {
+      const docRef = doc(db, 'athletes', activeProfile.id);
+      updateDoc(docRef, { trainingPlan: updatedPlan }).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update'
+        }));
+      });
+    } else {
+      saveProfile({ trainingPlan: updatedPlan });
+    }
+  }, [db, user, activeProfile, saveProfile]);
 
   const generateRunningPlanAsync = async (profile: AthleteProfile) => {
     if (!effectiveApiKey) {
-      toast({ variant: "destructive", title: "IA Offline", description: "Configure sua API Key para gerar o ciclo." });
+      toast({ variant: "destructive", title: "IA Indisponível", description: "Insira sua API Key no menu lateral." });
       return;
     }
 
@@ -202,31 +258,11 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
       await saveProfile({ ...profile, trainingPlan: result });
       setPlanGenerationStatus('success');
-      toast({ title: "Ciclo Sincronizado!", description: "Dados disponíveis em todos os seus dispositivos." });
+      toast({ title: "Planilha Sincronizada", description: "Novo ciclo gerado e salvo na nuvem." });
     } catch (error: any) {
       console.error(error);
       setPlanGenerationStatus('error');
-      toast({ variant: "destructive", title: "Falha na IA", description: "Verifique sua conexão e chave de API." });
-    }
-  };
-
-  const login = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      toast({ title: "Sincronização Ativa", description: "Bem-vindo ao laboratório cloud." });
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Erro na Autenticação" });
-    }
-  };
-
-  const logout = async () => {
-    try {
-      await signOut(auth);
-      setLocalActiveProfileId(null);
-      toast({ title: "Sessão Encerrada", description: "Modo local reativado." });
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Erro ao Sair" });
+      toast({ variant: "destructive", title: "Erro no Motor de IA", description: "Verifique sua chave de API." });
     }
   };
 
@@ -242,7 +278,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
   return (
     <TrainingContext.Provider value={{
-      isHydrated: isHydrated && !authLoading, 
+      isHydrated: isHydrated, 
       apiKey: effectiveApiKey, 
       setApiKey,
       profiles,
@@ -255,7 +291,8 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       generateRunningPlanAsync,
       login,
       logout,
-      toggleIntegration
+      toggleIntegration,
+      user
     }}>
       {children}
     </TrainingContext.Provider>

@@ -39,7 +39,6 @@ import {
   useSidebar
 } from "@/components/ui/sidebar";
 import { TrainingContext } from "@/contexts/TrainingContext";
-import { useUser } from "@/firebase";
 import {
   Dialog,
   DialogContent,
@@ -74,11 +73,13 @@ const items = [
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const context = React.useContext(TrainingContext);
-  const { user, loading: authLoading } = useUser();
   const [showKeyModal, setShowKeyModal] = React.useState(false);
   const [tempKey, setTempKey] = React.useState("");
 
+  // Hydration safety
+  const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => {
+    setMounted(true);
     if (context?.apiKey) setTempKey(context.apiKey);
   }, [context?.apiKey]);
 
@@ -89,16 +90,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (!context?.isHydrated || authLoading) {
+  if (!mounted || !context?.isHydrated) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-background gap-4">
         <Loader2 className="size-12 animate-spin text-primary" />
-        <p className="font-headline font-black uppercase italic tracking-widest text-primary animate-pulse">Sincronizando Laboratório...</p>
+        <p className="font-headline font-black uppercase italic tracking-widest text-primary animate-pulse">Sincronizando Laboratório Cloud...</p>
       </div>
     );
   }
 
   const isIAActive = !!(context?.apiKey && context.apiKey.trim() !== "");
+  const user = context.user;
 
   return (
     <SidebarProvider>
@@ -158,7 +160,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   onClick={() => context?.login()}
                 >
                   <LogIn className="size-4" />
-                  <span className="group-data-[collapsible=icon]:hidden font-headline font-black text-[11px] tracking-widest uppercase italic">Entrar / Salvar</span>
+                  <span className="group-data-[collapsible=icon]:hidden font-headline font-black text-[11px] tracking-widest uppercase italic">Entrar / Sincronizar</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
