@@ -1,4 +1,3 @@
-
 # 🏃‍♂️ CORRE JUNTO - Laboratório de Performance
 
 Sua plataforma de elite para periodização e análise biomecânica, operando em arquitetura **Cloud-First** via Firebase Firestore.
@@ -9,7 +8,7 @@ O app está configurado para a sua nova chave de API: `AIzaSyBTHlgY_B4gElAUJ_d85
 
 ### 1. Desbloqueio da Chave (Obrigatório)
 1. Acesse o [Google Cloud Console - Credenciais](https://console.cloud.google.com/apis/credentials).
-2. Clique na chave `AIzaSyBTHlgY_B4gElAUJ_d85xcgSThfLWw6iFo`.
+2. Clique na chave `Assessoria Corre Junto` (`AIzaSyBTHlgY_B4gElAUJ_d85xcgSThfLWw6iFo`).
 3. Role até **"Restrições de API"**.
 4. Selecione **"Não restringir chave"** (Don't restrict key).
 5. Clique em **SALVAR**.
