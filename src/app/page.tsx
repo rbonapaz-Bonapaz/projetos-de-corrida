@@ -20,7 +20,9 @@ import {
   ArrowRight,
   Zap,
   Calendar,
-  Info
+  Info,
+  Trophy,
+  Timer
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,6 +50,18 @@ export default function Home() {
   const context = React.useContext(TrainingContext);
   const profile = context?.activeProfile;
   const plan = context?.trainingPlan;
+
+  const [daysToRace, setDaysToRace] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (profile?.raceDate) {
+      const raceDate = new Date(profile.raceDate);
+      const today = new Date();
+      const diffTime = raceDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      setDaysToRace(diffDays > 0 ? diffDays : 0);
+    }
+  }, [profile?.raceDate]);
 
   const stats = [
     { 
@@ -84,6 +98,7 @@ export default function Home() {
     <DashboardLayout>
       <TooltipProvider>
         <div className="space-y-12 animate-in fade-in duration-700">
+          {/* Widgets de Topo */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat) => (
               <Card key={stat.label} className="bg-card/40 border-white/5 hover:border-primary/40 transition-all duration-300 shadow-2xl relative overflow-hidden group rounded-2xl">
@@ -120,67 +135,105 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <Card className="lg:col-span-2 bg-card/40 border-white/5 shadow-2xl rounded-3xl overflow-hidden">
-              <CardHeader className="p-8 border-b border-white/5">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="font-headline font-black uppercase italic text-3xl tracking-tighter text-white flex items-center gap-3">
-                      <TrendingUp size={24} className="text-primary" /> PROGRESSÃO DE VOLUME
-                    </CardTitle>
-                    <CardDescription className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 italic">Previsto vs. Realizado (KM)</CardDescription>
+            <div className="lg:col-span-2 space-y-8">
+              {/* Gráfico de Progressão */}
+              <Card className="bg-card/40 border-white/5 shadow-2xl rounded-3xl overflow-hidden">
+                <CardHeader className="p-8 border-b border-white/5">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="font-headline font-black uppercase italic text-3xl tracking-tighter text-white flex items-center gap-3">
+                        <TrendingUp size={24} className="text-primary" /> PROGRESSÃO DE VOLUME
+                      </CardTitle>
+                      <CardDescription className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 italic">Previsto vs. Realizado (KM)</CardDescription>
+                    </div>
+                    <Badge variant="outline" className="border-primary/20 text-primary font-black italic uppercase text-[10px] px-3 py-1">Semana Atual</Badge>
                   </div>
-                  <Badge variant="outline" className="border-primary/20 text-primary font-black italic uppercase text-[10px] px-3 py-1">Semana Atual</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="p-8">
-                <div className="h-[380px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <XAxis 
-                        dataKey="day" 
-                        stroke="hsl(var(--muted-foreground))" 
-                        fontSize={10} 
-                        fontWeight="bold"
-                        tickLine={false} 
-                        axisLine={false} 
-                        tickFormatter={(v) => v.toUpperCase()}
-                      />
-                      <YAxis 
-                        stroke="hsl(var(--muted-foreground))" 
-                        fontSize={10} 
-                        fontWeight="bold"
-                        tickLine={false} 
-                        axisLine={false} 
-                      />
-                      <RechartsTooltip 
-                        contentStyle={{ backgroundColor: 'rgba(10, 12, 16, 0.95)', borderColor: 'rgba(255,255,255,0.05)', borderRadius: '1rem', backdropFilter: 'blur(10px)' }}
-                        itemStyle={{ color: 'hsl(var(--primary))', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}
-                      />
-                      <Area 
-                        name="REALIZADO" 
-                        type="monotone" 
-                        dataKey="real" 
-                        stroke="hsl(var(--primary))" 
-                        fill="hsl(var(--primary)/0.1)" 
-                        strokeWidth={4} 
-                      />
-                      <Area 
-                        name="PLANEJADO" 
-                        type="monotone" 
-                        dataKey="previsto" 
-                        stroke="white" 
-                        strokeOpacity={0.2}
-                        strokeDasharray="8 8" 
-                        fill="transparent" 
-                        strokeWidth={2} 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="p-8">
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData}>
+                        <XAxis 
+                          dataKey="day" 
+                          stroke="hsl(var(--muted-foreground))" 
+                          fontSize={10} 
+                          fontWeight="bold"
+                          tickLine={false} 
+                          axisLine={false} 
+                          tickFormatter={(v) => v.toUpperCase()}
+                        />
+                        <YAxis 
+                          stroke="hsl(var(--muted-foreground))" 
+                          fontSize={10} 
+                          fontWeight="bold"
+                          tickLine={false} 
+                          axisLine={false} 
+                        />
+                        <RechartsTooltip 
+                          contentStyle={{ backgroundColor: 'rgba(10, 12, 16, 0.95)', borderColor: 'rgba(255,255,255,0.05)', borderRadius: '1rem', backdropFilter: 'blur(10px)' }}
+                          itemStyle={{ color: 'hsl(var(--primary))', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}
+                        />
+                        <Area 
+                          name="REALIZADO" 
+                          type="monotone" 
+                          dataKey="real" 
+                          stroke="hsl(var(--primary))" 
+                          fill="hsl(var(--primary)/0.1)" 
+                          strokeWidth={4} 
+                        />
+                        <Area 
+                          name="PLANEJADO" 
+                          type="monotone" 
+                          dataKey="previsto" 
+                          stroke="white" 
+                          strokeOpacity={0.2}
+                          strokeDasharray="8 8" 
+                          fill="transparent" 
+                          strokeWidth={2} 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Cronograma de Provas (Novo Widget) */}
+              <Card className="bg-card/40 border-white/5 shadow-2xl rounded-3xl overflow-hidden">
+                <CardHeader className="p-8">
+                  <CardTitle className="font-headline font-black uppercase italic text-2xl tracking-tighter text-white flex items-center gap-3">
+                    <Trophy size={24} className="text-primary" /> CRONOGRAMA DE PROVAS
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-8 pt-0">
+                  {profile?.raceName ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-6 rounded-2xl bg-secondary/30 border border-white/5 group hover:border-primary/30 transition-all">
+                        <div className="flex items-center gap-6">
+                          <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                            <Timer size={28} />
+                          </div>
+                          <div className="space-y-1">
+                            <h4 className="font-headline font-black uppercase italic text-white text-lg leading-none">{profile.raceName}</h4>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 italic">{profile.raceDistance} • {new Date(profile.raceDate).toLocaleDateString('pt-BR')}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-3xl font-headline font-black uppercase italic tracking-tighter text-primary leading-none">{daysToRace}</p>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40 italic">DIAS RESTANTES</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 border-2 border-dashed border-white/5 rounded-2xl">
+                       <p className="text-xs text-muted-foreground font-black uppercase italic tracking-widest">Nenhuma prova alvo configurada</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
             <div className="space-y-8">
+              {/* Próxima Sessão */}
               <Card className="bg-card/40 border-white/5 shadow-2xl rounded-3xl overflow-hidden flex flex-col h-full">
                 <CardHeader className="p-8">
                   <CardTitle className="font-headline font-black uppercase italic text-xl tracking-tight text-white flex items-center gap-2">
