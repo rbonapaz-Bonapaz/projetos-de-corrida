@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Fluxo Genkit para gerar blocos de treinamento personalizados.
@@ -28,6 +29,7 @@ const GenerateTrainingBlockInputSchema = z.object({
   preferredWorkoutDays: z.string().describe('Dias preferidos para treinos de qualidade/tiros.'),
   legDay: z.string().optional().describe('Dia da semana reservado para treino de pernas na musculação.'),
   referenceFileDataUri: z.string().optional().describe('URI de dados de arquivo de referência.'),
+  anamnesisContext: z.string().optional().describe('Contexto completo de anamnese clínica e técnica.'),
 });
 
 export type GenerateTrainingBlockInput = z.infer<typeof GenerateTrainingBlockInputSchema>;
@@ -72,16 +74,19 @@ export async function generateTrainingBlock(input: GenerateTrainingBlockInput): 
     4. Disponibilidade: ${input.weeklyAvailability}.
     5. Zonas de FC: Z1<${input.hrZone1End}, Z2<${input.hrZone2End}, Z3<${input.hrZone3End}, Z4<${input.hrZone4End}.
     6. Jamais prescreva treinos de alta intensidade no dia seguinte ao Leg Day (${input.legDay || 'Não definido'}).
-    7. A semana deve começar no DOMINGO.
-    8. Para treinos de qualidade (Intervalados, Tempo Run), divida sempre em fases: Aquecimento, Principal e Desaquecimento.`;
+    7. Se houver histórico de lesão recente (${input.injuryHistory}), adote uma progressão de volume 15% mais conservadora.
+    8. A semana deve começar no DOMINGO.
+    9. Para treinos de qualidade (Intervalados, Tempo Run), divida sempre em fases: Aquecimento, Principal e Desaquecimento.
+    
+    CONTEXTO DO ATLETA (ANAMNESE):
+    ${input.anamnesisContext || 'Nenhum contexto extra fornecido.'}`;
 
   const { output } = await aiInstance.generate({
     model: 'googleai/gemini-2.5-flash',
     system: systemPrompt,
     prompt: `Gere um bloco de treinamento de performance para o atleta seguindo rigorosamente os dados fornecidos. 
     Bloco: ${input.trainingBlockType}. 
-    Histórico: ${input.injuryHistory}.
-    Referência: ${input.referenceFileDataUri ? `Use este arquivo como base visual para o plano: ${input.referenceFileDataUri}` : 'Nenhuma'}`,
+    Referência Visual: ${input.referenceFileDataUri ? `Use este arquivo como base visual para o plano: ${input.referenceFileDataUri}` : 'Nenhuma'}`,
     output: { schema: GenerateTrainingBlockOutputSchema },
   });
 

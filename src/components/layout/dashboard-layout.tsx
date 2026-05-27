@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   Mail,
   Lock,
+  ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,7 @@ const items = [
   { title: "CONQUISTAS", url: "/vault", icon: Trophy },
   { title: "COACH IA", url: "/coach", icon: MessageSquare },
   { title: "CALCULADORAS", url: "/calculators", icon: Calculator },
+  { title: "ANAMNESE", url: "/anamnesis", icon: ClipboardList },
   { title: "DICIONÁRIO", url: "/dictionary", icon: BookOpen },
   { title: "INTEGRAÇÕES", url: "/integrations", icon: Link2 },
   { title: "MEUS DADOS", url: "/profile", icon: UserIcon },

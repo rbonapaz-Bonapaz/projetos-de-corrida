@@ -38,6 +38,41 @@ export interface IntegrationData {
   refreshToken?: string;
 }
 
+export interface AnamnesisData {
+  whatsapp?: string;
+  profession?: string;
+  emergencyContact?: string;
+  medicalRelease?: string;
+  chronicIllness?: string;
+  chronicIllnessDetail?: string;
+  medication?: string;
+  injuryHistory?: string[];
+  activeInjuries?: string;
+  practiceTime?: string;
+  consistency?: string;
+  mirrorWeek?: string;
+  easyPace?: string;
+  hardPace?: string;
+  trainingStructure?: string;
+  footwear?: string;
+  recentRecord?: string;
+  maxContinuousDistance?: string;
+  preferredShift?: string;
+  timeWeekdays?: string;
+  timeWeekends?: string;
+  strengthDays?: string[];
+  strengthFocus?: string;
+  strengthLocation?: string;
+  intensityMonitoring?: string;
+  terrain?: string;
+  devices?: string[];
+  biggestDifficulty?: string;
+  commitmentLevel?: number;
+  sleepQuality?: number;
+  stressLevel?: number;
+  dietClassification?: string;
+}
+
 export interface AthleteProfile {
   id: string;
   name: string;
@@ -73,6 +108,7 @@ export interface AthleteProfile {
     strava: IntegrationData;
     coros: IntegrationData;
   };
+  anamnesis?: AnamnesisData;
 }
 
 export interface AiAnalysis {

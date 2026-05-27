@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useState, useEffect, type ReactNode, useCallback, useMemo } from 'react';
@@ -274,6 +275,16 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       else if (profile.experienceLevel === 'intermediate') weeklyMileageGoal = 45;
       else if (profile.experienceLevel === 'advanced') weeklyMileageGoal = 75;
 
+      // Monta o contexto de anamnese para a IA
+      const anamnesisContext = profile.anamnesis ? `
+        Lesões Antigas: ${profile.anamnesis.injuryHistory?.join(', ')}
+        Dores Atuais: ${profile.anamnesis.activeInjuries}
+        Sono: ${profile.anamnesis.sleepQuality}/5
+        Estresse: ${profile.anamnesis.stressLevel}/5
+        Equipamento: ${profile.anamnesis.footwear}
+        Mirror Week (Realidade): ${profile.anamnesis.mirrorWeek}
+      ` : "Sem anamnese detalhada.";
+
       const result = await generateTrainingBlock({
         apiKey: effectiveApiKey,
         raceName: profile.raceName,
@@ -295,7 +306,8 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         injuryHistory: profile.trainingHistory || 'Nenhuma reportada',
         preferredWorkoutDays: profile.trainingDays.slice(0, 2).join(', '),
         legDay: profile.strengthPreferences?.legDay,
-        referenceFileDataUri: profile.referenceDocumentUri
+        referenceFileDataUri: profile.referenceDocumentUri,
+        anamnesisContext
       });
 
       result.weeklyPlans.forEach(week => {
