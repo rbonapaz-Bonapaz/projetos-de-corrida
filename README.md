@@ -2,7 +2,22 @@
 
 Sua plataforma de elite para periodização e análise biomecânica.
 
-## 🚀 RESOLVENDO O BLOQUEIO DE LOGIN (URGENTE)
+## 🚀 COMO REALIZAR O DEPLOY (RESOLVENDO ERRO 'OUT')
+
+Para que o Firebase Hosting encontre os arquivos, você deve gerar o build antes de enviar:
+
+1. No terminal, execute o comando de build:
+   ```bash
+   npm run build
+   ```
+   *Isso criará a pasta `out/` com seu site estático.*
+
+2. Após o build terminar com sucesso, execute o deploy:
+   ```bash
+   firebase deploy --only hosting
+   ```
+
+## 🛠️ RESOLVENDO O BLOQUEIO DE LOGIN
 
 Se você vir o erro "requests-to-this-api... are blocked", siga estes passos:
 
@@ -19,13 +34,6 @@ Se você vir o erro "requests-to-this-api... are blocked", siga estes passos:
 3. Adicione os domínios:
    - `studio-1669701209-88700.web.app`
    - `studio-1669701209-88700.firebaseapp.com`
-
-### 3. Deploy Automático via GitHub
-Para sincronização contínua:
-1. No Firebase Console, vá em **App Hosting**.
-2. Clique em **"Começar"**.
-3. Conecte seu GitHub: `https://github.com/rbonapaz-Bonapaz/Assessoria-Corre-Junto`
-4. O Firebase fará o build automaticamente usando as variáveis configuradas.
 
 ## 📱 Sincronização Cloud
 - **Sincronização:** PC e Celular conversam em tempo real via Firestore.

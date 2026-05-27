@@ -1,7 +1,8 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  /* Habilita a exportação estática para criar a pasta 'out' exigida pelo Firebase Hosting */
+  output: 'export',
   typescript: {
     ignoreBuildErrors: true,
   },
