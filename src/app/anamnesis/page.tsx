@@ -16,15 +16,11 @@ import {
   FileDown, 
   Stethoscope, 
   Activity, 
-  Target, 
-  Zap, 
-  Heart,
+  Clock, 
   Save,
   Loader2,
-  Clock,
-  Dumbbell,
-  Smartphone,
-  Trophy
+  Trophy,
+  Zap
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -39,6 +35,8 @@ const weekDays = [
   { id: 'Sab', label: 'Sábado' },
   { id: 'Dom', label: 'Domingo' },
 ];
+
+const injuryOptions = ['Canelite', 'Fascite Plantar', 'Dor Joelho', 'Aquiles', 'Outros', 'Nenhuma'];
 
 export default function AnamnesisPage() {
   const context = React.useContext(TrainingContext);
@@ -59,18 +57,9 @@ export default function AnamnesisPage() {
     practiceTime: "",
     consistency: "",
     mirrorWeek: "",
-    easyPace: "",
-    hardPace: "",
-    trainingStructure: "",
     footwear: "",
-    recentRecord: "",
-    maxContinuousDistance: "",
     preferredShift: "",
-    timeWeekdays: "",
-    timeWeekends: "",
     strengthDays: [],
-    strengthFocus: "",
-    strengthLocation: "",
     intensityMonitoring: "",
     terrain: "",
     devices: [],
@@ -78,19 +67,22 @@ export default function AnamnesisPage() {
     commitmentLevel: 10,
     sleepQuality: 3,
     stressLevel: 3,
-    dietClassification: "",
     objective: "",
     targetRace: ""
   });
 
+  // Sincroniza dados iniciais do contexto
   React.useEffect(() => {
-    if (profile?.anamnesis) {
+    if (profile) {
       setFormData((prev: any) => ({
         ...prev,
         ...profile.anamnesis,
-        injuryHistory: profile.anamnesis.injuryHistory || [],
-        strengthDays: profile.anamnesis.strengthDays || [],
-        devices: profile.anamnesis.devices || []
+        // Sincroniza campos que podem estar no perfil principal
+        objective: profile.anamnesis?.objective || (profile.raceDistance ? `Completar ${profile.raceDistance}` : ""),
+        targetRace: profile.anamnesis?.targetRace || profile.raceName || "",
+        strengthDays: profile.anamnesis?.strengthDays || (profile.strengthPreferences?.legDay ? [profile.strengthPreferences.legDay.substring(0,3)] : []),
+        injuryHistory: profile.anamnesis?.injuryHistory || [],
+        devices: profile.anamnesis?.devices || []
       }));
     }
   }, [profile]);
@@ -111,7 +103,24 @@ export default function AnamnesisPage() {
     if (!context) return;
     setIsSaving(true);
     try {
-      await context.saveProfile({ anamnesis: formData });
+      // Salva na anamnese e sincroniza campos chave de volta para o perfil principal
+      const updates: any = { 
+        anamnesis: formData,
+        raceName: formData.targetRace || profile?.raceName,
+      };
+
+      // Se houver apenas um dia de perna na anamnese, tenta sincronizar com o perfil
+      if (formData.strengthDays.length > 0) {
+        const fullDay = weekDays.find(d => d.id === formData.strengthDays[0])?.label;
+        if (fullDay) {
+          updates.strengthPreferences = {
+            ...profile?.strengthPreferences,
+            legDay: fullDay
+          };
+        }
+      }
+
+      await context.saveProfile(updates);
       toast({ title: "Laboratório Atualizado", description: "Dados sincronizados com o motor de IA." });
     } catch (e) {
       toast({ variant: "destructive", title: "Erro ao salvar" });
@@ -138,9 +147,9 @@ export default function AnamnesisPage() {
         <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">1. Identificação do Atleta</h2>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
           <tr><td style="padding: 5px; font-weight: bold; width: 30%;">Atleta:</td><td>${profile?.name || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Peso / Altura:</td><td>${profile?.currentWeight || '--'} kg / ${profile?.height || '--'} cm</td></tr>
           <tr><td style="padding: 5px; font-weight: bold;">WhatsApp:</td><td>${formData.whatsapp || '--'}</td></tr>
           <tr><td style="padding: 5px; font-weight: bold;">Profissão:</td><td>${formData.profession || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Emergência:</td><td>${formData.emergencyContact || '--'}</td></tr>
         </table>
 
         <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">2. Saúde e Histórico Clínico</h2>
@@ -152,26 +161,24 @@ export default function AnamnesisPage() {
           <tr><td style="padding: 5px; font-weight: bold;">Dores Atuais:</td><td>${formData.activeInjuries || 'Nenhuma'}</td></tr>
         </table>
 
-        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">3. Perfil Técnico de Corrida</h2>
+        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">3. Perfil Técnico e Logística</h2>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
           <tr><td style="padding: 5px; font-weight: bold; width: 30%;">Tempo Prática:</td><td>${formData.practiceTime || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Constância (3m):</td><td>${formData.consistency || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Paces (Z2 / Z4):</td><td>${formData.easyPace || '--'} / ${formData.hardPace || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Monitorização:</td><td>${formData.intensityMonitoring || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Terreno / Turno:</td><td>${formData.terrain || '--'} / ${formData.preferredShift || '--'}</td></tr>
           <tr><td style="padding: 5px; font-weight: bold;">Semana Espelho:</td><td>${formData.mirrorWeek || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Calçado:</td><td>${formData.footwear || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Força (Dias):</td><td>${(formData.strengthDays || []).join(', ') || 'Não realiza'}</td></tr>
         </table>
 
-        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">4. Logística e Estilo de Vida</h2>
+        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">4. Estilo de Vida e Objetivos</h2>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 5px; font-weight: bold; width: 30%;">Turno / Terreno:</td><td>${formData.preferredShift || '--'} / ${formData.terrain || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Monitorização:</td><td>${formData.intensityMonitoring || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Força (Dias):</td><td>${(formData.strengthDays || []).join(', ') || 'Não realiza'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Sono / Estresse:</td><td>${formData.sleepQuality}/5 | ${formData.stressLevel}/5</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold; width: 30%;">Sono / Estresse:</td><td>Sono: ${formData.sleepQuality}/5 | Estresse: ${formData.stressLevel}/5</td></tr>
           <tr><td style="padding: 5px; font-weight: bold;">Objetivo:</td><td>${formData.objective || '--'} (${formData.targetRace || '--'})</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Comprometimento:</td><td>${formData.commitmentLevel}/10</td></tr>
         </table>
 
         <div style="margin-top: 50px; font-size: 10px; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 10px; font-style: italic;">
-          Relatório gerado via Cloud Sincronizada CorreJunto. Dados confidenciais.
+          Relatório gerado via Cloud Sincronizada CorreJunto. Dados biométricos confidenciais.
         </div>
       </div>
     `;
@@ -220,7 +227,7 @@ export default function AnamnesisPage() {
         </header>
 
         <div className="space-y-12">
-          {/* SEÇÃO 1: IDENTIDADE E SAÚDE */}
+          {/* SEÇÃO 1: CLÍNICA */}
           <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
             <CardHeader className="bg-secondary/10 border-b border-border/10 p-8">
               <div className="flex items-center gap-4">
@@ -229,13 +236,13 @@ export default function AnamnesisPage() {
                 </div>
                 <div>
                   <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Clínica e Contato</CardTitle>
-                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Segurança em primeiro lugar</CardDescription>
+                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Segurança e triagem inicial</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
                <div className="space-y-3">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">WhatsApp</Label>
+                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">WhatsApp de Contato</Label>
                  <Input 
                    value={formData.whatsapp} 
                    onChange={(e) => handleInputChange('whatsapp', e.target.value)} 
@@ -252,7 +259,7 @@ export default function AnamnesisPage() {
                  />
                </div>
                <div className="space-y-3">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Liberação Médica?</Label>
+                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Liberação Médica Recente?</Label>
                    <Select value={formData.medicalRelease} onValueChange={(v) => handleInputChange('medicalRelease', v)}>
                       <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
                         <SelectValue placeholder="Selecione..." />
@@ -288,7 +295,7 @@ export default function AnamnesisPage() {
             </CardContent>
           </Card>
 
-          {/* SEÇÃO 2: MECÂNICA E LESÕES */}
+          {/* SEÇÃO 2: HISTÓRICO MECÂNICO */}
           <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
             <CardHeader className="bg-primary/10 border-b border-border/10 p-8">
               <div className="flex items-center gap-4">
@@ -304,8 +311,8 @@ export default function AnamnesisPage() {
             <CardContent className="p-10 space-y-10">
                <div className="space-y-4">
                  <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Histórico de Lesões (Já te fizeram parar?)</Label>
-                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {['Canelite', 'Fascite Plantar', 'Dor Joelho', 'Aquiles', 'Nenhuma'].map(injury => (
+                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {injuryOptions.map(injury => (
                       <div key={injury} className="flex items-center space-x-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer" onClick={() => handleToggleArray('injuryHistory', injury)}>
                         <Checkbox checked={formData.injuryHistory?.includes(injury)} />
                         <span className="text-[10px] font-black uppercase italic text-white/80">{injury}</span>
@@ -318,29 +325,18 @@ export default function AnamnesisPage() {
                  <Textarea 
                    value={formData.activeInjuries} 
                    onChange={(e) => handleInputChange('activeInjuries', e.target.value)}
-                   placeholder="Descreva local e frequência..."
+                   placeholder="Descreva local e frequência de incômodos recentes..."
                    className="bg-black/30 border-border/40 min-h-[100px] font-bold rounded-2xl italic"
                  />
                </div>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">"Semana Espelho" (Realidade de treino)</Label>
-                    <Textarea 
-                      value={formData.mirrorWeek} 
-                      onChange={(e) => handleInputChange('mirrorWeek', e.target.value)}
-                      placeholder="O que você realmente treinou na última semana?"
-                      className="bg-black/30 border-border/40 min-h-[100px] font-bold rounded-2xl italic"
-                    />
-                  </div>
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Calçado Principal (Marca/Modelo)</Label>
-                    <Input 
-                      value={formData.footwear} 
-                      onChange={(e) => handleInputChange('footwear', e.target.value)}
-                      placeholder="Ex: Corre 3, Pegasus..."
-                      className="bg-black/30 border-border/40 h-14 font-bold rounded-xl"
-                    />
-                  </div>
+               <div className="space-y-3">
+                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">"Semana Espelho" (O que realmente treinou na última semana?)</Label>
+                 <Textarea 
+                   value={formData.mirrorWeek} 
+                   onChange={(e) => handleInputChange('mirrorWeek', e.target.value)}
+                   placeholder="Relate sua realidade recente de volume e frequência..."
+                   className="bg-black/30 border-border/40 min-h-[100px] font-bold rounded-2xl italic"
+                 />
                </div>
             </CardContent>
           </Card>
@@ -353,21 +349,21 @@ export default function AnamnesisPage() {
                   <Clock size={24} />
                 </div>
                 <div>
-                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Logística e Esforço</CardTitle>
-                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Monitorização e rotina</CardDescription>
+                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Logística e Monitorização</CardTitle>
+                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Como você treina no dia a dia</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-10 space-y-10">
                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Monitorização</Label>
+                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Monitorização de Intensidade</Label>
                     <Select value={formData.intensityMonitoring} onValueChange={(v) => handleInputChange('intensityMonitoring', v)}>
                         <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
                           <SelectValue placeholder="Selecione..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Pace" className="font-bold italic uppercase">POR PACE</SelectItem>
+                          <SelectItem value="Pace" className="font-bold italic uppercase">POR PACE / VELOCIDADE</SelectItem>
                           <SelectItem value="FC" className="font-bold italic uppercase">FREQUÊNCIA CARDÍACA</SelectItem>
                           <SelectItem value="RPE" className="font-bold italic uppercase">PERCEPÇÃO DE ESFORÇO</SelectItem>
                         </SelectContent>
@@ -402,7 +398,7 @@ export default function AnamnesisPage() {
                </div>
 
                <div className="space-y-4">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Dias de Treino de Força (Musculação)</Label>
+                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Dias de Treino de Força (Sincronizado com Perfil)</Label>
                  <div className="flex flex-wrap gap-2">
                     {weekDays.map(day => (
                       <button
@@ -424,7 +420,7 @@ export default function AnamnesisPage() {
 
                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                  <div className="space-y-3 text-center">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Sono (1-5)</Label>
+                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Qualidade do Sono (1-5)</Label>
                    <div className="flex justify-center gap-2 mt-2">
                      {[1,2,3,4,5].map(n => (
                         <button key={n} type="button" onClick={() => handleInputChange('sleepQuality', n)} className={cn("size-8 rounded-full font-black text-xs transition-all", formData.sleepQuality === n ? "bg-primary text-black scale-110" : "bg-black/30 text-white/30 border border-white/5")}>{n}</button>
@@ -432,7 +428,7 @@ export default function AnamnesisPage() {
                    </div>
                  </div>
                  <div className="space-y-3 text-center">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Estresse (1-5)</Label>
+                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Nível de Estresse (1-5)</Label>
                    <div className="flex justify-center gap-2 mt-2">
                      {[1,2,3,4,5].map(n => (
                         <button key={n} type="button" onClick={() => handleInputChange('stressLevel', n)} className={cn("size-8 rounded-full font-black text-xs transition-all", formData.stressLevel === n ? "bg-rose-500 text-black scale-110" : "bg-black/30 text-white/30 border border-white/5")}>{n}</button>
@@ -453,7 +449,7 @@ export default function AnamnesisPage() {
             </CardContent>
           </Card>
 
-          {/* SEÇÃO 4: OBJETIVOS */}
+          {/* SEÇÃO 4: OBJETIVOS SINCRONIZADOS */}
           <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
             <CardHeader className="bg-primary/10 border-b border-border/10 p-8">
               <div className="flex items-center gap-4">
@@ -461,14 +457,14 @@ export default function AnamnesisPage() {
                   <Trophy size={24} />
                 </div>
                 <div>
-                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Objetivo de Elite</CardTitle>
-                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">A linha de chegada</CardDescription>
+                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Objetivos de Elite</CardTitle>
+                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Onde queremos chegar</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Qual o seu objetivo hoje?</Label>
+                  <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Qual o seu objetivo principal?</Label>
                   <Select value={formData.objective} onValueChange={(v) => handleInputChange('objective', v)}>
                       <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
                         <SelectValue placeholder="Selecione..." />
@@ -482,7 +478,7 @@ export default function AnamnesisPage() {
                   </Select>
                </div>
                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Prova Alvo / Distância Desejada</Label>
+                  <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Prova Alvo / Distância (Sync Perfil)</Label>
                   <Input 
                     value={formData.targetRace} 
                     onChange={(e) => handleInputChange('targetRace', e.target.value)} 
@@ -504,7 +500,7 @@ export default function AnamnesisPage() {
             disabled={isSaving}
             className="bg-white text-black font-black uppercase italic tracking-[0.2em] px-12 h-16 rounded-2xl shadow-2xl hover:bg-primary transition-all"
            >
-             {isSaving ? <Loader2 className="animate-spin mr-3" /> : null} SINCRONIZAR ANAMNESE AGORA
+             {isSaving ? <Loader2 className="animate-spin mr-3" /> : null} SINCRONIZAR LABORATÓRIO AGORA
            </Button>
         </div>
       </div>

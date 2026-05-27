@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useContext, useState, useEffect, useRef, useMemo } from 'react';
@@ -44,9 +45,9 @@ import {
     Calendar as CalendarIcon,
     Target,
     Upload,
-    FileText,
     ImageIcon,
-    X
+    X,
+    ClipboardList
 } from 'lucide-react';
 import { 
     Tooltip,
@@ -56,6 +57,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AthleteProfile } from '@/lib/types';
+import Link from 'next/link';
 
 const weekDays = [
   { id: 'Domingo', label: 'DOM' },
@@ -86,16 +88,9 @@ const profileSchema = z.object({
   longRunDay: z.string().default('Domingo'),
   planGenerationType: z.enum(['full', 'blocks']).default('blocks'),
   experienceLevel: z.enum(['run_walk', 'beginner', 'intermediate', 'advanced']).default('beginner'),
-  trainingHistory: z.string().default(''),
   referenceDocumentUri: z.string().default(''),
   aestheticGoal: z.enum(['performance', 'cutting', 'bulking', 'recomp']).default('performance'),
-  trainingTiming: z.enum(['jejum', 'manha', 'meio-dia', 'tarde', 'noite']).default('manha'),
-  mealCount: z.coerce.number().default(4),
-  supplements: z.string().default(''),
-  allergies: z.string().default(''),
   legDay: z.string().default(''),
-  strengthSplit: z.enum(['full_body', 'upper_lower', 'ppl']).default('full_body'),
-  strengthObjective: z.enum(['strength', 'hypertrophy', 'performance', 'endurance']).default('performance'),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -131,12 +126,9 @@ export default function ProfilePage() {
       longRunDay: 'Domingo',
       planGenerationType: 'blocks',
       experienceLevel: 'beginner',
-      trainingHistory: '',
       referenceDocumentUri: '',
       legDay: '',
-      supplements: '',
-      allergies: '',
-      mealCount: 4,
+      aestheticGoal: 'performance',
     }
   });
 
@@ -156,7 +148,7 @@ export default function ProfilePage() {
         vo2Max: p.vo2Max || 45,
         thresholdPace: p.thresholdPace || '4:50',
         thresholdHr: p.thresholdHr || 165,
-        raceName: p.raceName || '',
+        raceName: p.raceName || p.anamnesis?.targetRace || '',
         raceDistance: p.raceDistance || '10k',
         raceDate: p.raceDate || '',
         targetPace: p.targetPace || '',
@@ -166,13 +158,7 @@ export default function ProfilePage() {
         planGenerationType: p.planGenerationType || 'blocks',
         experienceLevel: p.experienceLevel || 'beginner',
         aestheticGoal: p.dietPreferences?.aestheticGoal || 'performance',
-        trainingTiming: p.dietPreferences?.trainingTiming || 'manha',
-        mealCount: p.dietPreferences?.mealCount || 4,
-        supplements: p.dietPreferences?.supplements || '',
-        allergies: p.dietPreferences?.allergies || '',
-        legDay: p.strengthPreferences?.legDay || '',
-        strengthSplit: p.strengthPreferences?.splitPreference || 'full_body',
-        strengthObjective: p.strengthPreferences?.objective || 'performance',
+        legDay: p.strengthPreferences?.legDay || (p.anamnesis?.strengthDays?.[0] ? weekDays.find(d => d.id === p.anamnesis?.strengthDays[0])?.label : ''),
       } as any);
       
       if (p.targetTime && !p.targetPace) setTargetType('time');
@@ -215,15 +201,11 @@ export default function ProfilePage() {
       const profileData: Partial<AthleteProfile> = {
         ...finalData,
         dietPreferences: {
+          ...context.activeProfile?.dietPreferences,
           aestheticGoal: data.aestheticGoal,
-          trainingTiming: data.trainingTiming,
-          mealCount: data.mealCount,
-          supplements: data.supplements,
-          allergies: data.allergies,
         },
         strengthPreferences: {
-          splitPreference: data.strengthSplit,
-          objective: data.strengthObjective,
+          ...context.activeProfile?.strengthPreferences,
           legDay: data.legDay,
         }
       };
@@ -253,21 +235,8 @@ export default function ProfilePage() {
       await onSave(formData);
       
       const tempProfile: AthleteProfile = {
+        ...context.activeProfile,
         ...formData,
-        id: context.activeProfile?.id || 'profile',
-        ownerUid: context.activeProfile?.ownerUid || '',
-        dietPreferences: {
-          aestheticGoal: formData.aestheticGoal,
-          trainingTiming: formData.trainingTiming,
-          mealCount: formData.mealCount,
-          supplements: formData.supplements,
-          allergies: formData.allergies,
-        },
-        strengthPreferences: {
-          splitPreference: formData.strengthSplit,
-          objective: formData.strengthObjective,
-          legDay: formData.legDay,
-        }
       } as any;
 
       await context.generateRunningPlanAsync(tempProfile);
@@ -296,6 +265,9 @@ export default function ProfilePage() {
                 <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-[0.2em] italic mt-1">Laboratório Cloud Sincronizado</p>
               </div>
             </div>
+            <Button asChild variant="outline" className="h-10 border-primary/20 text-primary font-black uppercase text-[10px] italic tracking-widest rounded-xl hover:bg-primary hover:text-black">
+              <Link href="/anamnesis"><ClipboardList size={16} className="mr-2"/> VER ANAMNESE</Link>
+            </Button>
           </header>
 
           <Form {...form}>
@@ -451,7 +423,7 @@ export default function ProfilePage() {
                         <div className="space-y-4">
                           <FormField control={form.control} name="experienceLevel" render={({field}) => (
                             <FormItem className="space-y-2">
-                              <FormLabel className="text-[10px] font-black uppercase text-white italic">EXPERIÊNCIA (O QUANTO JÁ CORRE)</FormLabel>
+                              <FormLabel className="text-[10px] font-black uppercase text-white italic">EXPERIÊNCIA ATUAL</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value || 'beginner'}>
                                 <FormControl><SelectTrigger className="bg-black/40 border-border/40 h-10 font-bold italic rounded-xl px-4 text-sm"><SelectValue/></SelectTrigger></FormControl>
                                 <SelectContent className="bg-card border-border">
@@ -494,45 +466,6 @@ export default function ProfilePage() {
                               </Select>
                             </FormItem>
                           )} />
-                        </div>
-                      </div>
-
-                      <div className="pt-8 border-t border-border/20 space-y-6">
-                        <div className="flex items-center gap-2">
-                           <ImageIcon className="text-primary size-5" />
-                           <h3 className="text-lg font-black uppercase italic text-white tracking-tighter">TRADUÇÃO DE PLANILHA (WILDCARD)</h3>
-                        </div>
-
-                        <div className="space-y-4">
-                          <p className="text-[10px] text-muted-foreground leading-relaxed italic uppercase font-bold tracking-tight">
-                            Tire uma foto da sua planilha física ou do seu relógio e o Gemini 2.0 Flash traduzirá isso automaticamente para o formato digital.
-                          </p>
-                          <div 
-                            className={cn(
-                              "border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all",
-                              watchReferenceDocumentUri ? "border-primary bg-primary/5" : "border-border/40 hover:border-primary/50"
-                            )}
-                            onClick={() => planFileRef.current?.click()}
-                          >
-                            <input type="file" ref={planFileRef} className="sr-only" onChange={handlePlanFileChange} accept="image/*,.pdf" />
-                            {watchReferenceDocumentUri ? (
-                              <div className="flex items-center justify-center gap-3">
-                                <div className="p-2 rounded-lg bg-primary text-black"><CheckCircle2 size={18} /></div>
-                                <div className="text-left">
-                                  <p className="text-[10px] font-black uppercase text-primary italic">Documento Carregado</p>
-                                  <p className="text-[9px] text-muted-foreground italic">Pronto para ser traduzido pela IA.</p>
-                                </div>
-                                <Button variant="ghost" size="icon" className="ml-auto" onClick={(e) => { e.stopPropagation(); setValue('referenceDocumentUri', ''); }}>
-                                  <X size={14} />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                <Upload className="size-6 text-muted-foreground mx-auto" />
-                                <p className="text-[10px] font-black uppercase italic tracking-widest">Anexar Foto da Planilha</p>
-                              </div>
-                            )}
-                          </div>
                         </div>
                       </div>
 
@@ -601,6 +534,45 @@ export default function ProfilePage() {
                            </Tabs>
                         </div>
                       </div>
+
+                      <div className="pt-8 border-t border-border/20 space-y-6">
+                        <div className="flex items-center gap-2">
+                           <ImageIcon className="text-primary size-5" />
+                           <h3 className="text-lg font-black uppercase italic text-white tracking-tighter">TRADUÇÃO DE PLANILHA (WILDCARD)</h3>
+                        </div>
+
+                        <div className="space-y-4">
+                          <p className="text-[10px] text-muted-foreground leading-relaxed italic uppercase font-bold tracking-tight">
+                            Tire uma foto da sua planilha física ou do seu relógio e o Gemini traduzirá isso automaticamente para o formato digital.
+                          </p>
+                          <div 
+                            className={cn(
+                              "border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all",
+                              watchReferenceDocumentUri ? "border-primary bg-primary/5" : "border-border/40 hover:border-primary/50"
+                            )}
+                            onClick={() => planFileRef.current?.click()}
+                          >
+                            <input type="file" ref={planFileRef} className="sr-only" onChange={handlePlanFileChange} accept="image/*,.pdf" />
+                            {watchReferenceDocumentUri ? (
+                              <div className="flex items-center justify-center gap-3">
+                                <div className="p-2 rounded-lg bg-primary text-black"><CheckCircle2 size={18} /></div>
+                                <div className="text-left">
+                                  <p className="text-[10px] font-black uppercase text-primary italic">Documento Carregado</p>
+                                  <p className="text-[9px] text-muted-foreground italic">Pronto para ser traduzido pela IA.</p>
+                                </div>
+                                <Button variant="ghost" size="icon" className="ml-auto" onClick={(e) => { e.stopPropagation(); setValue('referenceDocumentUri', ''); }}>
+                                  <X size={14} />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <Upload className="size-6 text-muted-foreground mx-auto" />
+                                <p className="text-[10px] font-black uppercase italic tracking-widest">Anexar Foto da Planilha</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -642,14 +614,14 @@ export default function ProfilePage() {
                       <FormField control={form.control} name="legDay" render={({field}) => (
                         <FormItem className="space-y-4">
                           <div className="flex items-center gap-2">
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic">DIA DE TREINO DE PERNA (LEG DAY)</FormLabel>
-                            <Tooltip><TooltipTrigger asChild><Info className="size-4 text-muted-foreground cursor-help"/></TooltipTrigger><TooltipContent><p className="text-[10px]">A IA evitará intensidade alta no dia seguinte ao Leg Day.</p></TooltipContent></Tooltip>
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic">DIA DE TREINO DE PERNA (LEG DAY) - SINCRONIZADO</FormLabel>
+                            <Tooltip><TooltipTrigger asChild><Info className="size-4 text-muted-foreground cursor-help"/></TooltipTrigger><TooltipContent><p className="text-[10px]">A IA evitará intensidade alta no dia seguinte ao Leg Day. Sincronizado com Anamnese.</p></TooltipContent></Tooltip>
                           </div>
                           <Select onValueChange={field.onChange} value={field.value || ''}>
                             <FormControl><SelectTrigger className="bg-black/30 h-12 font-bold text-sm rounded-xl border-border/40 px-6 transition-all focus:border-purple-500"><SelectValue placeholder="Escolha o dia da musculação de perna..." /></SelectTrigger></FormControl>
                             <SelectContent className="bg-card border-border">
                               <SelectItem value="None" className="font-bold italic">NENHUM</SelectItem>
-                              {weekDays.map(d => <SelectItem key={d.id} value={d.id} className="font-bold italic uppercase">{d.id}</SelectItem>)}
+                              {weekDays.map(d => <SelectItem key={d.id} value={d.label} className="font-bold italic uppercase">{d.label}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </FormItem>
