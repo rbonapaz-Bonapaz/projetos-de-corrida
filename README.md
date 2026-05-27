@@ -14,6 +14,7 @@ Este é o novo padrão do Firebase para Next.js:
 
 ### 2. Firebase Hosting (Via CLI com Web Frameworks)
 Se preferir usar o terminal, você **precisa habilitar o experimento** antes:
+
 1. No seu terminal, execute:
    ```bash
    firebase experiments:enable webframeworks
@@ -22,6 +23,8 @@ Se preferir usar o terminal, você **precisa habilitar o experimento** antes:
    ```bash
    firebase deploy
    ```
+
+**DICA:** Use o comando facilitador que criei: `npm run deploy`.
 
 ## 🛠️ RESOLVENDO O BLOQUEIO DE LOGIN
 

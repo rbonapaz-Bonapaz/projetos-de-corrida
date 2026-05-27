@@ -9,7 +9,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "firebase:setup": "firebase experiments:enable webframeworks",
+    "deploy": "npm run firebase:setup && firebase deploy"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.28.0",
