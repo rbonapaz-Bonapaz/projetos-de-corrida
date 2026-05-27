@@ -22,7 +22,8 @@ import {
   Calendar,
   Info,
   Trophy,
-  Timer
+  Timer,
+  AlertCircle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ export default function Home() {
   const context = React.useContext(TrainingContext);
   const profile = context?.activeProfile;
   const plan = context?.trainingPlan;
+  const anamnesisFilled = !!profile?.anamnesis?.whatsapp;
 
   const [daysToRace, setDaysToRace] = React.useState<number | null>(null);
 
@@ -98,6 +100,24 @@ export default function Home() {
     <DashboardLayout>
       <TooltipProvider>
         <div className="space-y-12 animate-in fade-in duration-700">
+          
+          {/* Alerta de Anamnese */}
+          {!anamnesisFilled && (
+            <Card className="bg-orange-500/10 border-orange-500/20 rounded-2xl overflow-hidden animate-pulse">
+               <CardContent className="p-4 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="text-orange-500 size-5 shrink-0" />
+                    <p className="text-[10px] font-black uppercase italic text-white tracking-widest leading-tight">
+                      Sua anamnese está incompleta. <br/> <span className="opacity-60">Isso reduz a precisão da sua periodização IA.</span>
+                    </p>
+                  </div>
+                  <Button asChild size="sm" className="bg-orange-500 text-white font-black uppercase italic text-[9px] rounded-lg px-4 h-8 hover:bg-orange-600">
+                    <Link href="/anamnesis">COMPLETAR AGORA</Link>
+                  </Button>
+               </CardContent>
+            </Card>
+          )}
+
           {/* Widgets de Topo */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat) => (

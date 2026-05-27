@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -113,11 +112,14 @@ export default function TrainingPage() {
     toast({ title: "🧠 Analisando Sensores...", description: "Extraindo métricas de performance." });
 
     try {
+      const anamnesisContext = context.getAnamnesisSummary();
+
       const result = await analyzeWorkout({
         apiKey: context.apiKey,
         prescribedWorkout: JSON.stringify(selectedWorkout),
         athleteFeedback,
         athleteProfile: JSON.stringify(profile),
+        anamnesis: anamnesisContext,
         fileDataUri: uploadedFileUri || undefined
       });
 

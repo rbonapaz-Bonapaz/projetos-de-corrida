@@ -1,7 +1,6 @@
-
 'use server';
 /**
- * @fileOverview Fluxo Genkit para analisar o desempenho biomecânico do atleta.
+ * @fileOverview Fluxo Genkit para analisar o desempenho biomecânico considerando a saúde do atleta.
  */
 
 import { getAiWithKey } from '@/ai/genkit';
@@ -13,6 +12,7 @@ const AnalyzeWorkoutInputSchema = z.object({
   athleteFeedback: z.string().describe('O relato do atleta sobre o treino.'),
   fileDataUri: z.string().optional().describe("URI de dados do arquivo (.FIT, .CSV ou imagem)."),
   athleteProfile: z.string().describe('Dados biográficos e fisiológicos do atleta.'),
+  anamnesis: z.string().optional().describe('Dados clínicos para análise de segurança.'),
 });
 
 export type AnalyzeWorkoutInput = z.infer<typeof AnalyzeWorkoutInputSchema>;
@@ -42,11 +42,15 @@ export async function analyzeWorkout(input: AnalyzeWorkoutInput): Promise<Analyz
     model: 'googleai/gemini-2.5-flash',
     system: `Você é um analista biomecânico de elite. Sua missão é extrair métricas de arquivos e feedbacks para avaliar a eficiência do atleta.
     Compare o que foi prescrito (${input.prescribedWorkout}) com o que foi realizado.
-    Foque em métricas como Cadência e Razão de Passada para identificar desperdício de energia.
-    Se o arquivo for uma imagem do relógio, faça o OCR e extraia os valores.
+    
+    CONSIDERE A SAÚDE DO ATLETA:
+    ${input.anamnesis || 'Dados clínicos não fornecidos.'}
+    
+    Foque em métricas como Cadência e Razão de Passada. 
+    Se o atleta relatou dor em um local já citado na anamnese como histórico de lesão, destaque isso como um alerta crítico.
     Responda em PORTUGUÊS (Brasil).`,
     prompt: [
-      { text: `Analise o treino executado pelo atleta. Feedback: ${input.athleteFeedback}. Perfil: ${input.athleteProfile}.` },
+      { text: `Analise o treino executado. Feedback: ${input.athleteFeedback}. Perfil: ${input.athleteProfile}.` },
       ...(input.fileDataUri ? [{ media: { url: input.fileDataUri } }] : []),
     ],
     output: { schema: AnalyzeWorkoutOutputSchema },

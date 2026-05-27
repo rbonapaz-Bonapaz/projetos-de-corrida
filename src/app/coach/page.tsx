@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -119,12 +118,14 @@ export default function CoachPage() {
 
       const workoutHistoryContext = `Perfil: ${profile?.name || 'Atleta'}. Peso: ${profile?.currentWeight}kg. Pace T: ${profile?.thresholdPace}. FC Limiar: ${profile?.thresholdHr}bpm.`;
       const planContext = plan ? `Atualmente no bloco ${plan.blockType}. Objetivo: ${profile?.raceDistance} em ${profile?.raceDate}.` : "Sem plano ativo no momento.";
+      const anamnesisContext = context.getAnamnesisSummary();
 
       const response = await chatWithAICoach({
         apiKey: context.apiKey || undefined,
         conversationHistory: messages.map(m => ({ role: m.role, parts: m.parts })),
         workoutHistory: workoutHistoryContext,
         trainingPlan: planContext,
+        anamnesis: anamnesisContext,
         imageDataUri: currentImage || undefined
       });
 

@@ -14,7 +14,7 @@ import {
   type User
 } from 'firebase/auth';
 import { useAuth, useFirestore } from '@/firebase';
-import type { AthleteProfile, TrainingPlan, Workout } from '@/lib/types';
+import type { AthleteProfile, TrainingPlan, Workout, AnamnesisData } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateTrainingBlock } from '@/ai/flows/generate-training-block';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -40,6 +40,7 @@ interface TrainingContextType {
   logout: () => Promise<void>;
   toggleIntegration: (service: 'strava' | 'coros', connected: boolean) => void;
   user: User | null;
+  getAnamnesisSummary: () => string;
 }
 
 export const TrainingContext = createContext<TrainingContextType | null>(null);
@@ -138,6 +139,19 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   const activeProfile = useMemo(() => {
     return profiles.find(p => p.id === persistedActiveProfileId) || profiles[0] || null;
   }, [profiles, persistedActiveProfileId]);
+
+  const getAnamnesisSummary = useCallback(() => {
+    if (!activeProfile?.anamnesis) return "Anamnese não preenchida.";
+    const a = activeProfile.anamnesis;
+    return `
+      Histórico de Lesões: ${(a.injuryHistory || []).join(', ') || 'Nenhum'}
+      Dores Atuais: ${a.activeInjuries || 'Nenhuma'}
+      Saúde: Doença Crônica ${a.chronicIllness || 'Não'} (${a.chronicIllnessDetail || 'N/A'})
+      Medicação: ${a.medication || 'Nenhuma'}
+      Nível de Esforço Mental: Sono ${a.sleepQuality}/5, Estresse ${a.stressLevel}/5
+      Realidade do Atleta: ${a.mirrorWeek || 'Não informada'}
+    `;
+  }, [activeProfile]);
 
   const trainingPlan = activeProfile?.trainingPlan || null;
 
@@ -274,14 +288,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       else if (profile.experienceLevel === 'intermediate') weeklyMileageGoal = 45;
       else if (profile.experienceLevel === 'advanced') weeklyMileageGoal = 75;
 
-      const anamnesisContext = profile.anamnesis ? `
-        Lesões Antigas: ${(profile.anamnesis.injuryHistory || []).join(', ')}
-        Dores Atuais: ${profile.anamnesis.activeInjuries || 'Nenhuma'}
-        Sono: ${profile.anamnesis.sleepQuality || 3}/5
-        Estresse: ${profile.anamnesis.stressLevel || 3}/5
-        Equipamento: ${profile.anamnesis.footwear || 'Não informado'}
-        Realidade Semanal: ${profile.anamnesis.mirrorWeek || 'Não informado'}
-      ` : "Sem anamnese detalhada.";
+      const anamnesisContext = getAnamnesisSummary();
 
       const result = await generateTrainingBlock({
         apiKey: effectiveApiKey,
@@ -334,7 +341,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   return (
     <TrainingContext.Provider value={{
       isHydrated, apiKey: effectiveApiKey, setApiKey, profiles, activeProfile, switchProfile, saveProfile, trainingPlan, updateWorkout,
-      planGenerationStatus, generateRunningPlanAsync, loginGoogle, loginEmail, registerEmail, logout, toggleIntegration, user
+      planGenerationStatus, generateRunningPlanAsync, loginGoogle, loginEmail, registerEmail, logout, toggleIntegration, user, getAnamnesisSummary
     }}>
       {children}
     </TrainingContext.Provider>

@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Treinador de IA conversacional para corredores.
+ * @fileOverview Treinador de IA conversacional para corredores com consciência biométrica.
  */
 
 import { getAiWithKey } from '@/ai/genkit';
@@ -16,6 +16,7 @@ const ChatWithAICoachInputSchema = z.object({
   ).describe('Histórico da conversa.'),
   workoutHistory: z.string().describe('Desempenho e histórico de treinos.'),
   trainingPlan: z.string().describe('Plano de treinamento atual.'),
+  anamnesis: z.string().optional().describe('Contexto clínico e técnico do atleta.'),
   imageDataUri: z.string().optional().describe('Imagem anexada para análise visual.'),
 });
 
@@ -32,8 +33,14 @@ export async function chatWithAICoach(input: ChatWithAICoachInput): Promise<{ fe
     model: 'googleai/gemini-2.5-flash',
     system: `Você é o Gemini Coach, um treinador de elite especialista em biomecânica e fisiologia do exercício.
     Responda em PORTUGUÊS (Brasil). Seja técnico, motivador e foque em dados de performance.
-    Contexto do Atleta: ${input.workoutHistory}
-    Plano Atual: ${input.trainingPlan}`,
+    
+    CONTEXTO BIOMÉTRICO (ANAMNESE):
+    ${input.anamnesis || 'Ainda não preenchida.'}
+    
+    CONTEXTO DO ATLETA: ${input.workoutHistory}
+    PLANO ATUAL: ${input.trainingPlan}
+    
+    DIRETRIZ: Se o atleta tiver histórico de lesão ou dores ativas citadas na anamnese, seja conservador e priorize a recuperação.`,
     prompt: [
       { text: `Histórico da conversa atual:\n${historyString}\n\nAnalise e forneça feedback sobre a última interação ou imagem enviada.` },
       ...(input.imageDataUri ? [{ media: { url: input.imageDataUri } }] : []),
