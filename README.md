@@ -2,20 +2,20 @@
 
 Sua plataforma de elite para periodização e análise biomecânica.
 
-## 🚀 COMO REALIZAR O DEPLOY (RESOLVENDO ERRO 'OUT')
+## 🚀 COMO REALIZAR O DEPLOY (MODO DINÂMICO)
 
-Para que o Firebase Hosting encontre os arquivos, você deve gerar o build antes de enviar:
+Como o sistema utiliza Inteligência Artificial e Server Actions, ele deve ser implantado usando o **Firebase App Hosting** ou configurado para o modo dinâmico:
 
-1. No terminal, execute o comando de build:
-   ```bash
-   npm run build
-   ```
-   *Isso criará a pasta `out/` com seu site estático.*
+1. **Firebase App Hosting (Recomendado):**
+   - Conecte seu repositório GitHub ao Console do Firebase em "App Hosting".
+   - O Firebase detectará automaticamente o Next.js e fará o build dinâmico.
 
-2. Após o build terminar com sucesso, execute o deploy:
-   ```bash
-   firebase deploy --only hosting
-   ```
+2. **Firebase Hosting Tradicional (com Functions):**
+   - Execute o comando:
+     ```bash
+     firebase deploy
+     ```
+   - O Firebase CLI detectará o Next.js e criará as funções de servidor necessárias automaticamente.
 
 ## 🛠️ RESOLVENDO O BLOQUEIO DE LOGIN
 
@@ -37,4 +37,4 @@ Se você vir o erro "requests-to-this-api... are blocked", siga estes passos:
 
 ## 📱 Sincronização Cloud
 - **Sincronização:** PC e Celular conversam em tempo real via Firestore.
-- **Biometria IA:** O Gemini Coach analisa seus arquivos .FIT e feedbacks instantaneamente.
+- **Biometria IA:** O Gemini Coach analisa seus arquivos .FIT e feedbacks instantaneamente utilizando o contexto da sua Anamnese Técnica.

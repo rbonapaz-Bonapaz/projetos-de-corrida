@@ -1,8 +1,7 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* Habilita a exportação estática para criar a pasta 'out' exigida pelo Firebase Hosting */
-  output: 'export',
+  /* O modo dinâmico é necessário para suportar Server Actions e Genkit (IA) */
   typescript: {
     ignoreBuildErrors: true,
   },
