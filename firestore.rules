@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Regras para dados de configuração e chat do usuário
+    match /user_data/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Regras para perfis de atletas e planilhas
+    match /athletes/{athleteId} {
+      // Permite criar se estiver logado
+      // Permite ler/editar se for o dono (ownerUid) ou se o e-mail do atleta logado for o mesmo do perfil
+      allow read, write: if request.auth != null && (
+        resource == null || 
+        resource.data.ownerUid == request.auth.uid || 
+        resource.data.athleteEmail == request.auth.token.email
+      );
+    }
+  }
+}
