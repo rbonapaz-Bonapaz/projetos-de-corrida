@@ -1,12 +1,12 @@
 /**
- * Configuração oficial do Firebase.
- * Sincronizada com o Project ID studio-1669701209-88700.
+ * @fileOverview Configuração dinâmica do Firebase.
+ * Utiliza variáveis de ambiente sem aspas para compatibilidade total com o build do Next.js.
  */
 export const firebaseConfig = {
-  apiKey: "AIzaSyBTHlgY_B4gElAUJ_d85xcgSThfLWw6iFo",
-  authDomain: "studio-1669701209-88700.firebaseapp.com",
-  projectId: "studio-1669701209-88700",
-  storageBucket: "studio-1669701209-88700.firebasestorage.app",
-  messagingSenderId: "654958868324",
-  appId: "1:654958868324:web:c9870b2085e8078a286c71",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };

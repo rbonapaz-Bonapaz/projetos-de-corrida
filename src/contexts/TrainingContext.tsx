@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createContext, useState, useEffect, type ReactNode, useCallback, useMemo } from 'react';
@@ -275,14 +274,13 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       else if (profile.experienceLevel === 'intermediate') weeklyMileageGoal = 45;
       else if (profile.experienceLevel === 'advanced') weeklyMileageGoal = 75;
 
-      // Monta o contexto de anamnese para a IA
       const anamnesisContext = profile.anamnesis ? `
-        Lesões Antigas: ${profile.anamnesis.injuryHistory?.join(', ')}
-        Dores Atuais: ${profile.anamnesis.activeInjuries}
-        Sono: ${profile.anamnesis.sleepQuality}/5
-        Estresse: ${profile.anamnesis.stressLevel}/5
-        Equipamento: ${profile.anamnesis.footwear}
-        Mirror Week (Realidade): ${profile.anamnesis.mirrorWeek}
+        Lesões Antigas: ${(profile.anamnesis.injuryHistory || []).join(', ')}
+        Dores Atuais: ${profile.anamnesis.activeInjuries || 'Nenhuma'}
+        Sono: ${profile.anamnesis.sleepQuality || 3}/5
+        Estresse: ${profile.anamnesis.stressLevel || 3}/5
+        Equipamento: ${profile.anamnesis.footwear || 'Não informado'}
+        Realidade Semanal: ${profile.anamnesis.mirrorWeek || 'Não informado'}
       ` : "Sem anamnese detalhada.";
 
       const result = await generateTrainingBlock({
@@ -302,9 +300,9 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         targetPace: profile.targetPace,
         targetTime: profile.targetTime,
         currentLongRunDistance: 15,
-        weeklyAvailability: profile.trainingDays.join(', '),
+        weeklyAvailability: (profile.trainingDays || []).join(', '),
         injuryHistory: profile.trainingHistory || 'Nenhuma reportada',
-        preferredWorkoutDays: profile.trainingDays.slice(0, 2).join(', '),
+        preferredWorkoutDays: (profile.trainingDays || []).slice(0, 2).join(', '),
         legDay: profile.strengthPreferences?.legDay,
         referenceFileDataUri: profile.referenceDocumentUri,
         anamnesisContext

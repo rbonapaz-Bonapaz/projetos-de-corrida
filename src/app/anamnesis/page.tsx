@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -23,6 +22,7 @@ import {
   Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import Script from "next/script";
 
 const weekDays = [
@@ -80,12 +80,18 @@ export default function AnamnesisPage() {
 
   React.useEffect(() => {
     if (profile?.anamnesis) {
-      setFormData(profile.anamnesis);
+      setFormData((prev: any) => ({
+        ...prev,
+        ...profile.anamnesis,
+        injuryHistory: profile.anamnesis.injuryHistory || [],
+        diasCorrida: profile.anamnesis.diasCorrida || [],
+        devices: profile.anamnesis.devices || []
+      }));
     }
   }, [profile]);
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
   const handleToggleArray = (field: string, value: string) => {
@@ -93,7 +99,7 @@ export default function AnamnesisPage() {
     const updated = current.includes(value) 
       ? current.filter((v: string) => v !== value)
       : [...current, value];
-    setFormData(prev => ({ ...prev, [field]: updated }));
+    setFormData((prev: any) => ({ ...prev, [field]: updated }));
   };
 
   const onSave = async () => {
@@ -112,13 +118,13 @@ export default function AnamnesisPage() {
   const exportPDF = () => {
     const html2pdf = (window as any).html2pdf;
     if (!html2pdf) {
-      toast({ variant: "destructive", title: "Erro", description: "O motor de PDF ainda não carregou." });
+      toast({ variant: "destructive", title: "Erro", description: "O motor de PDF ainda não carregou. Aguarde um instante." });
       return;
     }
 
     const element = document.createElement('div');
     element.innerHTML = `
-      <div style="font-family: Arial, sans-serif; padding: 40px; color: #000; background: #fff;">
+      <div style="font-family: Arial, sans-serif; padding: 40px; color: #000; background: #fff; width: 800px;">
         <div style="text-align: center; border-bottom: 4px solid #4ade80; padding-bottom: 20px; margin-bottom: 30px;">
           <h1 style="color: #10b981; margin: 0; font-size: 28px; text-transform: uppercase;">FICHA DE ANAMNESE ESPORTIVA</h1>
           <p style="margin: 5px 0 0 0; color: #6b7280; font-weight: bold;">Plataforma CORREJUNTO - Performance Laboratorial</p>
@@ -134,7 +140,7 @@ export default function AnamnesisPage() {
         <p><strong>Liberação Médica:</strong> ${formData.medicalRelease || '--'}</p>
         <p><strong>Doença Crônica:</strong> ${formData.chronicIllness} ${formData.chronicIllnessDetail ? `(${formData.chronicIllnessDetail})` : ''}</p>
         <p><strong>Medicação:</strong> ${formData.medication || 'Nenhuma'}</p>
-        <p><strong>Histórico de Lesões:</strong> ${formData.injuryHistory?.join(', ') || 'Nenhuma'}</p>
+        <p><strong>Histórico de Lesões:</strong> ${(formData.injuryHistory || []).join(', ') || 'Nenhuma'}</p>
         <p><strong>Dores Atuais:</strong> ${formData.activeInjuries || 'Nenhuma'}</p>
 
         <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 18px; margin-top: 25px; text-transform: uppercase;">3. Perfil de Corrida</h2>
@@ -145,7 +151,7 @@ export default function AnamnesisPage() {
         <p><strong>Recorde Recente:</strong> ${formData.recentRecord || '--'}</p>
 
         <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 18px; margin-top: 25px; text-transform: uppercase;">4. Logística e Estilo de Vida</h2>
-        <p><strong>Dias Disponíveis:</strong> ${formData.diasCorrida?.join(', ') || '--'}</p>
+        <p><strong>Dias Disponíveis:</strong> ${(formData.diasCorrida || []).join(', ') || '--'}</p>
         <p><strong>Monitorização:</strong> ${formData.intensityMonitoring || '--'}</p>
         <p><strong>Sono / Estresse:</strong> Nível ${formData.sleepQuality}/5 | Nível ${formData.stressLevel}/5</p>
         <p><strong>Objetivo:</strong> ${formData.biggestDifficulty || '--'}</p>
@@ -408,7 +414,7 @@ export default function AnamnesisPage() {
                         onClick={() => handleToggleArray('diasCorrida', day.id)}
                         className={cn(
                           "flex-1 min-w-[70px] h-12 rounded-xl border transition-all flex flex-col items-center justify-center gap-1 group",
-                          formData.diasCorrida?.includes(day.id)
+                          (formData.diasCorrida || []).includes(day.id)
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border/40 bg-black/20 text-muted-foreground hover:border-primary/50"
                         )}
@@ -438,7 +444,7 @@ export default function AnamnesisPage() {
                    <div className="grid grid-cols-2 gap-2">
                       {['Garmin', 'Strava', 'Coros', 'Apple', 'Nenhum'].map(dev => (
                         <div key={dev} className="flex items-center space-x-2 bg-black/20 p-3 rounded-lg border border-white/5 cursor-pointer" onClick={() => handleToggleArray('devices', dev)}>
-                          <Checkbox checked={formData.devices?.includes(dev)} />
+                          <Checkbox checked={(formData.devices || []).includes(dev)} />
                           <span className="text-[9px] font-black uppercase italic text-white/60">{dev}</span>
                         </div>
                       ))}
@@ -451,7 +457,7 @@ export default function AnamnesisPage() {
                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Sono (1-5)</Label>
                    <div className="flex justify-center gap-2 mt-2">
                      {[1,2,3,4,5].map(n => (
-                        <button key={n} onClick={() => handleInputChange('sleepQuality', n)} className={cn("size-8 rounded-full font-black text-xs", formData.sleepQuality === n ? "bg-primary text-black" : "bg-black/30 text-white/30 border border-white/5")}>{n}</button>
+                        <button key={n} type="button" onClick={() => handleInputChange('sleepQuality', n)} className={cn("size-8 rounded-full font-black text-xs transition-all", formData.sleepQuality === n ? "bg-primary text-black scale-110" : "bg-black/30 text-white/30 border border-white/5")}>{n}</button>
                      ))}
                    </div>
                  </div>
@@ -459,7 +465,7 @@ export default function AnamnesisPage() {
                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Estresse (1-5)</Label>
                    <div className="flex justify-center gap-2 mt-2">
                      {[1,2,3,4,5].map(n => (
-                        <button key={n} onClick={() => handleInputChange('stressLevel', n)} className={cn("size-8 rounded-full font-black text-xs", formData.stressLevel === n ? "bg-rose-500 text-black" : "bg-black/30 text-white/30 border border-white/5")}>{n}</button>
+                        <button key={n} type="button" onClick={() => handleInputChange('stressLevel', n)} className={cn("size-8 rounded-full font-black text-xs transition-all", formData.stressLevel === n ? "bg-rose-500 text-black scale-110" : "bg-black/30 text-white/30 border border-white/5")}>{n}</button>
                      ))}
                    </div>
                  </div>
