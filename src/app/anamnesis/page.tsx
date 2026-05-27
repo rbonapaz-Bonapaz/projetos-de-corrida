@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -19,7 +20,11 @@ import {
   Zap, 
   Heart,
   Save,
-  Loader2
+  Loader2,
+  Clock,
+  Dumbbell,
+  Smartphone,
+  Trophy
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -60,8 +65,6 @@ export default function AnamnesisPage() {
     footwear: "",
     recentRecord: "",
     maxContinuousDistance: "",
-    diasCorrida: [],
-    diaLongao: "",
     preferredShift: "",
     timeWeekdays: "",
     timeWeekends: "",
@@ -75,7 +78,9 @@ export default function AnamnesisPage() {
     commitmentLevel: 10,
     sleepQuality: 3,
     stressLevel: 3,
-    dietClassification: ""
+    dietClassification: "",
+    objective: "",
+    targetRace: ""
   });
 
   React.useEffect(() => {
@@ -84,7 +89,7 @@ export default function AnamnesisPage() {
         ...prev,
         ...profile.anamnesis,
         injuryHistory: profile.anamnesis.injuryHistory || [],
-        diasCorrida: profile.anamnesis.diasCorrida || [],
+        strengthDays: profile.anamnesis.strengthDays || [],
         devices: profile.anamnesis.devices || []
       }));
     }
@@ -107,7 +112,7 @@ export default function AnamnesisPage() {
     setIsSaving(true);
     try {
       await context.saveProfile({ anamnesis: formData });
-      toast({ title: "Anamnese Salva", description: "Seus dados biometrizados estão seguros na nuvem." });
+      toast({ title: "Laboratório Atualizado", description: "Dados sincronizados com o motor de IA." });
     } catch (e) {
       toast({ variant: "destructive", title: "Erro ao salvar" });
     } finally {
@@ -118,46 +123,55 @@ export default function AnamnesisPage() {
   const exportPDF = () => {
     const html2pdf = (window as any).html2pdf;
     if (!html2pdf) {
-      toast({ variant: "destructive", title: "Erro", description: "O motor de PDF ainda não carregou. Aguarde um instante." });
+      toast({ variant: "destructive", title: "Erro", description: "Aguarde o carregamento do motor de PDF." });
       return;
     }
 
     const element = document.createElement('div');
     element.innerHTML = `
       <div style="font-family: Arial, sans-serif; padding: 40px; color: #000; background: #fff; width: 800px;">
-        <div style="text-align: center; border-bottom: 4px solid #4ade80; padding-bottom: 20px; margin-bottom: 30px;">
-          <h1 style="color: #10b981; margin: 0; font-size: 28px; text-transform: uppercase;">FICHA DE ANAMNESE ESPORTIVA</h1>
-          <p style="margin: 5px 0 0 0; color: #6b7280; font-weight: bold;">Plataforma CORREJUNTO - Performance Laboratorial</p>
+        <div style="text-align: center; border-bottom: 4px solid #10b981; padding-bottom: 20px; margin-bottom: 30px;">
+          <h1 style="color: #10b981; margin: 0; font-size: 28px; text-transform: uppercase; font-weight: 900; italic: true;">FICHA DE ANAMNESE ESPORTIVA</h1>
+          <p style="margin: 5px 0 0 0; color: #6b7280; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">CORREJUNTO - Performance Laboratorial</p>
         </div>
 
-        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 18px; text-transform: uppercase;">1. Identificação do Atleta</h2>
-        <p><strong>Nome:</strong> ${profile?.name || 'Não informado'}</p>
-        <p><strong>WhatsApp:</strong> ${formData.whatsapp || '--'}</p>
-        <p><strong>Profissão:</strong> ${formData.profession || '--'}</p>
-        <p><strong>Emergência:</strong> ${formData.emergencyContact || '--'}</p>
+        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">1. Identificação do Atleta</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 5px; font-weight: bold; width: 30%;">Atleta:</td><td>${profile?.name || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">WhatsApp:</td><td>${formData.whatsapp || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Profissão:</td><td>${formData.profession || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Emergência:</td><td>${formData.emergencyContact || '--'}</td></tr>
+        </table>
 
-        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 18px; margin-top: 25px; text-transform: uppercase;">2. Saúde e Histórico Clínico</h2>
-        <p><strong>Liberação Médica:</strong> ${formData.medicalRelease || '--'}</p>
-        <p><strong>Doença Crônica:</strong> ${formData.chronicIllness} ${formData.chronicIllnessDetail ? `(${formData.chronicIllnessDetail})` : ''}</p>
-        <p><strong>Medicação:</strong> ${formData.medication || 'Nenhuma'}</p>
-        <p><strong>Histórico de Lesões:</strong> ${(formData.injuryHistory || []).join(', ') || 'Nenhuma'}</p>
-        <p><strong>Dores Atuais:</strong> ${formData.activeInjuries || 'Nenhuma'}</p>
+        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">2. Saúde e Histórico Clínico</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 5px; font-weight: bold; width: 30%;">Liberação Médica:</td><td>${formData.medicalRelease || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Doença Crônica:</td><td>${formData.chronicIllness} ${formData.chronicIllnessDetail ? `(${formData.chronicIllnessDetail})` : ''}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Medicação:</td><td>${formData.medication || 'Nenhuma'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Lesões Antigas:</td><td>${(formData.injuryHistory || []).join(', ') || 'Nenhuma'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Dores Atuais:</td><td>${formData.activeInjuries || 'Nenhuma'}</td></tr>
+        </table>
 
-        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 18px; margin-top: 25px; text-transform: uppercase;">3. Perfil de Corrida</h2>
-        <p><strong>Tempo de Prática:</strong> ${formData.practiceTime || '--'}</p>
-        <p><strong>Volume/Constância:</strong> ${formData.consistency || '--'}</p>
-        <p><strong>Paces (Z2 / Z4):</strong> ${formData.easyPace || '--'} / ${formData.hardPace || '--'}</p>
-        <p><strong>Calçado:</strong> ${formData.footwear || '--'}</p>
-        <p><strong>Recorde Recente:</strong> ${formData.recentRecord || '--'}</p>
+        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">3. Perfil Técnico de Corrida</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 5px; font-weight: bold; width: 30%;">Tempo Prática:</td><td>${formData.practiceTime || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Constância (3m):</td><td>${formData.consistency || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Paces (Z2 / Z4):</td><td>${formData.easyPace || '--'} / ${formData.hardPace || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Semana Espelho:</td><td>${formData.mirrorWeek || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Calçado:</td><td>${formData.footwear || '--'}</td></tr>
+        </table>
 
-        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 18px; margin-top: 25px; text-transform: uppercase;">4. Logística e Estilo de Vida</h2>
-        <p><strong>Dias Disponíveis:</strong> ${(formData.diasCorrida || []).join(', ') || '--'}</p>
-        <p><strong>Monitorização:</strong> ${formData.intensityMonitoring || '--'}</p>
-        <p><strong>Sono / Estresse:</strong> Nível ${formData.sleepQuality}/5 | Nível ${formData.stressLevel}/5</p>
-        <p><strong>Objetivo:</strong> ${formData.biggestDifficulty || '--'}</p>
+        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">4. Logística e Estilo de Vida</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr><td style="padding: 5px; font-weight: bold; width: 30%;">Turno / Terreno:</td><td>${formData.preferredShift || '--'} / ${formData.terrain || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Monitorização:</td><td>${formData.intensityMonitoring || '--'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Força (Dias):</td><td>${(formData.strengthDays || []).join(', ') || 'Não realiza'}</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Sono / Estresse:</td><td>${formData.sleepQuality}/5 | ${formData.stressLevel}/5</td></tr>
+          <tr><td style="padding: 5px; font-weight: bold;">Objetivo:</td><td>${formData.objective || '--'} (${formData.targetRace || '--'})</td></tr>
+        </table>
 
-        <div style="margin-top: 50px; font-size: 10px; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 10px;">
-          Relatório gerado automaticamente pela Inteligência Artificial do CorreJunto.
+        <div style="margin-top: 50px; font-size: 10px; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 10px; font-style: italic;">
+          Relatório gerado via Cloud Sincronizada CorreJunto. Dados confidenciais.
         </div>
       </div>
     `;
@@ -184,7 +198,7 @@ export default function AnamnesisPage() {
               ANAMNESE <span className="text-primary">TÉCNICA</span>
             </h1>
             <p className="text-muted-foreground text-xs md:text-sm font-bold uppercase tracking-widest italic opacity-60">
-              Análise profunda para prescrição de alta performance
+              O cérebro biométrico da sua periodização IA
             </p>
           </div>
           <div className="flex gap-4">
@@ -206,27 +220,27 @@ export default function AnamnesisPage() {
         </header>
 
         <div className="space-y-12">
-          {/* SEÇÃO 1: DADOS PESSOAIS */}
+          {/* SEÇÃO 1: IDENTIDADE E SAÚDE */}
           <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
             <CardHeader className="bg-secondary/10 border-b border-border/10 p-8">
               <div className="flex items-center gap-4">
-                <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-lg shadow-primary/5">
-                  <ClipboardList size={24} />
+                <div className="size-12 rounded-2xl bg-destructive/10 flex items-center justify-center text-destructive">
+                  <Stethoscope size={24} />
                 </div>
                 <div>
-                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Identidade e Contato</CardTitle>
-                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Base de registro do laboratório</CardDescription>
+                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Clínica e Contato</CardTitle>
+                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Segurança em primeiro lugar</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
                <div className="space-y-3">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">WhatsApp / Celular</Label>
+                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">WhatsApp</Label>
                  <Input 
                    value={formData.whatsapp} 
                    onChange={(e) => handleInputChange('whatsapp', e.target.value)} 
                    placeholder="(00) 00000-0000"
-                   className="bg-black/30 border-border/40 h-14 font-bold rounded-xl focus:border-primary"
+                   className="bg-black/30 border-border/40 h-14 font-bold rounded-xl"
                  />
                </div>
                <div className="space-y-3">
@@ -234,53 +248,27 @@ export default function AnamnesisPage() {
                  <Input 
                    value={formData.profession} 
                    onChange={(e) => handleInputChange('profession', e.target.value)} 
-                   className="bg-black/30 border-border/40 h-14 font-bold rounded-xl focus:border-primary"
+                   className="bg-black/30 border-border/40 h-14 font-bold rounded-xl"
                  />
                </div>
-               <div className="md:col-span-2 space-y-3">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Contato de Emergência (Nome e Tel)</Label>
-                 <Input 
-                   value={formData.emergencyContact} 
-                   onChange={(e) => handleInputChange('emergencyContact', e.target.value)} 
-                   className="bg-black/30 border-border/40 h-14 font-bold rounded-xl focus:border-primary"
-                 />
-               </div>
-            </CardContent>
-          </Card>
-
-          {/* SEÇÃO 2: SAÚDE E LESÕES */}
-          <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
-            <CardHeader className="bg-destructive/10 border-b border-border/10 p-8">
-              <div className="flex items-center gap-4">
-                <div className="size-12 rounded-2xl bg-destructive/10 flex items-center justify-center text-destructive">
-                  <Stethoscope size={24} />
-                </div>
-                <div>
-                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Clínica e Lesões</CardTitle>
-                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Segurança e mitigação de risco</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-10 space-y-10">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="space-y-3">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Liberação Médica Recente?</Label>
+               <div className="space-y-3">
+                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Liberação Médica?</Label>
                    <Select value={formData.medicalRelease} onValueChange={(v) => handleInputChange('medicalRelease', v)}>
-                      <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl focus:border-primary italic uppercase">
+                      <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Recente (-1 ano)" className="font-bold italic uppercase">SIM, RECENTE</SelectItem>
-                        <SelectItem value="Antiga (+1 ano)" className="font-bold italic uppercase">SIM, MAS ANTIGA</SelectItem>
-                        <SelectItem value="Nenhuma" className="font-bold italic uppercase">NÃO POSSUO</SelectItem>
+                        <SelectItem value="Sim, recente (-1 ano)" className="font-bold italic uppercase">SIM, RECENTE</SelectItem>
+                        <SelectItem value="Sim, antiga (+1 ano)" className="font-bold italic uppercase">SIM, ANTIGA</SelectItem>
+                        <SelectItem value="Não possuo" className="font-bold italic uppercase">NÃO POSSUO</SelectItem>
                       </SelectContent>
                    </Select>
-                 </div>
-                 <div className="space-y-3">
+               </div>
+               <div className="space-y-3">
                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Doença Crônica?</Label>
                    <div className="flex gap-4">
                      <Select value={formData.chronicIllness} onValueChange={(v) => handleInputChange('chronicIllness', v)}>
-                        <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl focus:border-primary italic w-32 uppercase">
+                        <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic w-32 uppercase">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -292,38 +280,15 @@ export default function AnamnesisPage() {
                        disabled={formData.chronicIllness !== "Sim"}
                        value={formData.chronicIllnessDetail} 
                        onChange={(e) => handleInputChange('chronicIllnessDetail', e.target.value)}
-                       placeholder="Se sim, qual?"
-                       className="bg-black/30 border-border/40 h-14 font-bold rounded-xl focus:border-primary"
+                       placeholder="Qual?"
+                       className="bg-black/30 border-border/40 h-14 font-bold rounded-xl"
                      />
                    </div>
-                 </div>
-               </div>
-
-               <div className="space-y-4">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Histórico de Lesões Clássicas</Label>
-                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {['Canelite', 'Fascite Plantar', 'Joelho', 'Tendão Aquiles', 'Nenhuma'].map(injury => (
-                      <div key={injury} className="flex items-center space-x-3 bg-black/20 p-4 rounded-xl border border-white/5 group hover:border-primary/30 transition-all cursor-pointer" onClick={() => handleToggleArray('injuryHistory', injury)}>
-                        <Checkbox checked={formData.injuryHistory?.includes(injury)} />
-                        <span className="text-[10px] font-black uppercase italic text-white/80 group-hover:text-primary">{injury}</span>
-                      </div>
-                    ))}
-                 </div>
-               </div>
-
-               <div className="space-y-3">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Dores ou Incômodos Atuais</Label>
-                 <Textarea 
-                   value={formData.activeInjuries} 
-                   onChange={(e) => handleInputChange('activeInjuries', e.target.value)}
-                   placeholder="Descreva local, frequência e intensidade..."
-                   className="bg-black/30 border-border/40 min-h-[120px] font-bold rounded-2xl focus:border-primary italic"
-                 />
                </div>
             </CardContent>
           </Card>
 
-          {/* SEÇÃO 3: PERFIL DE CORRIDA */}
+          {/* SEÇÃO 2: MECÂNICA E LESÕES */}
           <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
             <CardHeader className="bg-primary/10 border-b border-border/10 p-8">
               <div className="flex items-center gap-4">
@@ -331,124 +296,129 @@ export default function AnamnesisPage() {
                   <Activity size={24} />
                 </div>
                 <div>
-                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Perfil e Performance</CardTitle>
-                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Nível técnico e métricas atuais</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-10 space-y-10">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="space-y-3">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Tempo de Prática</Label>
-                   <Select value={formData.practiceTime} onValueChange={(v) => handleInputChange('practiceTime', v)}>
-                      <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="-3 meses" className="font-bold italic uppercase">- 3 MESES</SelectItem>
-                        <SelectItem value="3-6 meses" className="font-bold italic uppercase">3 A 6 MESES</SelectItem>
-                        <SelectItem value="6-12 meses" className="font-bold italic uppercase">6 MESES A 1 ANO</SelectItem>
-                        <SelectItem value="+1 ano" className="font-bold italic uppercase">MAIS DE 1 ANO</SelectItem>
-                      </SelectContent>
-                   </Select>
-                 </div>
-                 <div className="space-y-3">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Constância nos últimos 3 meses</Label>
-                   <Select value={formData.consistency} onValueChange={(v) => handleInputChange('consistency', v)}>
-                      <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Regular" className="font-bold italic uppercase">REGULAR E CONSTANTE</SelectItem>
-                        <SelectItem value="Irregular" className="font-bold italic uppercase">IRREGULAR</SelectItem>
-                        <SelectItem value="Retornando" className="font-bold italic uppercase">RETORNANDO AGORA</SelectItem>
-                      </SelectContent>
-                   </Select>
-                 </div>
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="space-y-3">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Pace de Trote (Z2)</Label>
-                   <Input value={formData.easyPace} onChange={(e) => handleInputChange('easyPace', e.target.value)} placeholder="Ex: 6:30/km" className="bg-black/30 border-border/40 h-14 font-bold rounded-xl" />
-                 </div>
-                 <div className="space-y-3">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Pace Forte (Z4)</Label>
-                   <Input value={formData.hardPace} onChange={(e) => handleInputChange('hardPace', e.target.value)} placeholder="Ex: 5:00/km" className="bg-black/30 border-border/40 h-14 font-bold rounded-xl" />
-                 </div>
-               </div>
-
-               <div className="space-y-3">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">"Semana Espelho" (O que realmente treinou na última semana?)</Label>
-                 <Textarea 
-                   value={formData.mirrorWeek} 
-                   onChange={(e) => handleInputChange('mirrorWeek', e.target.value)}
-                   placeholder="Ex: Seg 5km, Qua Off, Sex 6km... Seja sincero(a)!"
-                   className="bg-black/30 border-border/40 min-h-[100px] font-bold rounded-2xl focus:border-primary italic"
-                 />
-               </div>
-            </CardContent>
-          </Card>
-
-          {/* SEÇÃO 4: LOGÍSTICA E VIDA */}
-          <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
-            <CardHeader className="bg-orange-500/10 border-b border-border/10 p-8">
-              <div className="flex items-center gap-4">
-                <div className="size-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500">
-                  <Heart size={24} />
-                </div>
-                <div>
-                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Logística e Vida</CardTitle>
-                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Disponibilidade e monitoramento</CardDescription>
+                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Histórico Mecânico</CardTitle>
+                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Ajuste de carga e proteção</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-10 space-y-10">
                <div className="space-y-4">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Disponibilidade Semanal para Correr</Label>
+                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Histórico de Lesões (Já te fizeram parar?)</Label>
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {['Canelite', 'Fascite Plantar', 'Dor Joelho', 'Aquiles', 'Nenhuma'].map(injury => (
+                      <div key={injury} className="flex items-center space-x-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer" onClick={() => handleToggleArray('injuryHistory', injury)}>
+                        <Checkbox checked={formData.injuryHistory?.includes(injury)} />
+                        <span className="text-[10px] font-black uppercase italic text-white/80">{injury}</span>
+                      </div>
+                    ))}
+                 </div>
+               </div>
+               <div className="space-y-3">
+                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Incômodos Atuais (Onde dói agora?)</Label>
+                 <Textarea 
+                   value={formData.activeInjuries} 
+                   onChange={(e) => handleInputChange('activeInjuries', e.target.value)}
+                   placeholder="Descreva local e frequência..."
+                   className="bg-black/30 border-border/40 min-h-[100px] font-bold rounded-2xl italic"
+                 />
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">"Semana Espelho" (Realidade de treino)</Label>
+                    <Textarea 
+                      value={formData.mirrorWeek} 
+                      onChange={(e) => handleInputChange('mirrorWeek', e.target.value)}
+                      placeholder="O que você realmente treinou na última semana?"
+                      className="bg-black/30 border-border/40 min-h-[100px] font-bold rounded-2xl italic"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Calçado Principal (Marca/Modelo)</Label>
+                    <Input 
+                      value={formData.footwear} 
+                      onChange={(e) => handleInputChange('footwear', e.target.value)}
+                      placeholder="Ex: Corre 3, Pegasus..."
+                      className="bg-black/30 border-border/40 h-14 font-bold rounded-xl"
+                    />
+                  </div>
+               </div>
+            </CardContent>
+          </Card>
+
+          {/* SEÇÃO 3: LOGÍSTICA E VIDA */}
+          <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
+            <CardHeader className="bg-orange-500/10 border-b border-border/10 p-8">
+              <div className="flex items-center gap-4">
+                <div className="size-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500">
+                  <Clock size={24} />
+                </div>
+                <div>
+                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Logística e Esforço</CardTitle>
+                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Monitorização e rotina</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-10 space-y-10">
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Monitorização</Label>
+                    <Select value={formData.intensityMonitoring} onValueChange={(v) => handleInputChange('intensityMonitoring', v)}>
+                        <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pace" className="font-bold italic uppercase">POR PACE</SelectItem>
+                          <SelectItem value="FC" className="font-bold italic uppercase">FREQUÊNCIA CARDÍACA</SelectItem>
+                          <SelectItem value="RPE" className="font-bold italic uppercase">PERCEPÇÃO DE ESFORÇO</SelectItem>
+                        </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Terreno Principal</Label>
+                    <Select value={formData.terrain} onValueChange={(v) => handleInputChange('terrain', v)}>
+                        <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Asfalto" className="font-bold italic uppercase">ASFALTO / CIDADE</SelectItem>
+                          <SelectItem value="Esteira" className="font-bold italic uppercase">ESTEIRA</SelectItem>
+                          <SelectItem value="Trilha" className="font-bold italic uppercase">TERRA / TRILHAS</SelectItem>
+                        </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Turno Preferido</Label>
+                    <Select value={formData.preferredShift} onValueChange={(v) => handleInputChange('preferredShift', v)}>
+                        <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Manhã" className="font-bold italic uppercase">MANHÃ</SelectItem>
+                          <SelectItem value="Tarde" className="font-bold italic uppercase">TARDE</SelectItem>
+                          <SelectItem value="Noite" className="font-bold italic uppercase">NOITE</SelectItem>
+                        </SelectContent>
+                    </Select>
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Dias de Treino de Força (Musculação)</Label>
                  <div className="flex flex-wrap gap-2">
                     {weekDays.map(day => (
                       <button
                         key={day.id}
                         type="button"
-                        onClick={() => handleToggleArray('diasCorrida', day.id)}
+                        onClick={() => handleToggleArray('strengthDays', day.id)}
                         className={cn(
                           "flex-1 min-w-[70px] h-12 rounded-xl border transition-all flex flex-col items-center justify-center gap-1 group",
-                          (formData.diasCorrida || []).includes(day.id)
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border/40 bg-black/20 text-muted-foreground hover:border-primary/50"
+                          (formData.strengthDays || []).includes(day.id)
+                            ? "border-purple-500 bg-purple-500/10 text-purple-400"
+                            : "border-border/40 bg-black/20 text-muted-foreground hover:border-purple-500/50"
                         )}
                       >
                         <span className="text-[9px] font-black italic uppercase">{day.id}</span>
                       </button>
                     ))}
-                 </div>
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="space-y-3">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Monitorização de Esforço?</Label>
-                   <Select value={formData.intensityMonitoring} onValueChange={(v) => handleInputChange('intensityMonitoring', v)}>
-                      <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Pace" className="font-bold italic uppercase">POR RITMO (PACE)</SelectItem>
-                        <SelectItem value="FC" className="font-bold italic uppercase">FREQUÊNCIA CARDÍACA</SelectItem>
-                        <SelectItem value="RPE" className="font-bold italic uppercase">PERCEPÇÃO DE ESFORÇO</SelectItem>
-                      </SelectContent>
-                   </Select>
-                 </div>
-                 <div className="space-y-3">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Dispositivos / Apps</Label>
-                   <div className="grid grid-cols-2 gap-2">
-                      {['Garmin', 'Strava', 'Coros', 'Apple', 'Nenhum'].map(dev => (
-                        <div key={dev} className="flex items-center space-x-2 bg-black/20 p-3 rounded-lg border border-white/5 cursor-pointer" onClick={() => handleToggleArray('devices', dev)}>
-                          <Checkbox checked={(formData.devices || []).includes(dev)} />
-                          <span className="text-[9px] font-black uppercase italic text-white/60">{dev}</span>
-                        </div>
-                      ))}
-                   </div>
                  </div>
                </div>
 
@@ -470,18 +440,55 @@ export default function AnamnesisPage() {
                    </div>
                  </div>
                  <div className="space-y-3">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Classificação Alimentação</Label>
-                   <Select value={formData.dietClassification} onValueChange={(v) => handleInputChange('dietClassification', v)}>
+                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Comprometimento (1-10)</Label>
+                   <Input 
+                      type="number" 
+                      min="1" max="10" 
+                      value={formData.commitmentLevel} 
+                      onChange={(e) => handleInputChange('commitmentLevel', parseInt(e.target.value))}
+                      className="bg-black/30 border-border/40 h-10 text-center font-bold rounded-xl"
+                   />
+                 </div>
+               </div>
+            </CardContent>
+          </Card>
+
+          {/* SEÇÃO 4: OBJETIVOS */}
+          <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
+            <CardHeader className="bg-primary/10 border-b border-border/10 p-8">
+              <div className="flex items-center gap-4">
+                <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                  <Trophy size={24} />
+                </div>
+                <div>
+                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Objetivo de Elite</CardTitle>
+                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">A linha de chegada</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Qual o seu objetivo hoje?</Label>
+                  <Select value={formData.objective} onValueChange={(v) => handleInputChange('objective', v)}>
                       <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Regrada" className="font-bold italic uppercase">MUITO REGRADA</SelectItem>
-                        <SelectItem value="Equilibrada" className="font-bold italic uppercase">EQUILIBRADA</SelectItem>
-                        <SelectItem value="Desorganizada" className="font-bold italic uppercase">DESORGANIZADA</SelectItem>
+                        <SelectItem value="Emagrecimento" className="font-bold italic uppercase">EMAGRECIMENTO</SelectItem>
+                        <SelectItem value="Condicionamento" className="font-bold italic uppercase">CONDICIONAMENTO E SAÚDE</SelectItem>
+                        <SelectItem value="Completar" className="font-bold italic uppercase">COMPLETAR UMA PROVA</SelectItem>
+                        <SelectItem value="Performance" className="font-bold italic uppercase">PERFORMANCE / TEMPO</SelectItem>
                       </SelectContent>
-                   </Select>
-                 </div>
+                  </Select>
+               </div>
+               <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Prova Alvo / Distância Desejada</Label>
+                  <Input 
+                    value={formData.targetRace} 
+                    onChange={(e) => handleInputChange('targetRace', e.target.value)} 
+                    placeholder="Ex: Meia Maratona de SP"
+                    className="bg-black/30 border-border/40 h-14 font-bold rounded-xl"
+                  />
                </div>
             </CardContent>
           </Card>

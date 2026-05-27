@@ -15,7 +15,7 @@ export interface DietPreferences {
 
 export interface StrengthPreferences {
   splitPreference?: 'full_body' | 'upper_lower' | 'ppl';
-  objective?: 'strength' | 'hypertrophy' | 'performance' | 'endurance';
+  objective?: 'strength' | 'hypertryphy' | 'performance' | 'endurance';
   frequency?: number;
   trainingDays?: string[];
   equipment?: string[];
@@ -71,6 +71,8 @@ export interface AnamnesisData {
   sleepQuality?: number;
   stressLevel?: number;
   dietClassification?: string;
+  objective?: string;
+  targetRace?: string;
 }
 
 export interface AthleteProfile {
@@ -119,7 +121,10 @@ export interface AiAnalysis {
     groundContactTime?: string;
     verticalOscillation?: string;
   };
-  analysisSummary: string;
+  analysisSummary: {
+    summary: string;
+    technicalReview: string;
+  };
   recommendations: string;
   areasOfImprovement: string[];
 }

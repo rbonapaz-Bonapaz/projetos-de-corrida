@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useState, useEffect, type ReactNode, useCallback, useMemo } from 'react';
@@ -144,12 +145,21 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     if (!activeProfile?.anamnesis) return "Anamnese não preenchida.";
     const a = activeProfile.anamnesis;
     return `
-      Histórico de Lesões: ${(a.injuryHistory || []).join(', ') || 'Nenhum'}
+      --- CONTEXTO BIOMÉTRICO ATLETA ---
+      Objetivo: ${a.objective || 'Performance'} (${a.targetRace || 'Geral'})
+      Lesões Antigas: ${(a.injuryHistory || []).join(', ') || 'Nenhuma'}
       Dores Atuais: ${a.activeInjuries || 'Nenhuma'}
       Saúde: Doença Crônica ${a.chronicIllness || 'Não'} (${a.chronicIllnessDetail || 'N/A'})
       Medicação: ${a.medication || 'Nenhuma'}
-      Nível de Esforço Mental: Sono ${a.sleepQuality}/5, Estresse ${a.stressLevel}/5
-      Realidade do Atleta: ${a.mirrorWeek || 'Não informada'}
+      
+      --- ROTINA E ESFORÇO ---
+      Monitorização: ${a.intensityMonitoring || 'Pace'}
+      Terreno: ${a.terrain || 'Asfalto'}
+      Sono: ${a.sleepQuality}/5 | Estresse: ${a.stressLevel}/5
+      Musculação (Dias): ${(a.strengthDays || []).join(', ')}
+      "Semana Espelho" (Realidade Recente): ${a.mirrorWeek || 'Não informada'}
+      Calçado: ${a.footwear || 'Padrão'}
+      Comprometimento: ${a.commitmentLevel}/10
     `;
   }, [activeProfile]);
 
