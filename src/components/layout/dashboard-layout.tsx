@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -254,7 +253,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16 custom-scrollbar">
-            {children}
+            <React.Suspense fallback={<div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}>
+              {children}
+            </React.Suspense>
           </main>
         </SidebarInset>
       </div>

@@ -14,12 +14,8 @@ export function initializeFirebase(): {
   firestore: Firestore;
   auth: Auth;
 } {
-  // Verificação de segurança para o ambiente de build (SSR)
-  const isServer = typeof window === 'undefined';
-  const hasConfig = !!firebaseConfig.apiKey;
-
-  if (isServer && !hasConfig) {
-    // Retorna objetos nulos/mocks se não houver config no servidor para não quebrar o build
+  // Verificação de segurança para o ambiente de build (SSR) e Pre-rendering
+  if (typeof window === 'undefined') {
     return { 
       firebaseApp: {} as FirebaseApp, 
       firestore: {} as Firestore, 
@@ -35,7 +31,7 @@ export function initializeFirebase(): {
 
     return { firebaseApp, firestore, auth };
   } catch (error) {
-    console.warn("Falha ao inicializar Firebase (esperado durante pre-rendering se config ausente):", error);
+    // Retorna mocks silenciosos para não travar o build
     return { 
       firebaseApp: {} as FirebaseApp, 
       firestore: {} as Firestore, 
