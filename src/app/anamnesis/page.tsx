@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -77,7 +76,6 @@ export default function AnamnesisPage() {
       setFormData((prev: any) => ({
         ...prev,
         ...profile.anamnesis,
-        // Sincroniza campos que podem estar no perfil principal
         objective: profile.anamnesis?.objective || (profile.raceDistance ? `Completar ${profile.raceDistance}` : ""),
         targetRace: profile.anamnesis?.targetRace || profile.raceName || "",
         strengthDays: profile.anamnesis?.strengthDays || (profile.strengthPreferences?.legDay ? [profile.strengthPreferences.legDay.substring(0,3)] : []),
@@ -103,13 +101,11 @@ export default function AnamnesisPage() {
     if (!context) return;
     setIsSaving(true);
     try {
-      // Salva na anamnese e sincroniza campos chave de volta para o perfil principal
       const updates: any = { 
         anamnesis: formData,
         raceName: formData.targetRace || profile?.raceName,
       };
 
-      // Se houver apenas um dia de perna na anamnese, tenta sincronizar com o perfil
       if (formData.strengthDays.length > 0) {
         const fullDay = weekDays.find(d => d.id === formData.strengthDays[0])?.label;
         if (fullDay) {

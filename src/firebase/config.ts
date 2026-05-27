@@ -1,12 +1,12 @@
 /**
- * @fileOverview Configuração dinâmica do Firebase.
- * Utiliza variáveis de ambiente sem aspas para compatibilidade total com o build do Next.js.
+ * @fileOverview Configuração oficial do Firebase para o projeto CorreJunto.
+ * Sincronizado com o projeto: studio-1669701209-88700
  */
 export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyBTHlgY_B4gElAUJ_d85xcgSThfLWw6iFo",
+  authDomain: "studio-1669701209-88700.firebaseapp.com",
+  projectId: "studio-1669701209-88700",
+  storageBucket: "studio-1669701209-88700.firebasestorage.app",
+  messagingSenderId: "1669701209",
+  appId: "1:1669701209:web:9c004c7c8c82736e4f1650",
 };
