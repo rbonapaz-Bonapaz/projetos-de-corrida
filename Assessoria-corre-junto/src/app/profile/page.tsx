@@ -68,6 +68,9 @@ const profileSchema = z.object({
   trainingDays: z.array(z.string()).default(['Segunda', 'Quarta', 'Sexta']),
   longRunDay: z.string().default('Domingo'),
   weeklyMileageGoal: z.coerce.number().default(30),
+  currentWeeklyMileage: z.coerce.number().default(0),
+  longestRun: z.coerce.number().default(10),
+  mainObjective: z.string().default('performance'),
   trainingHistory: z.string().default(''),
   planGenerationType: z.enum(['full', 'blocks']).default('blocks'),
   raceName: z.string().default(''),
@@ -75,10 +78,25 @@ const profileSchema = z.object({
   raceDate: z.string().default(''),
   targetPace: z.string().default(''),
   targetTime: z.string().default(''),
+  // Dieta
   dietAestheticGoal: z.string().default('performance'),
+  dietTargetWeight: z.coerce.number().default(0),
+  dietActivityLevel: z.string().default('moderate'),
+  dietStyle: z.string().default('onivoro'),
+  dietMealCount: z.coerce.number().default(4),
+  dietTrainingTiming: z.string().default('manha'),
   dietSupplements: z.string().default(''),
+  dietAllergies: z.string().default(''),
+  dietPreferredFoods: z.string().default(''),
   dietExcludedFoods: z.string().default(''),
+  // Força
   strengthSplit: z.string().default('full_body'),
+  strengthObjective: z.string().default('hypertryphy'),
+  strengthFrequency: z.coerce.number().default(2),
+  strengthDays: z.array(z.string()).default([]),
+  strengthLocation: z.string().default('academia'),
+  strengthFocusAreas: z.string().default(''),
+  strengthLimitations: z.string().default(''),
   legDay: z.string().default('Quinta'),
   prBench: z.coerce.number().default(0),
   prSquat: z.coerce.number().default(0),
@@ -101,11 +119,16 @@ export default function ProfilePage() {
       currentWeight: 70, height: 175, restingHr: 50, vo2Max: 45,
       thresholdPace: '4:50', thresholdHr: 165, experienceLevel: 'beginner',
       trainingDays: ['Segunda', 'Quarta', 'Sexta'], longRunDay: 'Domingo',
-      weeklyMileageGoal: 30, trainingHistory: '',
+      weeklyMileageGoal: 30, currentWeeklyMileage: 0, longestRun: 10, mainObjective: 'performance',
+      trainingHistory: '',
       planGenerationType: 'blocks', raceName: '', raceDistance: '10k',
       raceDate: '', targetPace: '', targetTime: '',
-      dietAestheticGoal: 'performance', dietSupplements: '', dietExcludedFoods: '',
-      strengthSplit: 'full_body', legDay: 'Quinta', prBench: 0, prSquat: 0, prDeadlift: 0,
+      dietAestheticGoal: 'performance', dietTargetWeight: 0, dietActivityLevel: 'moderate',
+      dietStyle: 'onivoro', dietMealCount: 4, dietTrainingTiming: 'manha',
+      dietSupplements: '', dietAllergies: '', dietPreferredFoods: '', dietExcludedFoods: '',
+      strengthSplit: 'full_body', strengthObjective: 'hypertryphy', strengthFrequency: 2,
+      strengthDays: [], strengthLocation: 'academia', strengthFocusAreas: '', strengthLimitations: '',
+      legDay: 'Quinta', prBench: 0, prSquat: 0, prDeadlift: 0,
     }
   });
 
@@ -127,6 +150,9 @@ export default function ProfilePage() {
         trainingDays: p.trainingDays || ['Segunda', 'Quarta', 'Sexta'],
         longRunDay: p.longRunDay || 'Domingo',
         weeklyMileageGoal: p.weeklyMileageGoal || 30,
+        currentWeeklyMileage: p.currentWeeklyMileage || 0,
+        longestRun: p.longestRun || 10,
+        mainObjective: p.mainObjective || 'performance',
         trainingHistory: p.trainingHistory || '',
         planGenerationType: p.planGenerationType || 'blocks',
         raceName: p.raceName || '',
@@ -135,9 +161,22 @@ export default function ProfilePage() {
         targetPace: p.targetPace || '',
         targetTime: p.targetTime || '',
         dietAestheticGoal: p.dietPreferences?.aestheticGoal || 'performance',
+        dietTargetWeight: p.dietPreferences?.targetWeight || 0,
+        dietActivityLevel: p.dietPreferences?.activityLevel || 'moderate',
+        dietStyle: p.dietPreferences?.dietStyle || 'onivoro',
+        dietMealCount: p.dietPreferences?.mealCount || 4,
+        dietTrainingTiming: p.dietPreferences?.trainingTiming || 'manha',
         dietSupplements: p.dietPreferences?.supplements || '',
+        dietAllergies: p.dietPreferences?.allergies || '',
+        dietPreferredFoods: p.dietPreferences?.preferredFoods || '',
         dietExcludedFoods: p.dietPreferences?.excludedFoods || '',
         strengthSplit: p.strengthPreferences?.splitPreference || 'full_body',
+        strengthObjective: p.strengthPreferences?.objective || 'hypertryphy',
+        strengthFrequency: p.strengthPreferences?.frequency || 2,
+        strengthDays: p.strengthPreferences?.trainingDays || [],
+        strengthLocation: p.strengthPreferences?.equipment?.[0] || 'academia',
+        strengthFocusAreas: (p.strengthPreferences?.focusAreas || []).join(', '),
+        strengthLimitations: p.strengthPreferences?.limitations || '',
         legDay: p.strengthPreferences?.legDay || (p as any).legDay || 'Quinta',
         prBench: p.strengthPreferences?.prBench || 0,
         prSquat: p.strengthPreferences?.prSquat || 0,
@@ -163,12 +202,27 @@ export default function ProfilePage() {
         ...data,
         dietPreferences: {
           aestheticGoal: data.dietAestheticGoal as any,
+          targetWeight: data.dietTargetWeight,
+          activityLevel: data.dietActivityLevel as any,
+          dietStyle: data.dietStyle as any,
+          mealCount: data.dietMealCount,
+          trainingTiming: data.dietTrainingTiming as any,
           supplements: data.dietSupplements,
+          allergies: data.dietAllergies,
+          preferredFoods: data.dietPreferredFoods,
           excludedFoods: data.dietExcludedFoods
         },
-        strengthPreferences: { 
+        strengthPreferences: {
           legDay: data.legDay,
           splitPreference: data.strengthSplit as any,
+          objective: data.strengthObjective as any,
+          frequency: data.strengthFrequency,
+          trainingDays: data.strengthDays,
+          equipment: data.strengthLocation ? [data.strengthLocation] : [],
+          focusAreas: data.strengthFocusAreas
+            ? data.strengthFocusAreas.split(',').map(s => s.trim()).filter(Boolean)
+            : [],
+          limitations: data.strengthLimitations,
           prBench: data.prBench,
           prSquat: data.prSquat,
           prDeadlift: data.prDeadlift
@@ -196,6 +250,7 @@ export default function ProfilePage() {
   };
 
   const selectedTrainingDays = form.watch('trainingDays') || [];
+  const selectedStrengthDays = form.watch('strengthDays') || [];
 
   return (
     <DashboardLayout>
@@ -354,6 +409,37 @@ export default function ProfilePage() {
                         )} />
                       </div>
 
+                      <FormField control={form.control} name="mainObjective" render={({field}) => (
+                        <FormItem className="space-y-2">
+                          <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">OBJETIVO PRINCIPAL</Label>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl><SelectTrigger className="bg-black/40 border-white/5 h-11 font-black italic rounded-xl text-[11px]"><SelectValue /></SelectTrigger></FormControl>
+                            <SelectContent className="bg-[#0c0e12]">
+                              <SelectItem value="saude" className="font-bold italic">SAÚDE / CONDICIONAMENTO</SelectItem>
+                              <SelectItem value="emagrecimento" className="font-bold italic">EMAGRECIMENTO</SelectItem>
+                              <SelectItem value="primeira_prova" className="font-bold italic">TERMINAR PRIMEIRA PROVA</SelectItem>
+                              <SelectItem value="recorde" className="font-bold italic">BATER RECORDE (PR)</SelectItem>
+                              <SelectItem value="performance" className="font-bold italic">PERFORMANCE / COMPETIR</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )} />
+
+                      <div className="grid grid-cols-2 gap-6">
+                        <FormField control={form.control} name="currentWeeklyMileage" render={({field}) => (
+                          <FormItem className="space-y-2">
+                            <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest text-center block">VOLUME ATUAL (KM/SEM)</Label>
+                            <FormControl><Input type="number" {...field} className="bg-black/40 h-11 text-center font-black rounded-xl border-white/5" /></FormControl>
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="longestRun" render={({field}) => (
+                          <FormItem className="space-y-2">
+                            <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest text-center block">MAIOR LONGO (KM)</Label>
+                            <FormControl><Input type="number" {...field} className="bg-black/40 h-11 text-center font-black rounded-xl border-white/5" /></FormControl>
+                          </FormItem>
+                        )} />
+                      </div>
+
                       <div className="space-y-4">
                         <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">DIAS DE TREINO</Label>
                         <div className="grid grid-cols-2 gap-3">
@@ -459,7 +545,33 @@ export default function ProfilePage() {
                        <FormField control={form.control} name="dietAestheticGoal" render={({field}) => (
                           <FormItem className="space-y-2">
                             <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">OBJETIVO</Label>
-                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="performance" className="font-bold italic">PERFORMANCE</SelectItem><SelectItem value="cutting" className="font-bold italic">CUTTING</SelectItem><SelectItem value="bulking" className="font-bold italic">BULKING</SelectItem></SelectContent></Select>
+                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="performance" className="font-bold italic">PERFORMANCE</SelectItem><SelectItem value="cutting" className="font-bold italic">CUTTING (EMAGRECER)</SelectItem><SelectItem value="bulking" className="font-bold italic">BULKING (GANHAR)</SelectItem><SelectItem value="recomp" className="font-bold italic">RECOMPOSIÇÃO</SelectItem></SelectContent></Select>
+                          </FormItem>
+                        )} />
+                       <div className="grid grid-cols-2 gap-4">
+                         <FormField control={form.control} name="dietTargetWeight" render={({field}) => (
+                          <FormItem className="space-y-2"><Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">PESO-ALVO (KG)</Label><FormControl><Input type="number" {...field} className="bg-black/40 h-12 text-center font-black rounded-xl" /></FormControl></FormItem>
+                        )} />
+                         <FormField control={form.control} name="dietMealCount" render={({field}) => (
+                          <FormItem className="space-y-2"><Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">REFEIÇÕES/DIA</Label><FormControl><Input type="number" {...field} className="bg-black/40 h-12 text-center font-black rounded-xl" /></FormControl></FormItem>
+                        )} />
+                       </div>
+                       <FormField control={form.control} name="dietActivityLevel" render={({field}) => (
+                          <FormItem className="space-y-2">
+                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">NÍVEL DE ATIVIDADE DIÁRIA</Label>
+                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold text-[11px]"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="sedentary" className="font-bold italic">SEDENTÁRIO (ESCRITÓRIO)</SelectItem><SelectItem value="light" className="font-bold italic">LEVE</SelectItem><SelectItem value="moderate" className="font-bold italic">MODERADO</SelectItem><SelectItem value="active" className="font-bold italic">ATIVO</SelectItem><SelectItem value="very_active" className="font-bold italic">MUITO ATIVO (FÍSICO)</SelectItem></SelectContent></Select>
+                          </FormItem>
+                        )} />
+                       <FormField control={form.control} name="dietStyle" render={({field}) => (
+                          <FormItem className="space-y-2">
+                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">PADRÃO ALIMENTAR</Label>
+                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold text-[11px]"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="onivoro" className="font-bold italic">ONÍVORO</SelectItem><SelectItem value="vegetariano" className="font-bold italic">VEGETARIANO</SelectItem><SelectItem value="vegano" className="font-bold italic">VEGANO</SelectItem><SelectItem value="low_carb" className="font-bold italic">LOW CARB</SelectItem><SelectItem value="cetogenica" className="font-bold italic">CETOGÊNICA</SelectItem><SelectItem value="flexivel" className="font-bold italic">FLEXÍVEL (IIFYM)</SelectItem></SelectContent></Select>
+                          </FormItem>
+                        )} />
+                       <FormField control={form.control} name="dietTrainingTiming" render={({field}) => (
+                          <FormItem className="space-y-2">
+                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">HORÁRIO DO TREINO</Label>
+                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold text-[11px]"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="jejum" className="font-bold italic">EM JEJUM</SelectItem><SelectItem value="manha" className="font-bold italic">MANHÃ</SelectItem><SelectItem value="meio-dia" className="font-bold italic">MEIO-DIA</SelectItem><SelectItem value="tarde" className="font-bold italic">TARDE</SelectItem><SelectItem value="noite" className="font-bold italic">NOITE</SelectItem></SelectContent></Select>
                           </FormItem>
                         )} />
                        <FormField control={form.control} name="dietSupplements" render={({field}) => (
@@ -468,8 +580,12 @@ export default function ProfilePage() {
                     </CardContent>
                   </Card>
                   <Card className="bg-[#0a0c10] border-border/50 rounded-[2rem] overflow-hidden shadow-2xl">
-                    <CardHeader className="bg-secondary/10 border-b border-white/5 p-8"><h2 className="text-xl font-headline font-black uppercase italic text-white leading-none flex items-center gap-3"><Timer className="size-6 text-green-400" /> RESTRIÇÕES</h2></CardHeader>
-                    <CardContent className="p-8"><FormField control={form.control} name="dietExcludedFoods" render={({field}) => (<FormItem className="space-y-2"><Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">ALIMENTOS EXCLUÍDOS</Label><FormControl><Textarea {...field} placeholder="Alergias ou desgostos..." className="bg-black/40 rounded-xl min-h-[100px]" /></FormControl></FormItem>)} /></CardContent>
+                    <CardHeader className="bg-secondary/10 border-b border-white/5 p-8"><h2 className="text-xl font-headline font-black uppercase italic text-white leading-none flex items-center gap-3"><Timer className="size-6 text-green-400" /> PREFERÊNCIAS & RESTRIÇÕES</h2></CardHeader>
+                    <CardContent className="p-8 space-y-6">
+                      <FormField control={form.control} name="dietPreferredFoods" render={({field}) => (<FormItem className="space-y-2"><Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">ALIMENTOS PREFERIDOS</Label><FormControl><Textarea {...field} placeholder="Ex: frango, arroz, batata-doce, frutas..." className="bg-black/40 rounded-xl min-h-[80px] text-xs italic" /></FormControl></FormItem>)} />
+                      <FormField control={form.control} name="dietAllergies" render={({field}) => (<FormItem className="space-y-2"><Label className="text-[10px] font-black text-rose-400 uppercase italic tracking-widest">ALERGIAS / INTOLERÂNCIAS</Label><FormControl><Textarea {...field} placeholder="Ex: lactose, glúten, amendoim..." className="bg-black/40 rounded-xl min-h-[70px] text-xs italic border-rose-500/20" /></FormControl></FormItem>)} />
+                      <FormField control={form.control} name="dietExcludedFoods" render={({field}) => (<FormItem className="space-y-2"><Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">ALIMENTOS EXCLUÍDOS</Label><FormControl><Textarea {...field} placeholder="Desgostos ou o que evita comer..." className="bg-black/40 rounded-xl min-h-[70px] text-xs italic" /></FormControl></FormItem>)} />
+                    </CardContent>
                   </Card>
                 </div>
               </TabsContent>
@@ -479,12 +595,47 @@ export default function ProfilePage() {
                   <Card className="bg-[#0a0c10] border-border/50 rounded-[2rem] overflow-hidden shadow-2xl">
                     <CardHeader className="bg-orange-500/10 border-b border-white/5 p-8"><h2 className="text-xl font-headline font-black uppercase italic text-orange-500 leading-none flex items-center gap-3"><Dumbbell className="size-6" /> MUSCULAÇÃO</h2></CardHeader>
                     <CardContent className="p-8 space-y-6">
+                       <div className="grid grid-cols-2 gap-4">
+                         <FormField control={form.control} name="strengthObjective" render={({field}) => (
+                            <FormItem className="space-y-2">
+                              <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">OBJETIVO</Label>
+                              <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold text-[11px]"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="hypertryphy" className="font-bold italic">HIPERTROFIA</SelectItem><SelectItem value="strength" className="font-bold italic">FORÇA</SelectItem><SelectItem value="endurance" className="font-bold italic">RESISTÊNCIA</SelectItem><SelectItem value="performance" className="font-bold italic">PERFORMANCE</SelectItem></SelectContent></Select>
+                            </FormItem>
+                          )} />
+                         <FormField control={form.control} name="strengthFrequency" render={({field}) => (
+                            <FormItem className="space-y-2">
+                              <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">FREQUÊNCIA/SEM</Label>
+                              <FormControl><Input type="number" {...field} className="bg-black/40 h-12 text-center font-black rounded-xl" /></FormControl>
+                            </FormItem>
+                          )} />
+                       </div>
                        <FormField control={form.control} name="strengthSplit" render={({field}) => (
                           <FormItem className="space-y-2">
                             <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">DIVISÃO DE TREINO</Label>
                             <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="full_body" className="font-bold italic">FULL BODY</SelectItem><SelectItem value="upper_lower" className="font-bold italic">UPPER/LOWER</SelectItem><SelectItem value="ppl" className="font-bold italic">PUSH/PULL/LEGS</SelectItem></SelectContent></Select>
                           </FormItem>
                         )} />
+                       <FormField control={form.control} name="strengthLocation" render={({field}) => (
+                          <FormItem className="space-y-2">
+                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">LOCAL / EQUIPAMENTOS</Label>
+                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold text-[11px]"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="academia" className="font-bold italic">ACADEMIA COMPLETA</SelectItem><SelectItem value="halteres_casa" className="font-bold italic">CASA (HALTERES/ELÁSTICOS)</SelectItem><SelectItem value="peso_corporal" className="font-bold italic">SÓ PESO CORPORAL</SelectItem></SelectContent></Select>
+                          </FormItem>
+                        )} />
+                        <div className="space-y-3">
+                          <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">DIAS DE MUSCULAÇÃO</Label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {weekDays.map((day) => (
+                              <div key={day} className={cn("flex items-center space-x-2 p-2.5 rounded-xl border transition-all cursor-pointer", selectedStrengthDays.includes(day) ? "bg-orange-500/10 border-orange-500/40" : "bg-black/30 border-white/5 hover:border-orange-500/20")} onClick={() => {
+                                  const current = form.getValues('strengthDays') || [];
+                                  const next = current.includes(day) ? current.filter(d => d !== day) : [...current, day];
+                                  form.setValue('strengthDays', next);
+                                }}>
+                                <Checkbox checked={selectedStrengthDays.includes(day)} className="size-4" />
+                                <span className="text-[9px] font-black uppercase italic text-white/90">{day}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                         <FormField control={form.control} name="legDay" render={({field}) => (
                           <FormItem className="space-y-2">
                             <FormLabel className="text-[10px] font-black text-orange-500 uppercase italic tracking-widest">LEG DAY (TREINO PESADO)</FormLabel>
@@ -495,6 +646,12 @@ export default function ProfilePage() {
                               </SelectContent>
                             </Select>
                           </FormItem>
+                        )} />
+                        <FormField control={form.control} name="strengthFocusAreas" render={({field}) => (
+                          <FormItem className="space-y-2"><Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">ÁREAS DE FOCO</Label><FormControl><Input {...field} placeholder="Ex: glúteos, core, panturrilhas" className="bg-black/40 h-11 rounded-xl text-xs italic" /></FormControl></FormItem>
+                        )} />
+                        <FormField control={form.control} name="strengthLimitations" render={({field}) => (
+                          <FormItem className="space-y-2"><Label className="text-[10px] font-black text-rose-400 uppercase italic tracking-widest">LIMITAÇÕES / LESÕES</Label><FormControl><Textarea {...field} placeholder="Ex: dor no ombro, evitar impacto no joelho..." className="bg-black/40 rounded-xl min-h-[70px] text-xs italic border-rose-500/20" /></FormControl></FormItem>
                         )} />
                     </CardContent>
                   </Card>

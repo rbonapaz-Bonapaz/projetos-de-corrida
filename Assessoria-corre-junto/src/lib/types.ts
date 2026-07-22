@@ -4,8 +4,14 @@ export type PlanGenerationType = 'full' | 'blocks';
 export type Gender = 'male' | 'female' | 'other';
 export type ReferenceHandling = 'faithful' | 'optimized';
 
+export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+export type DietStyle = 'onivoro' | 'vegetariano' | 'vegano' | 'low_carb' | 'cetogenica' | 'flexivel';
+
 export interface DietPreferences {
   aestheticGoal?: 'cutting' | 'bulking' | 'recomp' | 'performance';
+  targetWeight?: number;
+  activityLevel?: ActivityLevel;
+  dietStyle?: DietStyle;
   trainingTiming?: 'jejum' | 'manha' | 'meio-dia' | 'tarde' | 'noite';
   mealCount?: number;
   supplements?: string;
@@ -101,6 +107,9 @@ export interface AthleteProfile {
   trainingDays: string[];
   longRunDay: string;
   weeklyMileageGoal: number;
+  currentWeeklyMileage?: number;
+  longestRun?: number;
+  mainObjective?: string;
   planGenerationType: PlanGenerationType;
   experienceLevel: ExperienceLevel;
   trainingHistory: string;

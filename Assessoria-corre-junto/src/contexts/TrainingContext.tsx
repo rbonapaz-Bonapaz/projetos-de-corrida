@@ -287,7 +287,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         targetRaceDistance: profile.raceDistance || '10k',
         targetPace: profile.targetPace,
         targetTime: profile.targetTime,
-        currentLongRunDistance: 15,
+        currentLongRunDistance: profile.longestRun || 15,
         weeklyAvailability: (profile.trainingDays || []).join(', '),
         injuryHistory: profile.trainingHistory || 'Nenhuma',
         preferredWorkoutDays: (profile.trainingDays || []).join(', '),
