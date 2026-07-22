@@ -525,9 +525,10 @@ export default function TrainingPage() {
                                                     <div className="grid grid-cols-3 gap-2 md:gap-3">
                                                       {fitSummary.distanceKm != null && <FitStat label="DIST" value={`${fitSummary.distanceKm}km`} />}
                                                       {fitSummary.avgPace && <FitStat label="PACE" value={fitSummary.avgPace.replace('/km','')} />}
+                                                      {fitSummary.avgSpeedKmh != null && <FitStat label="VELOC" value={`${fitSummary.avgSpeedKmh}km/h`} />}
                                                       {fitSummary.durationText && <FitStat label="TEMPO" value={fitSummary.durationText} />}
                                                       {fitSummary.avgHr != null && <FitStat label="FC MÉD" value={`${fitSummary.avgHr}`} />}
-                                                      {fitSummary.avgCadenceSpm != null && <FitStat label="CADÊNCIA" value={`${fitSummary.avgCadenceSpm}`} />}
+                                                      {fitSummary.avgCadenceSpm != null && <FitStat label={fitSummary.sport === 'cycling' ? 'RPM' : 'CADÊNCIA'} value={`${fitSummary.avgCadenceSpm}`} />}
                                                       {fitSummary.avgVerticalOscillationCm != null && <FitStat label="OSC.VERT" value={`${fitSummary.avgVerticalOscillationCm}cm`} />}
                                                       {fitSummary.avgGroundContactTimeMs != null && <FitStat label="GCT" value={`${fitSummary.avgGroundContactTimeMs}ms`} />}
                                                       {fitSummary.avgPowerW != null && <FitStat label="POT" value={`${fitSummary.avgPowerW}w`} />}

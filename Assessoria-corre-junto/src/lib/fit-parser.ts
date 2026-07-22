@@ -15,6 +15,7 @@ export interface FitSummary {
   durationText?: string;
   avgPace?: string;
   maxPace?: string;
+  avgSpeedKmh?: number;
   avgHr?: number;
   maxHr?: number;
   avgCadenceSpm?: number;
@@ -56,12 +57,14 @@ function avg(nums: number[]): number | undefined {
   return valid.reduce((a, b) => a + b, 0) / valid.length;
 }
 
-/** Normaliza a cadência do FIT para passos por minuto (SPM). */
-function toSpm(cadence?: number, fractional?: number): number | undefined {
+/** Normaliza a cadência do FIT para passos por minuto (SPM) em corrida. */
+function toSpm(cadence?: number, fractional?: number, isRunning = true): number | undefined {
   if (cadence == null) return undefined;
   const raw = cadence + (fractional || 0);
-  // FIT costuma gravar cadência de corrida "por perna" (~85). SPM real = x2.
-  return raw > 0 && raw < 130 ? Math.round(raw * 2) : Math.round(raw);
+  if (raw <= 0) return undefined; // sem sensor de cadência
+  // Em corrida o FIT grava cadência "por perna" (~85). SPM real = x2.
+  // Em ciclismo a cadência já é o RPM final, não dobrar.
+  return isRunning && raw < 130 ? Math.round(raw * 2) : Math.round(raw);
 }
 
 export function parseFitFile(buffer: ArrayBuffer): Promise<FitSummary> {
@@ -92,18 +95,24 @@ export function parseFitFile(buffer: ArrayBuffer): Promise<FitSummary> {
         const stride = avg(records.map((r) => r.step_length).filter(Boolean)); // mm
         const power = avg(records.map((r) => r.power).filter(Boolean));
 
+        const sport: string | undefined = session.sport || data?.activity?.sessions?.[0]?.sport;
+        const isRunning = !sport || sport === 'running' || sport === 'walking' || sport === 'hiking';
+        // Pace só faz sentido em esportes de deslocamento a pé; ciclismo/spinning usa velocidade/potência.
+        const showPace = isRunning || sport === undefined;
+
         const summary: FitSummary = {
-          sport: session.sport || data?.activity?.sessions?.[0]?.sport,
+          sport,
           startTime: session.start_time ? new Date(session.start_time).toISOString() : undefined,
           distanceKm: session.total_distance ? Number(session.total_distance.toFixed(2)) : undefined,
           durationSec: session.total_timer_time ? Math.round(session.total_timer_time) : undefined,
           durationText: secToText(session.total_timer_time),
-          avgPace: paceFromSpeedKmh(session.avg_speed),
-          maxPace: paceFromSpeedKmh(session.max_speed),
+          avgPace: showPace ? paceFromSpeedKmh(session.avg_speed) : undefined,
+          maxPace: showPace ? paceFromSpeedKmh(session.max_speed) : undefined,
+          avgSpeedKmh: !showPace && session.avg_speed ? Number(session.avg_speed.toFixed(1)) : undefined,
           avgHr: session.avg_heart_rate ? Math.round(session.avg_heart_rate) : undefined,
           maxHr: session.max_heart_rate ? Math.round(session.max_heart_rate) : undefined,
-          avgCadenceSpm: toSpm(session.avg_running_cadence ?? session.avg_cadence, session.avg_fractional_cadence),
-          maxCadenceSpm: toSpm(session.max_running_cadence ?? session.max_cadence),
+          avgCadenceSpm: toSpm(session.avg_running_cadence ?? session.avg_cadence, session.avg_fractional_cadence, isRunning),
+          maxCadenceSpm: toSpm(session.max_running_cadence ?? session.max_cadence, undefined, isRunning),
           avgVerticalOscillationCm: vo ? Number((vo / 10).toFixed(1)) : undefined, // mm -> cm
           avgGroundContactTimeMs: gct ? Math.round(gct) : undefined,
           avgVerticalRatio: vr ? Number(vr.toFixed(1)) : undefined,
@@ -135,10 +144,11 @@ export function fitSummaryToText(s: FitSummary): string {
   push('Duração', s.durationText);
   push('Pace médio', s.avgPace);
   push('Pace máximo (mais rápido)', s.maxPace);
+  push('Velocidade média', s.avgSpeedKmh, ' km/h');
   push('FC média', s.avgHr, ' bpm');
   push('FC máxima', s.maxHr, ' bpm');
-  push('Cadência média', s.avgCadenceSpm, ' spm');
-  push('Cadência máxima', s.maxCadenceSpm, ' spm');
+  push('Cadência média', s.avgCadenceSpm, s.sport === 'cycling' ? ' rpm' : ' spm');
+  push('Cadência máxima', s.maxCadenceSpm, s.sport === 'cycling' ? ' rpm' : ' spm');
   push('Comprimento de passada médio', s.avgStrideLengthM, ' m');
   push('Oscilação vertical média', s.avgVerticalOscillationCm, ' cm');
   push('Tempo de contato com o solo (GCT)', s.avgGroundContactTimeMs, ' ms');
