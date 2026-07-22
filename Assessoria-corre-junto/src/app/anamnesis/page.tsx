@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import {
   FileDown,
   Stethoscope,
@@ -17,13 +18,70 @@ import {
   Loader2,
   Zap,
   Upload,
-  FileDigit
+  FileDigit,
+  Target,
+  Dumbbell,
+  Apple,
+  Moon,
+  Gauge
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn, fileToDataURI } from "@/lib/utils";
 import Script from "next/script";
 
 const injuryOptions = ['Canelite', 'Fascite Plantar', 'Dor Joelho', 'Aquiles', 'Outros', 'Nenhuma'];
+const weekDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const deviceOptions = ['Relógio GPS', 'Faixa cardíaca', 'App no celular', 'Nenhum'];
+const terrainOptions = ['Asfalto', 'Trilha', 'Esteira', 'Pista', 'Misto'];
+const practiceTimeOptions = ['Menos de 6 meses', '6 meses a 1 ano', '1 a 3 anos', 'Mais de 3 anos'];
+const consistencyOptions = ['Irregular', 'Moderada', 'Consistente'];
+const shiftOptions = ['Manhã', 'Tarde', 'Noite', 'Variável'];
+const intensityOptions = ['Frequência cardíaca', 'Pace', 'Percepção de esforço (PSE)', 'Não monitoro'];
+const dietOptions = ['Disciplinada', 'Moderada', 'Irregular', 'Não faço dieta'];
+
+function PillGroup({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onChange(opt)}
+          className={cn(
+            "px-3 py-2 rounded-lg text-[12px] font-medium border transition-all",
+            value === opt
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+          )}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function TagToggle({ values, options, onToggle }: { values: string[]; options: string[]; onToggle: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onToggle(opt)}
+          className={cn(
+            "px-3 py-2 rounded-lg text-[12px] font-medium border transition-all",
+            values.includes(opt)
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+          )}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function AnamnesisPage() {
   const context = React.useContext(TrainingContext);
@@ -46,9 +104,18 @@ export default function AnamnesisPage() {
     consistency: "",
     mirrorWeek: "",
     mirrorWeekFileUri: "",
+    easyPace: "",
+    hardPace: "",
+    trainingStructure: "",
     footwear: "",
+    recentRecord: "",
+    maxContinuousDistance: "",
     preferredShift: "",
+    timeWeekdays: "",
+    timeWeekends: "",
     strengthDays: [],
+    strengthFocus: "",
+    strengthLocation: "",
     intensityMonitoring: "",
     terrain: "",
     devices: [],
@@ -56,6 +123,7 @@ export default function AnamnesisPage() {
     commitmentLevel: 10,
     sleepQuality: 3,
     stressLevel: 3,
+    dietClassification: "",
     objective: "",
     targetRace: ""
   });
@@ -169,6 +237,36 @@ export default function AnamnesisPage() {
       </header>
 
       <div className="flex flex-col gap-5">
+        {/* OBJETIVO */}
+        <section className="card-plain">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <Target size={18} />
+            </div>
+            <h3 className="font-bold text-[15px]">Objetivo</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Objetivo principal</Label>
+              <Input
+                value={formData.objective || ""}
+                onChange={(e) => handleInputChange('objective', e.target.value)}
+                placeholder="Ex: Completar minha primeira meia maratona"
+                className="h-11 rounded-xl text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Prova-alvo</Label>
+              <Input
+                value={formData.targetRace || ""}
+                onChange={(e) => handleInputChange('targetRace', e.target.value)}
+                className="h-11 rounded-xl text-sm"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* CLÍNICA E CONTATO */}
         <section className="card-plain">
           <div className="flex items-center gap-3 mb-5">
             <div className="size-10 rounded-xl bg-destructive/10 flex items-center justify-center text-destructive shrink-0">
@@ -176,7 +274,7 @@ export default function AnamnesisPage() {
             </div>
             <h3 className="font-bold text-[15px]">Clínica e contato</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="space-y-1.5">
               <Label className="eyebrow">WhatsApp</Label>
               <Input
@@ -193,9 +291,104 @@ export default function AnamnesisPage() {
                 className="h-11 rounded-xl text-sm"
               />
             </div>
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Contato de emergência</Label>
+              <Input
+                value={formData.emergencyContact || ""}
+                onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
+                placeholder="Nome e telefone"
+                className="h-11 rounded-xl text-sm"
+              />
+            </div>
           </div>
         </section>
 
+        {/* SAÚDE */}
+        <section className="card-plain">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="size-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 shrink-0">
+              <Activity size={18} />
+            </div>
+            <h3 className="font-bold text-[15px]">Saúde</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label className="eyebrow">Liberação médica para correr</Label>
+              <PillGroup
+                value={formData.medicalRelease}
+                options={['Sim', 'Não', 'Parcial (com restrições)']}
+                onChange={(v) => handleInputChange('medicalRelease', v)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="eyebrow">Possui doença crônica?</Label>
+              <PillGroup
+                value={formData.chronicIllness}
+                options={['Sim', 'Não']}
+                onChange={(v) => handleInputChange('chronicIllness', v)}
+              />
+            </div>
+          </div>
+
+          {formData.chronicIllness === 'Sim' && (
+            <div className="space-y-1.5 mt-4">
+              <Label className="eyebrow">Qual(is)?</Label>
+              <Input
+                value={formData.chronicIllnessDetail || ""}
+                onChange={(e) => handleInputChange('chronicIllnessDetail', e.target.value)}
+                className="h-11 rounded-xl text-sm"
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Medicação em uso</Label>
+              <Input
+                value={formData.medication || ""}
+                onChange={(e) => handleInputChange('medication', e.target.value)}
+                placeholder="Se nenhuma, deixe em branco"
+                className="h-11 rounded-xl text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Dores/lesões ativas agora</Label>
+              <Input
+                value={formData.activeInjuries || ""}
+                onChange={(e) => handleInputChange('activeInjuries', e.target.value)}
+                placeholder="Se nenhuma, deixe em branco"
+                className="h-11 rounded-xl text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-5 pt-5 border-t border-border">
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <Label className="eyebrow flex items-center gap-1.5"><Moon size={11} /> Qualidade do sono</Label>
+                <span className="num text-[12px] font-semibold text-primary">{formData.sleepQuality}/5</span>
+              </div>
+              <Slider value={[formData.sleepQuality]} min={1} max={5} step={1} onValueChange={([v]) => handleInputChange('sleepQuality', v)} />
+            </div>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <Label className="eyebrow flex items-center gap-1.5"><Gauge size={11} /> Nível de estresse</Label>
+                <span className="num text-[12px] font-semibold text-primary">{formData.stressLevel}/5</span>
+              </div>
+              <Slider value={[formData.stressLevel]} min={1} max={5} step={1} onValueChange={([v]) => handleInputChange('stressLevel', v)} />
+            </div>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <Label className="eyebrow">Comprometimento</Label>
+                <span className="num text-[12px] font-semibold text-primary">{formData.commitmentLevel}/10</span>
+              </div>
+              <Slider value={[formData.commitmentLevel]} min={0} max={10} step={1} onValueChange={([v]) => handleInputChange('commitmentLevel', v)} />
+            </div>
+          </div>
+        </section>
+
+        {/* HISTÓRICO MECÂNICO */}
         <section className="card-plain">
           <div className="flex items-center gap-3 mb-5">
             <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
@@ -217,6 +410,17 @@ export default function AnamnesisPage() {
                   <span className="text-[12px] font-medium">{injury}</span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-5 pt-5 border-t border-border">
+            <div className="space-y-2">
+              <Label className="eyebrow">Tempo de prática</Label>
+              <PillGroup value={formData.practiceTime} options={practiceTimeOptions} onChange={(v) => handleInputChange('practiceTime', v)} />
+            </div>
+            <div className="space-y-2">
+              <Label className="eyebrow">Consistência nos treinos</Label>
+              <PillGroup value={formData.consistency} options={consistencyOptions} onChange={(v) => handleInputChange('consistency', v)} />
             </div>
           </div>
 
@@ -264,6 +468,126 @@ export default function AnamnesisPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ROTINA DE TREINO */}
+        <section className="card-plain">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="size-10 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-400 shrink-0">
+              <Gauge size={18} />
+            </div>
+            <h3 className="font-bold text-[15px]">Rotina de treino</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Pace fácil atual</Label>
+              <Input value={formData.easyPace || ""} onChange={(e) => handleInputChange('easyPace', e.target.value)} placeholder="Ex: 6:30/km" className="h-11 rounded-xl text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Pace forte atual</Label>
+              <Input value={formData.hardPace || ""} onChange={(e) => handleInputChange('hardPace', e.target.value)} placeholder="Ex: 5:00/km" className="h-11 rounded-xl text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Melhor marca recente</Label>
+              <Input value={formData.recentRecord || ""} onChange={(e) => handleInputChange('recentRecord', e.target.value)} placeholder="Ex: 10km em 48min" className="h-11 rounded-xl text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Maior distância contínua já percorrida</Label>
+              <Input value={formData.maxContinuousDistance || ""} onChange={(e) => handleInputChange('maxContinuousDistance', e.target.value)} placeholder="Ex: 15 km" className="h-11 rounded-xl text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Tempo disponível — dias de semana</Label>
+              <Input value={formData.timeWeekdays || ""} onChange={(e) => handleInputChange('timeWeekdays', e.target.value)} placeholder="Ex: até 1h por dia" className="h-11 rounded-xl text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Tempo disponível — fins de semana</Label>
+              <Input value={formData.timeWeekends || ""} onChange={(e) => handleInputChange('timeWeekends', e.target.value)} placeholder="Ex: até 2h30" className="h-11 rounded-xl text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Calçado utilizado</Label>
+              <Input value={formData.footwear || ""} onChange={(e) => handleInputChange('footwear', e.target.value)} placeholder="Modelo e idade aproximada" className="h-11 rounded-xl text-sm" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5 mt-5">
+            <Label className="eyebrow">Como estrutura os treinos hoje</Label>
+            <Textarea
+              value={formData.trainingStructure || ""}
+              onChange={(e) => handleInputChange('trainingStructure', e.target.value)}
+              placeholder="Ex: treino sozinho, sigo planilha de app, corro livre..."
+              className="min-h-[90px] rounded-xl text-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-5 pt-5 border-t border-border">
+            <div className="space-y-2">
+              <Label className="eyebrow">Turno preferido</Label>
+              <PillGroup value={formData.preferredShift} options={shiftOptions} onChange={(v) => handleInputChange('preferredShift', v)} />
+            </div>
+            <div className="space-y-2">
+              <Label className="eyebrow">Terreno habitual</Label>
+              <PillGroup value={formData.terrain} options={terrainOptions} onChange={(v) => handleInputChange('terrain', v)} />
+            </div>
+            <div className="space-y-2">
+              <Label className="eyebrow">Como monitora intensidade</Label>
+              <PillGroup value={formData.intensityMonitoring} options={intensityOptions} onChange={(v) => handleInputChange('intensityMonitoring', v)} />
+            </div>
+            <div className="space-y-2">
+              <Label className="eyebrow">Dispositivos que utiliza</Label>
+              <TagToggle values={formData.devices || []} options={deviceOptions} onToggle={(v) => handleToggleArray('devices', v)} />
+            </div>
+          </div>
+
+          <div className="space-y-1.5 mt-5">
+            <Label className="eyebrow">Maior dificuldade hoje</Label>
+            <Textarea
+              value={formData.biggestDifficulty || ""}
+              onChange={(e) => handleInputChange('biggestDifficulty', e.target.value)}
+              placeholder="Ex: falta de tempo, dor recorrente, motivação..."
+              className="min-h-[90px] rounded-xl text-sm"
+            />
+          </div>
+        </section>
+
+        {/* FORÇA */}
+        <section className="card-plain">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="size-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0">
+              <Dumbbell size={18} />
+            </div>
+            <h3 className="font-bold text-[15px]">Força</h3>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="eyebrow">Dias disponíveis para musculação</Label>
+            <TagToggle values={formData.strengthDays || []} options={weekDays} onToggle={(v) => handleToggleArray('strengthDays', v)} />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Foco da musculação</Label>
+              <Input value={formData.strengthFocus || ""} onChange={(e) => handleInputChange('strengthFocus', e.target.value)} placeholder="Ex: força, hipertrofia, estabilidade" className="h-11 rounded-xl text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Onde treina força</Label>
+              <Input value={formData.strengthLocation || ""} onChange={(e) => handleInputChange('strengthLocation', e.target.value)} placeholder="Academia, casa, ar livre..." className="h-11 rounded-xl text-sm" />
+            </div>
+          </div>
+        </section>
+
+        {/* ALIMENTAÇÃO */}
+        <section className="card-plain">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="size-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+              <Apple size={18} />
+            </div>
+            <h3 className="font-bold text-[15px]">Alimentação</h3>
+          </div>
+          <div className="space-y-2">
+            <Label className="eyebrow">Como classifica sua alimentação hoje</Label>
+            <PillGroup value={formData.dietClassification} options={dietOptions} onChange={(v) => handleInputChange('dietClassification', v)} />
           </div>
         </section>
 
