@@ -4,16 +4,15 @@ import * as React from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { chatWithCoachAction } from "@/ai/actions";
 import { TrainingContext } from "@/contexts/TrainingContext";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  Send, 
-  Bot, 
-  User, 
-  Loader2, 
+import {
+  Send,
+  Bot,
+  User,
+  Loader2,
   MessageSquare,
   History,
   Paperclip,
@@ -51,7 +50,6 @@ export default function CoachPage() {
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Efeito para sincronizar com Firestore se logado
   React.useEffect(() => {
     if (!user || !firestore) return;
 
@@ -71,7 +69,6 @@ export default function CoachPage() {
     return () => unsubscribe();
   }, [user, firestore]);
 
-  // Scroll automático
   React.useEffect(() => {
     if (scrollRef.current) {
       const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -87,21 +84,19 @@ export default function CoachPage() {
 
     const currentInput = trimmedInput;
     const currentImage = attachedImage;
-    
-    // UI Feedback imediato
-    const userMsg: Message = { 
-      role: "user", 
-      parts: currentInput, 
-      image: currentImage || undefined, 
-      createdAt: new Date() 
+
+    const userMsg: Message = {
+      role: "user",
+      parts: currentInput,
+      image: currentImage || undefined,
+      createdAt: new Date()
     };
-    
+
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setAttachedImage(null);
     setLoading(true);
 
-    // Persistência Cloud (Se logado)
     if (user && firestore) {
       const messagesRef = collection(firestore, 'user_data', user.uid, 'messages');
       addDoc(messagesRef, { ...userMsg, createdAt: serverTimestamp() }).catch(async () => {
@@ -113,7 +108,7 @@ export default function CoachPage() {
 
     try {
       const workoutHistoryContext = `Perfil: ${profile?.name || 'Atleta'}. Peso: ${profile?.currentWeight || '--'}kg. Pace T: ${profile?.thresholdPace || '--'}. FC Limiar: ${profile?.thresholdHr || '--'}bpm.`;
-      
+
       const response = await chatWithCoachAction({
         conversationHistory: messages.concat(userMsg).map(m => ({ role: m.role, parts: m.parts })),
         workoutHistory: workoutHistoryContext,
@@ -122,10 +117,10 @@ export default function CoachPage() {
         imageDataUri: currentImage || undefined
       });
 
-      const modelMsg: Message = { 
-        role: "model", 
-        parts: response.feedback, 
-        createdAt: new Date() 
+      const modelMsg: Message = {
+        role: "model",
+        parts: response.feedback,
+        createdAt: new Date()
       };
 
       setMessages(prev => [...prev, modelMsg]);
@@ -147,102 +142,104 @@ export default function CoachPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto space-y-4 md:space-y-10 h-[calc(100svh-8rem)] md:h-auto flex flex-col animate-in fade-in duration-700">
-        <div className="text-center shrink-0 px-2">
-          <h1 className="font-headline text-2xl md:text-5xl font-black uppercase italic tracking-tighter text-white leading-none">
-            GEMINI <span className="text-primary">COACH</span>
+      <div className="flex flex-col h-[calc(100svh-9rem)] lg:h-[calc(100svh-8rem)]">
+        <div className="mb-4 shrink-0">
+          <h1 className="text-2xl md:text-[26px] font-bold tracking-tight flex items-center gap-2.5">
+            <Sparkles className="size-6 text-primary" /> Coach IA
           </h1>
-          <p className="text-muted-foreground text-[7px] md:text-sm font-bold uppercase tracking-widest italic mt-1 opacity-60">Sincronizado via Cloud Elite</p>
+          <p className="text-[13px] text-muted-foreground mt-1">Converse sobre seus treinos e sensações.</p>
         </div>
 
-        <Tabs defaultValue="conversar" className="w-full flex-1 flex flex-col space-y-3 md:space-y-8 overflow-hidden">
-          <TabsList className="grid w-full grid-cols-2 bg-secondary/20 p-1 rounded-xl md:rounded-2xl h-auto gap-1 shadow-inner shrink-0">
-            <TabsTrigger value="conversar" className="py-2 md:py-4 font-headline font-black text-[8px] md:text-sm uppercase italic gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-black rounded-lg md:rounded-xl">
-              <MessageSquare className="size-3 md:size-4" /> Conversar
+        <Tabs defaultValue="conversar" className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-2 h-10 rounded-xl shrink-0 mb-4">
+            <TabsTrigger value="conversar" className="text-xs font-semibold rounded-lg gap-1.5">
+              <MessageSquare className="size-3.5" /> Conversar
             </TabsTrigger>
-            <TabsTrigger value="historico" className="py-2 md:py-4 font-headline font-black text-[8px] md:text-sm uppercase italic gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-black rounded-lg md:rounded-xl">
-              <History className="size-3 md:size-4" /> Histórico
+            <TabsTrigger value="historico" className="text-xs font-semibold rounded-lg gap-1.5">
+              <History className="size-3.5" /> Histórico
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="conversar" className="mt-0 flex-1 overflow-hidden">
-            <Card className="bg-card/40 border-border/50 flex flex-col h-full md:h-[650px] overflow-hidden rounded-[1.25rem] md:rounded-[2.5rem] shadow-2xl relative">
-              <CardContent className="flex-1 p-0 overflow-hidden">
-                <ScrollArea className="h-full p-4 md:p-12" ref={scrollRef}>
-                  <div className="space-y-6 md:space-y-12 pb-4">
+            <div className="card-plain flex flex-col h-full !p-0 overflow-hidden">
+              <div className="flex-1 overflow-hidden">
+                <ScrollArea className="h-full p-4 md:p-6" ref={scrollRef}>
+                  <div className="space-y-5 pb-4">
                     {messages.length === 0 && !loading && (
-                      <div className="text-center py-10 md:py-20 text-muted-foreground/30 flex flex-col items-center space-y-4">
-                        <Sparkles className="size-10 md:size-16 animate-pulse" />
-                        <p className="font-headline font-black uppercase italic text-[8px] md:text-xs tracking-widest text-center">Inicie seu laboratório técnico.<br/>Relate um treino ou peça um ajuste.</p>
+                      <div className="text-center py-16 text-muted-foreground/50 flex flex-col items-center gap-3">
+                        <Sparkles className="size-10 animate-pulse" />
+                        <p className="text-[13px] max-w-xs">Relate um treino ou peça um ajuste no seu plano.</p>
                       </div>
                     )}
                     {messages.map((msg, i) => (
-                      <div key={msg.id || i} className={cn("flex items-start gap-2.5 md:gap-4 animate-in slide-in-from-bottom-2 duration-300", msg.role === 'user' ? "flex-row-reverse" : "flex-row")}>
-                        <Avatar className={cn("size-7 md:size-12 border-2 shadow-xl shrink-0", msg.role === 'model' ? "border-primary bg-primary" : "border-border/50 bg-secondary")}>
-                          <AvatarFallback className="font-black italic text-[10px] md:text-lg">
-                            {msg.role === 'model' ? <Bot className="size-3 md:size-6 text-black" /> : <User className="size-3 md:size-6 text-white" />}
+                      <div key={msg.id || i} className={cn("flex items-start gap-2.5", msg.role === 'user' ? "flex-row-reverse" : "flex-row")}>
+                        <Avatar className={cn("size-8 shrink-0", msg.role === 'model' ? "bg-primary" : "bg-secondary")}>
+                          <AvatarFallback className="bg-transparent">
+                            {msg.role === 'model' ? <Bot className="size-4 text-primary-foreground" /> : <User className="size-4" />}
                           </AvatarFallback>
                         </Avatar>
                         <div className={cn(
-                          "max-w-[85%] md:max-w-[70%] rounded-xl md:rounded-3xl p-3 md:p-6 text-[11px] md:text-base leading-relaxed shadow-xl",
-                          msg.role === 'user' ? "bg-primary text-black font-bold italic rounded-tr-none" : "bg-black/40 border border-white/5 text-white italic rounded-tl-none"
+                          "max-w-[85%] md:max-w-[70%] rounded-2xl p-3.5 text-[13px] leading-relaxed",
+                          msg.role === 'user'
+                            ? "bg-primary text-primary-foreground rounded-tr-sm"
+                            : "bg-secondary/50 border border-border rounded-tl-sm"
                         )}>
-                          {msg.image && <img src={msg.image} alt="Anexo" className="mb-3 rounded-lg w-full max-h-40 md:max-h-80 object-contain border border-white/10" />}
+                          {msg.image && <img src={msg.image} alt="Anexo" className="mb-2.5 rounded-lg w-full max-h-60 object-contain border border-border" />}
                           <div className="whitespace-pre-wrap">{msg.parts}</div>
                         </div>
                       </div>
                     ))}
                     {loading && (
-                      <div className="flex items-start gap-2.5 animate-in fade-in">
-                        <Avatar className="size-7 md:size-12 border-2 border-primary bg-primary shrink-0"><AvatarFallback><Bot className="size-3 md:size-6 text-black" /></AvatarFallback></Avatar>
-                        <div className="bg-black/40 border border-white/5 rounded-xl md:rounded-3xl rounded-tl-none p-3 md:p-6 flex items-center gap-2 shadow-xl">
-                          <Loader2 className="size-3 md:size-5 animate-spin text-primary" />
-                          <span className="text-[7px] md:text-[10px] font-black uppercase italic text-muted-foreground/60">Analisando Biometria...</span>
+                      <div className="flex items-start gap-2.5">
+                        <Avatar className="size-8 bg-primary shrink-0"><AvatarFallback className="bg-transparent"><Bot className="size-4 text-primary-foreground" /></AvatarFallback></Avatar>
+                        <div className="bg-secondary/50 border border-border rounded-2xl rounded-tl-sm p-3.5 flex items-center gap-2">
+                          <Loader2 className="size-4 animate-spin text-primary" />
+                          <span className="text-[12px] text-muted-foreground">Analisando…</span>
                         </div>
                       </div>
                     )}
                   </div>
                 </ScrollArea>
-              </CardContent>
+              </div>
 
-              <CardFooter className="p-3 md:p-8 border-t border-white/5 bg-secondary/10 flex-col gap-3 md:gap-6">
+              <div className="p-3 md:p-4 border-t border-border flex flex-col gap-2.5 shrink-0">
                 {attachedImage && (
-                  <div className="w-full flex items-center justify-between gap-2 p-1.5 md:p-3 bg-primary/10 border border-primary/30 rounded-lg md:rounded-2xl animate-in zoom-in-95">
-                    <div className="flex items-center gap-2 md:gap-4">
-                      <img src={attachedImage} className="size-10 md:size-16 rounded-lg object-cover border border-white/20" alt="Preview" />
-                      <div className="space-y-0.5">
-                        <p className="text-[8px] md:text-[10px] font-black uppercase italic text-primary leading-none">Imagem Pronta</p>
-                      </div>
+                  <div className="w-full flex items-center justify-between gap-2 p-2 bg-primary/10 border border-primary/20 rounded-xl">
+                    <div className="flex items-center gap-2.5">
+                      <img src={attachedImage} className="size-10 rounded-lg object-cover border border-border" alt="Preview" />
+                      <p className="text-[11px] font-semibold text-primary">Imagem pronta</p>
                     </div>
-                    <Button variant="ghost" size="icon" className="size-7 md:size-10 rounded-full" onClick={() => setAttachedImage(null)}><X className="size-3 md:size-5" /></Button>
+                    <Button variant="ghost" size="icon" className="size-8 rounded-full" onClick={() => setAttachedImage(null)}><X className="size-4" /></Button>
                   </div>
                 )}
-                
-                <div className="flex w-full gap-2 items-center">
-                  <div className="flex-1 relative group">
-                    <Input 
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSend();
-                        }
-                      }}
-                      placeholder="Relate seu treino ou dor..."
-                      className="bg-black/40 border-white/5 h-11 md:h-16 px-4 md:px-8 pr-16 md:pr-28 rounded-xl md:rounded-2xl font-bold italic border-2 focus:border-primary text-xs md:text-sm"
-                    />
-                    <div className="absolute right-1.5 top-1.5 md:right-3 md:top-3 flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="size-8 md:size-10 rounded-lg text-muted-foreground hover:text-primary"><Paperclip size={16} /></Button>
-                      <Button onClick={handleSend} disabled={loading || (!input.trim() && !attachedImage)} size="icon" className="size-8 md:size-10 bg-primary text-black rounded-lg shadow-xl active:scale-90"><Send size={16} /></Button>
-                    </div>
-                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={async (e) => {
-                      if (e.target.files?.[0]) setAttachedImage(await fileToDataURI(e.target.files[0]));
-                    }} />
+
+                <div className="relative">
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                    placeholder="Relate seu treino ou dor…"
+                    className="h-11 pr-24 rounded-xl text-sm"
+                  />
+                  <div className="absolute right-1.5 top-1.5 flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="size-8 rounded-lg text-muted-foreground hover:text-primary">
+                      <Paperclip size={16} />
+                    </Button>
+                    <Button onClick={handleSend} disabled={loading || (!input.trim() && !attachedImage)} size="icon" className="size-8 rounded-lg">
+                      <Send size={16} />
+                    </Button>
                   </div>
+                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={async (e) => {
+                    if (e.target.files?.[0]) setAttachedImage(await fileToDataURI(e.target.files[0]));
+                  }} />
                 </div>
-              </CardFooter>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
