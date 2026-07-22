@@ -141,7 +141,33 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   const getAnamnesisSummary = useCallback(() => {
     if (!activeProfile?.anamnesis) return "Anamnese não preenchida.";
     const a = activeProfile.anamnesis;
-    return `Objetivo: ${a.objective || 'Performance'}. Lesões: ${(a.injuryHistory || []).join(', ')}. Dores: ${a.activeInjuries || 'Nenhuma'}.`;
+    const lines: string[] = [];
+    const push = (label: string, value: any) => {
+      if (value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0)) {
+        lines.push(`${label}: ${Array.isArray(value) ? value.join(', ') : value}.`);
+      }
+    };
+    push('Objetivo', a.objective);
+    push('Prova-alvo', a.targetRace);
+    push('Liberação médica', a.medicalRelease);
+    push('Doença crônica', a.chronicIllness === 'Sim' ? `Sim (${a.chronicIllnessDetail || 'sem detalhe'})` : a.chronicIllness);
+    push('Medicação em uso', a.medication);
+    push('Histórico de lesões', a.injuryHistory);
+    push('Dores/lesões ativas', a.activeInjuries);
+    push('Tempo de prática', a.practiceTime);
+    push('Consistência', a.consistency);
+    push('Semana espelho (relato)', a.mirrorWeek);
+    push('Calçado', a.footwear);
+    push('Turno preferido', a.preferredShift);
+    push('Dias de força', a.strengthDays);
+    push('Monitoramento de intensidade', a.intensityMonitoring);
+    push('Terreno habitual', a.terrain);
+    push('Dispositivos', a.devices);
+    push('Maior dificuldade', a.biggestDifficulty);
+    push('Nível de comprometimento (0-10)', a.commitmentLevel);
+    push('Qualidade do sono (1-5)', a.sleepQuality);
+    push('Nível de estresse (1-5)', a.stressLevel);
+    return lines.length ? lines.join(' ') : "Anamnese não preenchida.";
   }, [activeProfile]);
 
   const saveProfile = useCallback((data: Partial<AthleteProfile>) => {

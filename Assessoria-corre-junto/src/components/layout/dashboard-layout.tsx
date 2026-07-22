@@ -143,6 +143,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     "R";
   const userName =
     context?.activeProfile?.name || user?.displayName?.split(" ")[0] || "Convidado";
+  const anamnesisFilled = !!context?.activeProfile?.anamnesis?.whatsapp;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] min-h-svh bg-background w-full overflow-x-hidden">
@@ -171,7 +172,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <item.icon className="size-4 shrink-0" strokeWidth={1.8} />
-                <span className="truncate">{item.title}</span>
+                <span className="truncate flex-1">{item.title}</span>
+                {item.url === "/anamnesis" && !anamnesisFilled && (
+                  <span className="size-1.5 rounded-full bg-destructive shrink-0" />
+                )}
               </Link>
             );
           })}
@@ -333,7 +337,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   )}
                 >
                   <item.icon className="size-4 shrink-0" strokeWidth={1.8} />
-                  {item.title}
+                  <span className="flex-1">{item.title}</span>
+                  {item.url === "/anamnesis" && !anamnesisFilled && (
+                    <span className="size-1.5 rounded-full bg-destructive shrink-0" />
+                  )}
                 </Link>
               );
             })}
