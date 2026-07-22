@@ -116,6 +116,7 @@ export interface AthleteProfile {
   referenceDocumentUri?: string;
   referenceHandling?: ReferenceHandling;
   trainingPlan?: TrainingPlan;
+  dietPlan?: DietPlan;
   dietPreferences?: DietPreferences;
   strengthPreferences?: StrengthPreferences;
   integrations?: {
@@ -174,4 +175,31 @@ export interface TrainingPlan {
   blockType: string;
   durationWeeks: number;
   weeklyPlans: WeeklyPlan[];
+}
+
+export interface DietMeal {
+  name: string;
+  time: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  items: string[];
+  notes?: string;
+}
+
+export interface DietPlan {
+  targetCalories: number;
+  macros: {
+    protein: number;
+    carbs: number;
+    fat: number;
+  };
+  waterLiters: number;
+  strategy: string;
+  meals: DietMeal[];
+  trainingDayNotes: string;
+  restDayNotes: string;
+  supplementation: string;
+  generalTips: string[];
 }

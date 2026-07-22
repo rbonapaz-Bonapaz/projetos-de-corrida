@@ -23,7 +23,8 @@ import {
   ClipboardList,
   Cloud,
   Smartphone,
-  Fingerprint
+  Fingerprint,
+  Apple
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,7 @@ const MASCOT_IMAGE_URL = "/mascote.png";
 const items = [
   { title: "DASHBOARD", url: "/", icon: LayoutDashboard },
   { title: "MEU PLANO", url: "/training", icon: Target },
+  { title: "NUTRIÇÃO", url: "/nutrition", icon: Apple },
   { title: "WIDGET MÓVEL", url: "/widget", icon: Smartphone },
   { title: "EVOLUÇÃO", url: "/analysis", icon: Activity },
   { title: "CONQUISTAS", url: "/vault", icon: Trophy },

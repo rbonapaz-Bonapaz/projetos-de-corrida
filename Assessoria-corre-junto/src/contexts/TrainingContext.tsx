@@ -12,9 +12,9 @@ import {
   type User
 } from 'firebase/auth';
 import { useAuth, useFirestore } from '@/firebase';
-import type { AthleteProfile, TrainingPlan, Workout, WeeklyPlan } from '@/lib/types';
+import type { AthleteProfile, TrainingPlan, Workout, WeeklyPlan, DietPlan } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { generateTrainingAction } from '@/ai/actions';
+import { generateTrainingAction, generateDietAction } from '@/ai/actions';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -31,6 +31,9 @@ interface TrainingContextType {
   updateWorkout: (workoutId: string, updates: Partial<Workout>) => void;
   planGenerationStatus: PlanGenerationStatus;
   generateRunningPlanAsync: (profile: AthleteProfile) => Promise<void>;
+  dietPlan: DietPlan | null;
+  dietGenerationStatus: PlanGenerationStatus;
+  generateDietPlanAsync: (profile: AthleteProfile) => Promise<void>;
   loginGoogle: () => Promise<void>;
   loginBiometric: () => Promise<void>;
   loginEmail: (email: string, pass: string) => Promise<void>;
@@ -59,6 +62,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false);
   const [localActiveProfileId, setLocalActiveProfileId] = useState<string | null>(null);
   const [planGenerationStatus, setPlanGenerationStatus] = useState<PlanGenerationStatus>('idle');
+  const [dietGenerationStatus, setDietGenerationStatus] = useState<PlanGenerationStatus>('idle');
   
   const [remoteConfig, setRemoteConfig] = useState<any>(null);
   const [cloudProfiles, setRemoteProfiles] = useState<AthleteProfile[]>([]);
@@ -322,6 +326,45 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const generateDietPlanAsync = async (profile: AthleteProfile) => {
+    setDietGenerationStatus('pending');
+    try {
+      const diet = profile.dietPreferences || {};
+      let age: number | undefined;
+      if (profile.birthDate) {
+        const diff = Date.now() - new Date(profile.birthDate).getTime();
+        age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+      }
+
+      const aiResult = await generateDietAction({
+        age,
+        gender: profile.gender,
+        currentWeight: profile.currentWeight || 70,
+        height: profile.height || 175,
+        targetWeight: diet.targetWeight || undefined,
+        aestheticGoal: diet.aestheticGoal || 'performance',
+        activityLevel: diet.activityLevel || 'moderate',
+        dietStyle: diet.dietStyle || 'onivoro',
+        mealCount: diet.mealCount || 4,
+        trainingTiming: diet.trainingTiming,
+        weeklyMileage: profile.weeklyMileageGoal || profile.currentWeeklyMileage,
+        strengthFrequency: profile.strengthPreferences?.frequency,
+        supplements: diet.supplements,
+        allergies: diet.allergies,
+        preferredFoods: diet.preferredFoods,
+        excludedFoods: diet.excludedFoods,
+        anamnesisContext: getAnamnesisSummary(),
+      });
+
+      saveProfile({ ...profile, dietPlan: aiResult as DietPlan });
+      setDietGenerationStatus('success');
+      toast({ title: "Plano Alimentar Gerado!" });
+    } catch (error: any) {
+      setDietGenerationStatus('error');
+      toast({ variant: "destructive", title: "Erro na Nutrição IA", description: error.message });
+    }
+  };
+
   return (
     <TrainingContext.Provider value={{
       isHydrated, profiles, activeProfile,
@@ -329,7 +372,10 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         if (user && db) await updateDoc(doc(db, 'athletes', id), { ownerUid: 'deleted' });
       }, 
       trainingPlan: activeProfile?.trainingPlan || null,
-      updateWorkout, planGenerationStatus, generateRunningPlanAsync, loginGoogle,
+      updateWorkout, planGenerationStatus, generateRunningPlanAsync,
+      dietPlan: activeProfile?.dietPlan || null,
+      dietGenerationStatus, generateDietPlanAsync,
+      loginGoogle,
       loginBiometric, toggleIntegration,
       loginEmail, registerEmail, logout, user, getAnamnesisSummary
     }}>
