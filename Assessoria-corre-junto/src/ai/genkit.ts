@@ -33,7 +33,7 @@ export function isAiConfigured(): boolean {
 /** Converte um data URI (data:<mime>;base64,<dados>) em uma parte inlineData. */
 function dataUriToPart(uri?: string) {
   if (!uri) return null;
-  const match = uri.match(/^data:(.+?);base64,(.*)$/s);
+  const match = uri.match(/^data:(.+?);base64,([\s\S]*)$/);
   if (!match) return null;
   return { inlineData: { mimeType: match[1], data: match[2] } };
 }
