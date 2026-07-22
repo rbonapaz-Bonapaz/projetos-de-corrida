@@ -1,10 +1,10 @@
 /**
- * @fileOverview Fluxo Genkit Elite para gerar blocos de treinamento.
- * OBRIGATORIAMENTE NUMÉRICO e baseado em VDOT.
+ * @fileOverview Geração de blocos de treinamento (VDOT + zonas de FC).
+ * Browser-safe: usa o cliente Gemini via fetch (sem Genkit/Express).
  */
 
-import { getAi } from '@/ai/genkit';
-import { z } from 'genkit';
+import { generateJSON } from '@/ai/genkit';
+import { z } from 'zod';
 
 const GenerateTrainingBlockInputSchema = z.object({
   raceName: z.string().optional().describe('Nome da prova alvo.'),
@@ -68,32 +68,70 @@ const GenerateTrainingBlockOutputSchema = z.object({
 export type GenerateTrainingBlockOutput = z.infer<typeof GenerateTrainingBlockOutputSchema>;
 
 export async function generateTrainingBlock(input: GenerateTrainingBlockInput): Promise<GenerateTrainingBlockOutput> {
-  const ai = getAi();
-  
-  const prompt = ai.definePrompt({
-    name: 'generateTrainingBlockPrompt',
-    input: { schema: GenerateTrainingBlockInputSchema },
-    output: { schema: GenerateTrainingBlockOutputSchema },
-    prompt: `Você é o Diretor Técnico do CorreJunto Lab. Gere uma periodização de ELITE.
-      
-      REGRAS DE OURO:
-      1. VDOT {{currentVDOT}}: Todos os paces devem ser baseados EXATAMENTE nesta métrica.
-      2. CAMPO 'paceZone': Exiba a faixa exata (ex: "4:30 - 4:40/KM").
-      3. ESTRUTURA: Se o treino for INTERVALADO, detalhe as fases (Aquecimento, Tiros, Arrefecimento).
-      4. SEGURANÇA: Se houver Leg Day ({{legDay}}), o dia seguinte DEVE ser Regenerativo ou OFF.
-      5. TERMINOLOGIA: Use apenas REGENERATIVO, RODAGEM, PROGRESSIVO, FARTLEK, LIMIAR, TIROS, SUBIDAS, LONGÃO.
+  const system = `Você é o Diretor Técnico do CorreJunto Lab, especialista em periodização de corrida de elite.
 
-      CONTEXTO BIOMÉTRICO:
-      {{anamnesisContext}}
-      
-      OBJETIVO: {{targetRaceDistance}} em {{raceDate}}.`,
+REGRAS DE OURO:
+1. VDOT ${input.currentVDOT}: Todos os paces devem ser baseados EXATAMENTE nesta métrica.
+2. CAMPO 'paceZone': Exiba a faixa exata (ex: "4:30 - 4:40/KM").
+3. ESTRUTURA: Se o treino for INTERVALADO, detalhe as fases em 'phases' (Aquecimento, Tiros, Arrefecimento).
+4. SEGURANÇA: Se houver Leg Day (${input.legDay || 'nenhum'}), o dia seguinte DEVE ser Regenerativo ou OFF.
+5. TERMINOLOGIA (campo 'type'): use apenas REGENERATIVO, RODAGEM, PROGRESSIVO, FARTLEK, LIMIAR, TIROS, SUBIDAS, LONGÃO.
+6. Zonas de FC: Z1<=${input.hrZone1End}, Z2<=${input.hrZone2End}, Z3<=${input.hrZone3End}, Z4<=${input.hrZone4End}, FCmax=${input.hrMax}.
+
+Responda SEMPRE em PORTUGUÊS (Brasil).`;
+
+  const prompt = `Gere uma periodização de ELITE em JSON válido, seguindo EXATAMENTE este formato:
+{
+  "blockType": "${input.trainingBlockType}",
+  "durationWeeks": <número de semanas>,
+  "weeklyPlans": [
+    {
+      "weekNumber": 1,
+      "dateRange": "DD/MM - DD/MM",
+      "focus": "<foco da semana>",
+      "runs": [
+        {
+          "day": "<dia da semana>",
+          "type": "<REGENERATIVO|RODAGEM|PROGRESSIVO|FARTLEK|LIMIAR|TIROS|SUBIDAS|LONGÃO>",
+          "distance": "<ex: 10 KM>",
+          "paceZone": "<ex: 4:30 - 4:40/KM>",
+          "description": "<descrição técnica>",
+          "rpe": <1-10>,
+          "estimatedDuration": "<ex: 50 min>",
+          "technicalDetails": [{ "label": "<rótulo>", "value": "<valor>" }],
+          "phases": [{ "name": "<nome>", "distance": "<dist>", "pace": "<pace>", "description": "<desc>" }]
+        }
+      ],
+      "strength": "<orientação de força para a semana>",
+      "notes": "<observações>"
+    }
+  ]
+}
+
+PARÂMETROS DO ATLETA:
+- Objetivo: ${input.targetRaceDistance} em ${input.raceDate}${input.raceName ? ` (${input.raceName})` : ''}.
+- Pace/tempo alvo: ${input.targetPace || input.targetTime || 'não informado'}.
+- Volume semanal alvo: ${input.weeklyMileageGoal} KM. Último longo: ${input.currentLongRunDistance} KM.
+- Volume de geração: ${input.planGenerationType === 'full' ? 'ciclo completo' : 'bloco de 4 semanas'}.
+- Dias disponíveis: ${input.weeklyAvailability}. Dias de intensidade: ${input.preferredWorkoutDays}.
+- Histórico clínico: ${input.injuryHistory}.
+- Tratamento da referência: ${input.referenceHandling === 'faithful' ? 'seguir fielmente o documento de referência' : 'otimizar a partir da referência'}.
+
+CONTEXTO BIOMÉTRICO:
+${input.anamnesisContext || 'Não fornecido.'}`;
+
+  const output = await generateJSON<GenerateTrainingBlockOutput>({
+    system,
+    prompt,
+    imageDataUri: input.referenceFileDataUri,
+    temperature: 0.5,
+    schema: GenerateTrainingBlockOutputSchema,
   });
 
-  const { output } = await prompt(input);
-  if (!output) throw new Error('Falha na geração do plano de performance.');
+  if (!output?.weeklyPlans) throw new Error('Falha na geração do plano de performance.');
 
   output.weeklyPlans.forEach((week: any) => {
-    week.runs.forEach((run: any) => {
+    week.runs?.forEach((run: any) => {
       if (!run.id) run.id = Math.random().toString(36).substring(2, 11);
     });
   });

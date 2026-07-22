@@ -1,9 +1,10 @@
 /**
  * @fileOverview Treinador de IA conversacional para corredores.
+ * Browser-safe: usa o cliente Gemini via fetch (sem Genkit/Express).
  */
 
-import { getAi } from '@/ai/genkit';
-import { z } from 'genkit';
+import { generateText } from '@/ai/genkit';
+import { z } from 'zod';
 
 const ChatWithAICoachInputSchema = z.object({
   conversationHistory: z.array(
@@ -21,30 +22,27 @@ const ChatWithAICoachInputSchema = z.object({
 export type ChatWithAICoachInput = z.infer<typeof ChatWithAICoachInputSchema>;
 
 export async function chatWithAICoach(input: ChatWithAICoachInput): Promise<{ feedback: string }> {
-  const ai = getAi();
-  
   const historyString = input.conversationHistory
     .map(m => `${m.role === 'user' ? 'Atleta' : 'Coach'}: ${m.parts}`)
     .join('\n');
 
-  const { text } = await ai.generate({
-    model: 'googleai/gemini-2.5-flash',
-    system: `Você é o Gemini Coach, um treinador de elite especialista em biomecânica e fisiologia do exercício.
-    Responda em PORTUGUÊS (Brasil). Seja técnico, motivador e foque em dados de performance.
-    
-    CONTEXTO BIOMÉTRICO (ANAMNESE):
-    ${input.anamnesis || 'Ainda não preenchida.'}
-    
-    CONTEXTO DO ATLETA: ${input.workoutHistory}
-    PLANO ATUAL: ${input.trainingPlan}
-    
-    DIRETRIZ: Se o atleta tiver histórico de lesão ou dores ativas citadas na anamnese, seja conservador e priorize a recuperação.`,
-    prompt: [
-      { text: `Histórico da conversa atual:\n${historyString}\n\nAnalise e forneça feedback sobre a última interação ou imagem enviada.` },
-      ...(input.imageDataUri ? [{ media: { url: input.imageDataUri } }] : []),
-    ],
-    config: { temperature: 0.7 }
+  const system = `Você é o Gemini Coach, um treinador de elite especialista em biomecânica e fisiologia do exercício.
+Responda em PORTUGUÊS (Brasil). Seja técnico, motivador e foque em dados de performance.
+
+CONTEXTO BIOMÉTRICO (ANAMNESE):
+${input.anamnesis || 'Ainda não preenchida.'}
+
+CONTEXTO DO ATLETA: ${input.workoutHistory}
+PLANO ATUAL: ${input.trainingPlan}
+
+DIRETRIZ: Se o atleta tiver histórico de lesão ou dores ativas citadas na anamnese, seja conservador e priorize a recuperação.`;
+
+  const feedback = await generateText({
+    system,
+    prompt: `Histórico da conversa atual:\n${historyString}\n\nAnalise e forneça feedback sobre a última interação ou imagem enviada.`,
+    imageDataUri: input.imageDataUri,
+    temperature: 0.7,
   });
 
-  return { feedback: text };
+  return { feedback };
 }
