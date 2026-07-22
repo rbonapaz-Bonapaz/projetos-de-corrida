@@ -9,7 +9,8 @@ import { z } from 'zod';
 const AnalyzeWorkoutInputSchema = z.object({
   prescribedWorkout: z.string().describe('O treino que foi planejado.'),
   athleteFeedback: z.string().describe('O relato do atleta sobre o treino.'),
-  fileDataUri: z.string().optional().describe("URI de dados do arquivo (.FIT, .CSV ou imagem)."),
+  deviceData: z.string().optional().describe('Métricas reais extraídas do arquivo .FIT/.CSV do dispositivo (fonte da verdade).'),
+  fileDataUri: z.string().optional().describe("URI de dados de imagem (print/foto) para leitura visual."),
   athleteProfile: z.string().describe('Dados biográficos e fisiológicos do atleta.'),
   anamnesis: z.string().optional().describe('Dados clínicos para análise de segurança.'),
 });
@@ -61,10 +62,18 @@ Responda em PORTUGUÊS (Brasil).`;
   "recommendations": "<recomendações práticas>",
   "areasOfImprovement": ["<ponto 1>", "<ponto 2>"]
 }
+${input.deviceData ? `
+IMPORTANTE: Use os DADOS REAIS DO DISPOSITIVO abaixo como FONTE DA VERDADE para preencher 'actualMetrics'.
+NÃO invente números — se um dado não estiver presente, estime com cautela ou deixe genérico.
 
+DADOS REAIS DO DISPOSITIVO (.FIT do COROS/Garmin):
+${input.deviceData}
+` : ''}
 TREINO PRESCRITO: ${input.prescribedWorkout}
 FEEDBACK DO ATLETA: ${input.athleteFeedback}
-PERFIL DO ATLETA: ${input.athleteProfile}`;
+PERFIL DO ATLETA: ${input.athleteProfile}
+
+Compare o REALIZADO (dados do dispositivo) com o PRESCRITO e avalie se o atleta cumpriu o objetivo (pace/zona/distância).`;
 
   const output = await generateJSON<AnalyzeWorkoutOutput>({
     system,

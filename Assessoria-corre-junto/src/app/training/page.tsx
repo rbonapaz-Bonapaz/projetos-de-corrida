@@ -41,6 +41,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn, fileToDataURI } from '@/lib/utils';
+import { parseFitFile, fitSummaryToText, type FitSummary } from '@/lib/fit-parser';
 import type { Workout } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -63,6 +64,8 @@ export default function TrainingPage() {
   const [athleteFeedback, setAthleteFeedback] = React.useState("");
   const [uploadedFileUri, setUploadedFileUri] = React.useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = React.useState<string | null>(null);
+  const [deviceData, setDeviceData] = React.useState<string | null>(null);
+  const [fitSummary, setFitSummary] = React.useState<FitSummary | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -94,13 +97,32 @@ export default function TrainingPage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const name = file.name.toLowerCase();
+    setUploadedFileName(file.name);
     try {
-      const uri = await fileToDataURI(file);
-      setUploadedFileUri(uri);
-      setUploadedFileName(file.name);
-      toast({ title: "Arquivo Preparado", description: "Pronto para análise biomecânica." });
-    } catch (err) {
-      toast({ variant: 'destructive', title: "Erro no Upload" });
+      if (name.endsWith('.fit')) {
+        const buffer = await file.arrayBuffer();
+        const summary = await parseFitFile(buffer);
+        setFitSummary(summary);
+        setDeviceData(fitSummaryToText(summary));
+        setUploadedFileUri(null);
+        toast({ title: "COROS Sincronizado", description: "Métricas reais extraídas do arquivo .FIT." });
+      } else if (name.endsWith('.csv') || name.endsWith('.txt')) {
+        const text = await file.text();
+        setDeviceData(`Conteúdo do arquivo ${file.name}:\n${text.slice(0, 4000)}`);
+        setFitSummary(null);
+        setUploadedFileUri(null);
+        toast({ title: "Arquivo Preparado", description: "Dados prontos para análise." });
+      } else {
+        const uri = await fileToDataURI(file);
+        setUploadedFileUri(uri);
+        setDeviceData(null);
+        setFitSummary(null);
+        toast({ title: "Imagem Preparada", description: "Pronta para leitura visual." });
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: "Erro no Upload", description: err?.message || "Não foi possível ler o arquivo." });
+      setUploadedFileName(null);
     }
   };
 
@@ -108,6 +130,8 @@ export default function TrainingPage() {
     e.stopPropagation();
     setUploadedFileUri(null);
     setUploadedFileName(null);
+    setDeviceData(null);
+    setFitSummary(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -125,18 +149,21 @@ export default function TrainingPage() {
         athleteFeedback,
         athleteProfile: JSON.stringify(profile),
         anamnesis: anamnesisContext,
+        deviceData: deviceData || undefined,
         fileDataUri: uploadedFileUri || undefined
       });
 
-      const updatedWorkout = { 
-        ...selectedWorkout, 
-        completed: true, 
+      const updatedWorkout = {
+        ...selectedWorkout,
+        completed: true,
         analysis: result
       };
-      
+
       context?.updateWorkout(selectedWorkout.id, updatedWorkout);
       setUploadedFileUri(null);
       setUploadedFileName(null);
+      setDeviceData(null);
+      setFitSummary(null);
       setAthleteFeedback("");
       toast({ title: "✅ Sessão Sincronizada", description: "Dados registrados na nuvem com sucesso." });
     } catch (error) {
@@ -462,16 +489,16 @@ export default function TrainingPage() {
                                             </div>
 
                                             <div className="space-y-3">
-                                                <label className="text-[8px] md:text-[11px] font-black uppercase text-muted-foreground/60 italic tracking-widest">UPLOAD DE SENSORES (.FIT / .CSV / IMAGE)</label>
-                                                <div 
+                                                <label className="text-[8px] md:text-[11px] font-black uppercase text-muted-foreground/60 italic tracking-widest">UPLOAD DO COROS (.FIT) / .CSV / PRINT</label>
+                                                <div
                                                     className={cn(
                                                       "border-2 border-dashed rounded-xl md:rounded-[3rem] p-8 md:p-20 text-center space-y-4 md:space-y-10 cursor-pointer transition-all",
-                                                      uploadedFileUri ? "border-primary bg-primary/5" : "border-white/5 hover:bg-white/5"
+                                                      (uploadedFileUri || deviceData) ? "border-primary bg-primary/5" : "border-white/5 hover:bg-white/5"
                                                     )}
                                                     onClick={() => fileInputRef.current?.click()}
                                                 >
-                                                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} accept=".fit,.csv,image/*" />
-                                                    {uploadedFileUri ? (
+                                                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} accept=".fit,.csv,.txt,image/*" />
+                                                    {(uploadedFileUri || deviceData) ? (
                                                       <div className="space-y-2">
                                                          <div className="p-4 md:p-10 rounded-xl md:rounded-[2.5rem] bg-primary text-black w-fit mx-auto shadow-2xl relative group">
                                                             <FileDigit size={30} className="md:size-64"/>
@@ -488,11 +515,31 @@ export default function TrainingPage() {
                                                       </div>
                                                     )}
                                                 </div>
+
+                                                {fitSummary && (
+                                                  <div className="p-4 md:p-6 rounded-xl md:rounded-[1.5rem] bg-primary/5 border border-primary/20 space-y-3">
+                                                    <div className="flex items-center gap-2 text-primary">
+                                                      <Activity size={12} />
+                                                      <h5 className="text-[8px] md:text-[10px] font-black uppercase italic tracking-widest">MÉTRICAS REAIS DETECTADAS</h5>
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-2 md:gap-3">
+                                                      {fitSummary.distanceKm != null && <FitStat label="DIST" value={`${fitSummary.distanceKm}km`} />}
+                                                      {fitSummary.avgPace && <FitStat label="PACE" value={fitSummary.avgPace.replace('/km','')} />}
+                                                      {fitSummary.durationText && <FitStat label="TEMPO" value={fitSummary.durationText} />}
+                                                      {fitSummary.avgHr != null && <FitStat label="FC MÉD" value={`${fitSummary.avgHr}`} />}
+                                                      {fitSummary.avgCadenceSpm != null && <FitStat label="CADÊNCIA" value={`${fitSummary.avgCadenceSpm}`} />}
+                                                      {fitSummary.avgVerticalOscillationCm != null && <FitStat label="OSC.VERT" value={`${fitSummary.avgVerticalOscillationCm}cm`} />}
+                                                      {fitSummary.avgGroundContactTimeMs != null && <FitStat label="GCT" value={`${fitSummary.avgGroundContactTimeMs}ms`} />}
+                                                      {fitSummary.avgPowerW != null && <FitStat label="POT" value={`${fitSummary.avgPowerW}w`} />}
+                                                      {fitSummary.totalAscentM != null && <FitStat label="ELEV" value={`${fitSummary.totalAscentM}m`} />}
+                                                    </div>
+                                                  </div>
+                                                )}
                                             </div>
 
-                                            <Button 
+                                            <Button
                                                 className="w-full bg-primary text-black font-black uppercase h-14 md:h-24 text-xs md:text-2xl shadow-2xl rounded-xl md:rounded-[1.5rem] italic"
-                                                disabled={analyzing || !athleteFeedback.trim()}
+                                                disabled={analyzing || (!athleteFeedback.trim() && !deviceData && !uploadedFileUri)}
                                                 onClick={handleFinalizeAnalysis}
                                             >
                                                 {analyzing ? <><Loader2 className="mr-2 animate-spin size-4" /> ANALISANDO...</> : 'FINALIZAR SESSÃO'}
@@ -525,6 +572,15 @@ function MetricBoxElite({ icon: Icon, label, value, color = "default" }: { icon:
         <p className="text-[7px] md:text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest italic">{label}</p>
         <p className="text-sm md:text-2xl font-black uppercase italic text-white leading-none">{value}</p>
       </div>
+    </div>
+  );
+}
+
+function FitStat({ label, value }: { label: string, value: string }) {
+  return (
+    <div className="bg-black/40 border border-white/5 rounded-lg md:rounded-xl p-2 md:p-3 text-center">
+      <p className="text-[6px] md:text-[8px] font-black text-muted-foreground/60 uppercase tracking-widest italic leading-none">{label}</p>
+      <p className="text-[11px] md:text-base font-black italic text-white leading-none mt-1">{value}</p>
     </div>
   );
 }

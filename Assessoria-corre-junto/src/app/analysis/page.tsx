@@ -19,6 +19,7 @@ import { analyzeWorkoutAction } from "@/ai/actions";
 import { TrainingContext } from "@/contexts/TrainingContext";
 import { useToast } from "@/hooks/use-toast";
 import { fileToDataURI } from "@/lib/utils";
+import { parseFitFile, fitSummaryToText } from "@/lib/fit-parser";
 
 export default function AnalysisPage() {
   const context = React.useContext(TrainingContext);
@@ -26,16 +27,34 @@ export default function AnalysisPage() {
   
   const [file, setFile] = React.useState<File | null>(null);
   const [fileUri, setFileUri] = React.useState<string | null>(null);
+  const [deviceData, setDeviceData] = React.useState<string | null>(null);
   const [analyzing, setAnalyzing] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
   const [results, setResults] = React.useState<any | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      const selectedFile = e.target.files[0];
-      setFile(selectedFile);
-      const uri = await fileToDataURI(selectedFile);
-      setFileUri(uri);
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+    const name = selectedFile.name.toLowerCase();
+    setFile(selectedFile);
+    setFileUri(null);
+    setDeviceData(null);
+    try {
+      if (name.endsWith('.fit')) {
+        const buffer = await selectedFile.arrayBuffer();
+        const summary = await parseFitFile(buffer);
+        setDeviceData(fitSummaryToText(summary));
+        toast({ title: "COROS Sincronizado", description: "Métricas reais extraídas do .FIT." });
+      } else if (name.endsWith('.csv') || name.endsWith('.txt')) {
+        const text = await selectedFile.text();
+        setDeviceData(`Conteúdo do arquivo ${selectedFile.name}:\n${text.slice(0, 4000)}`);
+      } else {
+        const uri = await fileToDataURI(selectedFile);
+        setFileUri(uri);
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erro ao ler arquivo", description: err?.message });
+      setFile(null);
     }
   };
 
@@ -57,6 +76,7 @@ export default function AnalysisPage() {
         athleteFeedback: "Análise técnica de desempenho via arquivo de sensores.",
         athleteProfile: profileContext,
         anamnesis: anamnesisContext,
+        deviceData: deviceData || undefined,
         fileDataUri: fileUri || undefined
       });
 
