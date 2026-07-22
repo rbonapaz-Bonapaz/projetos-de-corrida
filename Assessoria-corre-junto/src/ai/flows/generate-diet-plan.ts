@@ -4,6 +4,7 @@
  */
 
 import { generateJSON } from '@/ai/genkit';
+import { computeDietBaseline } from '@/ai/plan-rules';
 import { z } from 'zod';
 
 const GenerateDietPlanInputSchema = z.object({
@@ -24,6 +25,7 @@ const GenerateDietPlanInputSchema = z.object({
   preferredFoods: z.string().optional(),
   excludedFoods: z.string().optional(),
   anamnesisContext: z.string().optional(),
+  safetyDirectives: z.string().optional().describe('Regras de segurança já derivadas da anamnese (imperativas).'),
 });
 
 export type GenerateDietPlanInput = z.infer<typeof GenerateDietPlanInputSchema>;
@@ -80,17 +82,36 @@ const STYLE_LABELS: Record<string, string> = {
 };
 
 export async function generateDietPlan(input: GenerateDietPlanInput): Promise<GenerateDietPlanOutput> {
+  const baseline = computeDietBaseline({
+    gender: input.gender,
+    age: input.age,
+    currentWeight: input.currentWeight,
+    height: input.height,
+    activityLevel: input.activityLevel,
+    aestheticGoal: input.aestheticGoal,
+  });
+
   const system = `Você é um nutricionista esportivo de elite do CorreJunto Lab, especialista em corredores.
 
+CÁLCULO DE REFERÊNCIA (já calculado deterministicamente — use como ÂNCORA, não recalcule do zero):
+- TMB (Mifflin-St Jeor): ${baseline.bmr} kcal.
+- GET (TMB x fator de atividade): ${baseline.tdee} kcal.
+- Meta calórica sugerida (GET ajustado ao objetivo): ${baseline.targetCalories} kcal/dia.
+- Proteína sugerida: ${baseline.proteinG} g/dia. Gordura sugerida: ${baseline.fatG} g/dia. Carboidrato sugerido: ${baseline.carbsG} g/dia.
+Use estes números como ponto de partida. Só desvie se houver uma razão fisiológica clara (ex: volume de corrida muito alto pede mais carboidrato) — e nesse caso, explique o desvio no campo 'strategy'.
+
 DIRETRIZES:
-1. Calcule a necessidade calórica com base em TMB (Mifflin-St Jeor) x fator de atividade, ajustada ao objetivo (déficit para cutting, superávit para bulking, manutenção para recomp/performance).
-2. Distribua os macros de forma adequada ao objetivo e ao volume de corrida (proteína 1.6–2.2 g/kg; carboidrato conforme volume; gordura restante).
-3. Respeite RIGOROSAMENTE alergias, restrições e o padrão alimentar informado (ex: vegano = zero produtos animais).
-4. Some as calorias/macros das refeições de forma coerente com a meta diária.
+1. A meta calórica e os macros finais devem ficar próximos da âncora acima, salvo justificativa em 'strategy'.
+2. Distribua os macros entre as refeições de forma coerente com o volume de corrida e o horário de treino informado.
+3. Respeite RIGOROSAMENTE alergias, restrições e o padrão alimentar informado (ex: vegano = zero produtos animais). Isto é uma regra DURA, não uma preferência.
+4. Some as calorias/macros das refeições de forma coerente com a meta diária (a soma das refeições deve bater com o total).
 5. Seja prático: use alimentos acessíveis no Brasil e porções em medidas caseiras + gramas.
 6. Responda SEMPRE em PORTUGUÊS (Brasil).
 
-SEGURANÇA CLÍNICA:
+REGRAS DE SEGURANÇA DESTE ATLETA (derivadas da anamnese — trate como restrições obrigatórias):
+${input.safetyDirectives || '- Nenhuma restrição adicional informada.'}
+
+CONTEXTO CLÍNICO COMPLETO (texto livre):
 ${input.anamnesisContext || 'Sem dados clínicos adicionais.'}`;
 
   const prompt = `Gere um plano alimentar personalizado em JSON válido, EXATAMENTE neste formato:

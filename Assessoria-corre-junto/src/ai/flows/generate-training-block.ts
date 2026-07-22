@@ -4,6 +4,7 @@
  */
 
 import { generateJSON } from '@/ai/genkit';
+import { TRAINING_PROGRESSION_RULES } from '@/ai/plan-rules';
 import { z } from 'zod';
 
 const GenerateTrainingBlockInputSchema = z.object({
@@ -18,6 +19,7 @@ const GenerateTrainingBlockInputSchema = z.object({
   planGenerationType: z.enum(['full', 'blocks']).describe('Volume de geração.'),
   raceDate: z.string().describe('Data da prova (YYYY-MM-DD).'),
   weeklyMileageGoal: z.number().describe('Meta de volume semanal (KM).'),
+  currentWeeklyMileage: z.number().optional().describe('Volume semanal atual (KM).'),
   targetRaceDistance: z.string().describe('Distância (ex: 21k).'),
   targetPace: z.string().optional().describe('Pace alvo.'),
   targetTime: z.string().optional().describe('Tempo alvo.'),
@@ -26,9 +28,15 @@ const GenerateTrainingBlockInputSchema = z.object({
   injuryHistory: z.string().describe('Histórico clínico.'),
   preferredWorkoutDays: z.string().describe('Dias de intensidade.'),
   legDay: z.string().optional().describe('Dia de treino de pernas.'),
+  age: z.number().optional().describe('Idade do atleta.'),
+  gender: z.string().optional().describe('Gênero do atleta.'),
+  experienceLevel: z.string().optional().describe('Nível de experiência declarado.'),
+  mainObjective: z.string().optional().describe('Objetivo principal declarado.'),
+  strengthContext: z.string().optional().describe('Resumo das preferências de musculação do atleta.'),
   referenceFileDataUri: z.string().optional().describe('Documento de referência.'),
   referenceHandling: z.enum(['faithful', 'optimized']).optional().default('optimized'),
-  anamnesisContext: z.string().optional().describe('Contexto biométrico completo.'),
+  anamnesisContext: z.string().optional().describe('Contexto biométrico completo (texto livre).'),
+  safetyDirectives: z.string().optional().describe('Regras de segurança já derivadas da anamnese (imperativas).'),
 });
 
 export type GenerateTrainingBlockInput = z.infer<typeof GenerateTrainingBlockInputSchema>;
@@ -78,6 +86,12 @@ REGRAS DE OURO:
 5. TERMINOLOGIA (campo 'type'): use apenas REGENERATIVO, RODAGEM, PROGRESSIVO, FARTLEK, LIMIAR, TIROS, SUBIDAS, LONGÃO.
 6. Zonas de FC: Z1<=${input.hrZone1End}, Z2<=${input.hrZone2End}, Z3<=${input.hrZone3End}, Z4<=${input.hrZone4End}, FCmax=${input.hrMax}.
 
+REGRAS DE PROGRESSÃO (aplique SEMPRE, sem exceção):
+${TRAINING_PROGRESSION_RULES}
+
+REGRAS DE SEGURANÇA DESTE ATLETA (derivadas da anamnese — trate como restrições obrigatórias):
+${input.safetyDirectives || '- Nenhuma restrição adicional informada.'}
+
 Responda SEMPRE em PORTUGUÊS (Brasil).`;
 
   const prompt = `Gere uma periodização de ELITE em JSON válido, seguindo EXATAMENTE este formato:
@@ -109,15 +123,18 @@ Responda SEMPRE em PORTUGUÊS (Brasil).`;
 }
 
 PARÂMETROS DO ATLETA:
+- Idade/gênero: ${input.age ?? 'não informado'} anos, ${input.gender ?? 'não informado'}.
+- Nível de experiência: ${input.experienceLevel ?? 'não informado'}. Objetivo principal: ${input.mainObjective ?? 'não informado'}.
 - Objetivo: ${input.targetRaceDistance} em ${input.raceDate}${input.raceName ? ` (${input.raceName})` : ''}.
 - Pace/tempo alvo: ${input.targetPace || input.targetTime || 'não informado'}.
-- Volume semanal alvo: ${input.weeklyMileageGoal} KM. Último longo: ${input.currentLongRunDistance} KM.
+- Volume semanal ATUAL: ${input.currentWeeklyMileage ?? 'não informado'} KM. Volume semanal ALVO: ${input.weeklyMileageGoal} KM. Último longo: ${input.currentLongRunDistance} KM.
 - Volume de geração: ${input.planGenerationType === 'full' ? 'ciclo completo' : 'bloco de 4 semanas'}.
 - Dias disponíveis: ${input.weeklyAvailability}. Dias de intensidade: ${input.preferredWorkoutDays}.
-- Histórico clínico: ${input.injuryHistory}.
+- Musculação: ${input.strengthContext || 'sem preferências informadas'}.
+- Histórico clínico (texto livre do atleta): ${input.injuryHistory}.
 - Tratamento da referência: ${input.referenceHandling === 'faithful' ? 'seguir fielmente o documento de referência' : 'otimizar a partir da referência'}.
 
-CONTEXTO BIOMÉTRICO:
+CONTEXTO BIOMÉTRICO E DE ANAMNESE (completo):
 ${input.anamnesisContext || 'Não fornecido.'}`;
 
   const output = await generateJSON<GenerateTrainingBlockOutput>({

@@ -15,6 +15,7 @@ import { useAuth, useFirestore } from '@/firebase';
 import type { AthleteProfile, TrainingPlan, Workout, WeeklyPlan, DietPlan } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateTrainingAction, generateDietAction } from '@/ai/actions';
+import { validateTrainingPlanInputs, validateDietPlanInputs, buildSafetyDirectives, calcAge } from '@/ai/plan-rules';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -300,8 +301,23 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   }, [db, user, activeProfile, saveProfile]);
 
   const generateRunningPlanAsync = async (profile: AthleteProfile) => {
+    const missing = validateTrainingPlanInputs(profile);
+    if (missing.length) {
+      toast({
+        variant: "destructive",
+        title: "Complete seu perfil antes de gerar",
+        description: `Faltando: ${missing.join(', ')}.`
+      });
+      return;
+    }
+
     setPlanGenerationStatus('pending');
     try {
+      const strength = profile.strengthPreferences;
+      const strengthContext = strength
+        ? `objetivo ${strength.objective || 'não informado'}, ${strength.frequency || 0}x/semana, dias: ${(strength.trainingDays || []).join(', ') || 'não informado'}${strength.limitations ? `, limitações: ${strength.limitations}` : ''}`
+        : undefined;
+
       const aiResult = await generateTrainingAction({
         raceName: profile.raceName,
         currentVDOT: profile.vo2Max || 40,
@@ -314,6 +330,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         planGenerationType: profile.planGenerationType || 'blocks',
         raceDate: profile.raceDate || new Date().toISOString().split('T')[0],
         weeklyMileageGoal: profile.weeklyMileageGoal || 30,
+        currentWeeklyMileage: profile.currentWeeklyMileage,
         targetRaceDistance: profile.raceDistance || '10k',
         targetPace: profile.targetPace,
         targetTime: profile.targetTime,
@@ -322,9 +339,15 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         injuryHistory: profile.trainingHistory || 'Nenhuma',
         preferredWorkoutDays: (profile.trainingDays || []).join(', '),
         legDay: profile.strengthPreferences?.legDay || (profile as any).legDay,
+        age: calcAge(profile.birthDate),
+        gender: profile.gender,
+        experienceLevel: profile.experienceLevel,
+        mainObjective: profile.mainObjective,
+        strengthContext,
         referenceFileDataUri: profile.referenceDocumentUri,
         referenceHandling: profile.referenceHandling || 'optimized',
-        anamnesisContext: getAnamnesisSummary()
+        anamnesisContext: getAnamnesisSummary(),
+        safetyDirectives: buildSafetyDirectives(profile),
       });
 
       const finalPlan: TrainingPlan = {
@@ -353,17 +376,22 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   };
 
   const generateDietPlanAsync = async (profile: AthleteProfile) => {
+    const missing = validateDietPlanInputs(profile);
+    if (missing.length) {
+      toast({
+        variant: "destructive",
+        title: "Complete seu perfil antes de gerar",
+        description: `Faltando: ${missing.join(', ')}.`
+      });
+      return;
+    }
+
     setDietGenerationStatus('pending');
     try {
       const diet = profile.dietPreferences || {};
-      let age: number | undefined;
-      if (profile.birthDate) {
-        const diff = Date.now() - new Date(profile.birthDate).getTime();
-        age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
-      }
 
       const aiResult = await generateDietAction({
-        age,
+        age: calcAge(profile.birthDate),
         gender: profile.gender,
         currentWeight: profile.currentWeight || 70,
         height: profile.height || 175,
@@ -380,6 +408,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         preferredFoods: diet.preferredFoods,
         excludedFoods: diet.excludedFoods,
         anamnesisContext: getAnamnesisSummary(),
+        safetyDirectives: buildSafetyDirectives(profile),
       });
 
       saveProfile({ ...profile, dietPlan: aiResult as DietPlan });
