@@ -30,6 +30,36 @@ export function isAiConfigured(): boolean {
   return !!API_KEY;
 }
 
+/**
+ * Traduz erros crus da SDK do Gemini (em inglês, técnicos) para mensagens
+ * curtas e acionáveis em português — o atleta não precisa entender HTTP 429
+ * para saber que precisa colocar crédito na conta.
+ */
+function translateAiError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+
+  if (/prepayment (has been )?depleted/i.test(raw)) {
+    return 'O saldo pré-pago da chave de IA (Google AI Studio) acabou. Acesse aistudio.google.com, na seção de faturamento do projeto, e adicione créditos para continuar usando o Coach.';
+  }
+  if (/RESOURCE_EXHAUSTED|quota/i.test(raw) || /\[429/.test(raw)) {
+    return 'A IA atingiu o limite de uso no momento (muitas requisições em pouco tempo, ou cota esgotada). Aguarde alguns minutos e tente novamente — se persistir, verifique o saldo em aistudio.google.com.';
+  }
+  if (/API[_ ]?KEY[_ ]?INVALID|API key not valid/i.test(raw)) {
+    return 'A chave de IA configurada (NEXT_PUBLIC_GEMINI_API_KEY) é inválida. Gere uma nova em aistudio.google.com/apikey e atualize o .env.local.';
+  }
+  if (/PERMISSION_DENIED|\[403/.test(raw)) {
+    return 'A chave de IA não tem permissão para este modelo. Confira as restrições da chave em aistudio.google.com.';
+  }
+  if (/Failed to fetch|NetworkError|ENOTFOUND|ECONNREFUSED/i.test(raw)) {
+    return 'Não foi possível conectar ao servidor de IA. Verifique sua internet e tente novamente.';
+  }
+  if (raw.startsWith('Chave de IA não configurada')) {
+    return raw;
+  }
+
+  return raw || 'Ocorreu um erro inesperado ao falar com a IA.';
+}
+
 /** Converte um data URI (data:<mime>;base64,<dados>) em uma parte inlineData. */
 function dataUriToPart(uri?: string) {
   if (!uri) return null;
@@ -54,37 +84,46 @@ function buildParts(opts: GenOptions) {
 
 /** Geração de texto livre (chat, feedback). */
 export async function generateText(opts: GenOptions): Promise<string> {
-  const model = getClient().getGenerativeModel({
-    model: MODEL_ID,
-    ...(opts.system ? { systemInstruction: opts.system } : {}),
-  });
+  try {
+    const model = getClient().getGenerativeModel({
+      model: MODEL_ID,
+      ...(opts.system ? { systemInstruction: opts.system } : {}),
+    });
 
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: buildParts(opts) }],
-    generationConfig: { temperature: opts.temperature ?? 0.7 },
-  });
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: buildParts(opts) }],
+      generationConfig: { temperature: opts.temperature ?? 0.7 },
+    });
 
-  return result.response.text();
+    return result.response.text();
+  } catch (error) {
+    throw new Error(translateAiError(error));
+  }
 }
 
 /** Geração estruturada: retorna JSON validado (opcionalmente) por um schema Zod. */
 export async function generateJSON<T = any>(
   opts: GenOptions & { schema?: ZodType<T> }
 ): Promise<T> {
-  const model = getClient().getGenerativeModel({
-    model: MODEL_ID,
-    ...(opts.system ? { systemInstruction: opts.system } : {}),
-  });
+  let raw: string;
+  try {
+    const model = getClient().getGenerativeModel({
+      model: MODEL_ID,
+      ...(opts.system ? { systemInstruction: opts.system } : {}),
+    });
 
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: buildParts(opts) }],
-    generationConfig: {
-      temperature: opts.temperature ?? 0.4,
-      responseMimeType: 'application/json',
-    },
-  });
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: buildParts(opts) }],
+      generationConfig: {
+        temperature: opts.temperature ?? 0.4,
+        responseMimeType: 'application/json',
+      },
+    });
 
-  const raw = result.response.text().trim();
+    raw = result.response.text().trim();
+  } catch (error) {
+    throw new Error(translateAiError(error));
+  }
   let parsed: any;
   try {
     parsed = JSON.parse(raw);
