@@ -1,11 +1,14 @@
 
 {
   "hosting": {
-    "source": ".",
+    "site": "assessoriacorrejunto",
+    "public": "out",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ]
+    ],
+    "cleanUrls": true,
+    "trailingSlash": false
   }
 }

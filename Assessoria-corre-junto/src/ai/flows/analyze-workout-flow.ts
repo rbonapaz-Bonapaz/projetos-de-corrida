@@ -1,9 +1,10 @@
 /**
- * @fileOverview Fluxo Genkit para analisar o desempenho biomecânico.
+ * @fileOverview Análise de desempenho biomecânico de treinos.
+ * Browser-safe: usa o cliente Gemini via fetch (sem Genkit/Express).
  */
 
-import { getAi } from '@/ai/genkit';
-import { z } from 'genkit';
+import { generateJSON } from '@/ai/genkit';
+import { z } from 'zod';
 
 const AnalyzeWorkoutInputSchema = z.object({
   prescribedWorkout: z.string().describe('O treino que foi planejado.'),
@@ -34,27 +35,45 @@ const AnalyzeWorkoutOutputSchema = z.object({
 export type AnalyzeWorkoutOutput = z.infer<typeof AnalyzeWorkoutOutputSchema>;
 
 export async function analyzeWorkout(input: AnalyzeWorkoutInput): Promise<AnalyzeWorkoutOutput> {
-  const ai = getAi();
+  const system = `Você é um analista biomecânico de elite. Sua missão é extrair métricas de arquivos e feedbacks para avaliar a eficiência do atleta.
+Compare o que foi prescrito com o que foi realizado.
 
-  const { output } = await ai.generate({
-    model: 'googleai/gemini-2.5-flash',
-    system: `Você é um analista biomecânico de elite. Sua missão é extrair métricas de arquivos e feedbacks para avaliar a eficiência do atleta.
-    Compare o que foi prescrito (${input.prescribedWorkout}) com o que foi realizado.
-    
-    CONSIDERE A SAÚDE DO ATLETA:
-    ${input.anamnesis || 'Dados clínicos não fornecidos.'}
-    
-    Foque em métricas como Cadência e Razão de Passada. 
-    Se o atleta relatou dor em um local já citado na anamnese como histórico de lesão, destaque isso como um alerta crítico.
-    Responda em PORTUGUÊS (Brasil).`,
-    prompt: [
-      { text: `Analise o treino executado. Feedback: ${input.athleteFeedback}. Perfil: ${input.athleteProfile}.` },
-      ...(input.fileDataUri ? [{ media: { url: input.fileDataUri } }] : []),
-    ],
-    output: { schema: AnalyzeWorkoutOutputSchema },
-    config: { temperature: 0.4 }
+CONSIDERE A SAÚDE DO ATLETA:
+${input.anamnesis || 'Dados clínicos não fornecidos.'}
+
+Foque em métricas como Cadência e Razão de Passada.
+Se o atleta relatou dor em um local já citado na anamnese como histórico de lesão, destaque isso como um alerta crítico.
+Responda em PORTUGUÊS (Brasil).`;
+
+  const prompt = `Analise o treino executado e retorne JSON válido EXATAMENTE neste formato:
+{
+  "actualMetrics": {
+    "averagePace": "<ex: 5:12/KM>",
+    "averageCadence": "<ex: 178 spm>",
+    "strideRatio": <número, oscilação vertical / comprimento de passada>,
+    "groundContactTime": "<ex: 245 ms>",
+    "verticalOscillation": "<ex: 8.1 cm>"
+  },
+  "analysisSummary": {
+    "summary": "<resumo do desempenho>",
+    "technicalReview": "<revisão técnica biomecânica>"
+  },
+  "recommendations": "<recomendações práticas>",
+  "areasOfImprovement": ["<ponto 1>", "<ponto 2>"]
+}
+
+TREINO PRESCRITO: ${input.prescribedWorkout}
+FEEDBACK DO ATLETA: ${input.athleteFeedback}
+PERFIL DO ATLETA: ${input.athleteProfile}`;
+
+  const output = await generateJSON<AnalyzeWorkoutOutput>({
+    system,
+    prompt,
+    imageDataUri: input.fileDataUri,
+    temperature: 0.4,
+    schema: AnalyzeWorkoutOutputSchema,
   });
 
-  if (!output) throw new Error('Falha na análise técnica do treino.');
+  if (!output?.actualMetrics) throw new Error('Falha na análise técnica do treino.');
   return output;
 }
