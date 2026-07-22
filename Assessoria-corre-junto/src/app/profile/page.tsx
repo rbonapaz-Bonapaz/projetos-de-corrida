@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { TrainingContext } from '@/contexts/TrainingContext';
 import { useToast } from '@/hooks/use-toast';
 import { fileToDataURI, cn } from "@/lib/utils";
+import { downloadProfileBackup, parseProfileBackup } from '@/lib/backup';
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 
 import { Button } from '@/components/ui/button';
@@ -47,7 +48,9 @@ import {
     Apple,
     Timer,
     Milestone,
-    History
+    History,
+    Download,
+    Upload
 } from 'lucide-react';
 
 const weekDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -248,6 +251,36 @@ export default function ProfilePage() {
     }
   };
 
+  const backupInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleExportBackup = () => {
+    if (!context?.activeProfile) {
+      toast({ variant: "destructive", title: "Nada para exportar", description: "Crie um perfil primeiro." });
+      return;
+    }
+    downloadProfileBackup(context.activeProfile);
+    toast({ title: "Backup exportado", description: "Guarde o arquivo .json em local seguro." });
+  };
+
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !context) return;
+    try {
+      const imported = await parseProfileBackup(file);
+      const confirmed = window.confirm(
+        `Importar "${file.name}"? Isso vai sobrescrever os dados do perfil ativo (${context.activeProfile?.name || 'sem nome'}) com o conteúdo do backup.`
+      );
+      if (!confirmed) return;
+      await context.saveProfile(imported);
+      toast({ title: "Backup importado", description: "Recarregando para aplicar os dados..." });
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erro ao importar", description: err?.message || "Arquivo inválido." });
+    } finally {
+      if (backupInputRef.current) backupInputRef.current.value = "";
+    }
+  };
+
   const selectedTrainingDays = form.watch('trainingDays') || [];
   const selectedStrengthDays = form.watch('strengthDays') || [];
 
@@ -264,11 +297,20 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <Button asChild variant="outline" className="rounded-xl gap-2 w-fit">
-          <Link href="/coach">
-            <MessageSquare size={16} /> Treinador IA
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2.5">
+          <Button type="button" variant="outline" className="rounded-xl gap-2" onClick={handleExportBackup}>
+            <Download size={16} /> Exportar backup
+          </Button>
+          <Button type="button" variant="outline" className="rounded-xl gap-2" onClick={() => backupInputRef.current?.click()}>
+            <Upload size={16} /> Importar backup
+          </Button>
+          <input ref={backupInputRef} type="file" accept="application/json,.json" className="hidden" onChange={handleImportBackup} />
+          <Button asChild variant="outline" className="rounded-xl gap-2">
+            <Link href="/coach">
+              <MessageSquare size={16} /> Treinador IA
+            </Link>
+          </Button>
+        </div>
       </header>
 
       <Form {...form}>

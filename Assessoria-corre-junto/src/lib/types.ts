@@ -124,6 +124,25 @@ export interface AthleteProfile {
     coros: IntegrationData;
   };
   anamnesis?: AnamnesisData;
+  importedActivities?: ImportedActivity[];
+}
+
+export interface ImportedActivity {
+  id: string;
+  source: 'coros' | 'strava' | 'manual';
+  fileName: string;
+  importedAt: string;
+  sport?: string;
+  startTime?: string;
+  distanceKm?: number;
+  durationText?: string;
+  avgPace?: string;
+  avgHr?: number;
+  avgCadenceSpm?: number;
+  avgGroundContactTimeMs?: number;
+  avgVerticalOscillationCm?: number;
+  totalAscentM?: number;
+  calories?: number;
 }
 
 export interface AiAnalysis {
