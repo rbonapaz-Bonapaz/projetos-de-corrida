@@ -1,0 +1,68 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Mode - Contraste aprimorado */
+    --background: 210 20% 98%;
+    --foreground: 270 20% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 270 20% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 270 20% 15%;
+    --primary: 276 60% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 275 10% 95%;
+    --secondary-foreground: 276 60% 45%;
+    --muted: 275 10% 90%;
+    --muted-foreground: 270 10% 45%;
+    --accent: 142 76% 30%; /* Verde esmeralda para leitura no claro */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 275 10% 85%;
+    --input: 275 10% 85%;
+    --ring: 142 76% 30%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Dark Mode - Estilo Neon */
+    --background: 268 20% 9%;
+    --foreground: 0 0% 98%;
+    --card: 270 15% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 268 20% 11%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 276 60% 61%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 275 21% 22%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 275 21% 18%;
+    --muted-foreground: 270 10% 70%;
+    --accent: 142 100% 50%; /* Verde Neon */
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 275 21% 22%;
+    --input: 275 21% 22%;
+    --ring: 142 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground transition-colors duration-300;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+.running-bg-gradient {
+  background: radial-gradient(circle at top right, hsla(var(--primary), 0.1), transparent),
+              radial-gradient(circle at bottom left, hsla(var(--accent), 0.05), transparent);
+}

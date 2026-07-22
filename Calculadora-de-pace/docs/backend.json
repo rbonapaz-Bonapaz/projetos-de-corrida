@@ -1,0 +1,78 @@
+
+{
+  "entities": {
+    "AthleteProfile": {
+      "title": "Perfil do Atleta",
+      "description": "Dados biométricos e de performance do corredor.",
+      "type": "object",
+      "properties": {
+        "birthDate": { "type": "string", "format": "date" },
+        "weight": { "type": "number" },
+        "maxHR": { "type": "number" },
+        "restHR": { "type": "number" },
+        "thresholdHR": { "type": "number" },
+        "thresholdPace": { "type": "string" },
+        "fitnessLevel": { "type": "string", "enum": ["beginner", "intermediate", "advanced"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "RaceStrategy": {
+      "title": "Estratégia de Prova Salva",
+      "description": "Plano de splits para uma distância específica.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "distance": { "type": "number" },
+        "targetPace": { "type": "string" },
+        "strategyType": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "RunWalkStrategy": {
+      "title": "Estratégia de Corrida e Caminhada Salva",
+      "description": "Plano de intercalação entre corrida e caminhada.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "distance": { "type": "number" },
+        "runPace": { "type": "string" },
+        "runTime": { "type": "string" },
+        "walkPace": { "type": "string" },
+        "walkTime": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "PersonalRecord": {
+      "title": "Recorde Pessoal",
+      "description": "Melhor tempo em uma distância oficial.",
+      "type": "object",
+      "properties": {
+        "distance": { "type": "string" },
+        "time": { "type": "string" },
+        "pace": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/users/{userId}/profile/current": {
+      "schema": "#/backend/entities/AthleteProfile",
+      "description": "Dados fixos do atleta para cálculos automáticos."
+    },
+    "/users/{userId}/strategies/{strategyId}": {
+      "schema": "#/backend/entities/RaceStrategy",
+      "description": "Coleção de estratégias de prova planejadas pelo usuário."
+    },
+    "/users/{userId}/runwalk_strategies/{strategyId}": {
+      "schema": "#/backend/entities/RunWalkStrategy",
+      "description": "Coleção de estratégias de corrida e caminhada salvas."
+    },
+    "/users/{userId}/records/{recordId}": {
+      "schema": "#/backend/entities/PersonalRecord",
+      "description": "Histórico de recordes pessoais (PBs) do usuário."
+    }
+  }
+}

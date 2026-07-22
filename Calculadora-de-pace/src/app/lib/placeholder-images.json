@@ -1,0 +1,23 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "mascot",
+      "description": "Mascote Oficial do Corre Junto",
+      "imageUrl": "/mascote.jpg",
+      "imageHint": "running mascot"
+    },
+    {
+      "id": "pix-qrcode",
+      "description": "QR Code PIX para Apoio Financeiro",
+      "imageUrl": "/pix-qrcode.png",
+      "imageHint": "payment qr code"
+    },
+    {
+      "id": "app-logo",
+      "description": "Logo da Calculadora de Pace",
+      "imageUrl": "https://picsum.photos/seed/running-logo/100/100",
+      "imageHint": "sport logo"
+    }
+  ]
+}
