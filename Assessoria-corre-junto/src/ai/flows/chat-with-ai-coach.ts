@@ -1,13 +1,11 @@
-'use server';
 /**
- * @fileOverview Treinador de IA conversacional para corredores com consciência biométrica.
+ * @fileOverview Treinador de IA conversacional para corredores.
  */
 
-import { getAiWithKey } from '@/ai/genkit';
+import { getAi } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const ChatWithAICoachInputSchema = z.object({
-  apiKey: z.string().optional().describe('A chave de API do usuário.'),
   conversationHistory: z.array(
     z.object({
       role: z.enum(['user', 'model']),
@@ -23,13 +21,13 @@ const ChatWithAICoachInputSchema = z.object({
 export type ChatWithAICoachInput = z.infer<typeof ChatWithAICoachInputSchema>;
 
 export async function chatWithAICoach(input: ChatWithAICoachInput): Promise<{ feedback: string }> {
-  const aiInstance = getAiWithKey(input.apiKey);
+  const ai = getAi();
   
   const historyString = input.conversationHistory
     .map(m => `${m.role === 'user' ? 'Atleta' : 'Coach'}: ${m.parts}`)
     .join('\n');
 
-  const { text } = await aiInstance.generate({
+  const { text } = await ai.generate({
     model: 'googleai/gemini-2.5-flash',
     system: `Você é o Gemini Coach, um treinador de elite especialista em biomecânica e fisiologia do exercício.
     Responda em PORTUGUÊS (Brasil). Seja técnico, motivador e foque em dados de performance.

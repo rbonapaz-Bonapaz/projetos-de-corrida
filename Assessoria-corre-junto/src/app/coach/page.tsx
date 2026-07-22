@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { chatWithAICoach } from "@/ai/flows/chat-with-ai-coach";
+import { chatWithCoachAction } from "@/ai/actions";
 import { TrainingContext } from "@/contexts/TrainingContext";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,6 @@ import {
   Loader2, 
   MessageSquare,
   History,
-  Copy,
-  Check,
   Paperclip,
   X,
   Sparkles
@@ -27,6 +25,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn, fileToDataURI } from "@/lib/utils";
 import { useUser, useFirestore } from "@/firebase";
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError, type SecurityRuleContext } from "@/firebase/errors";
 
 type Message = {
   id?: string;
@@ -47,12 +47,11 @@ export default function CoachPage() {
   const [input, setInput] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [attachedImage, setAttachedImage] = React.useState<string | null>(null);
-  const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<Message[]>([]);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Sync real-time com o chat do Firestore
+  // Efeito para sincronizar com Firestore se logado
   React.useEffect(() => {
     if (!user || !firestore) return;
 
@@ -61,84 +60,86 @@ export default function CoachPage() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
-      setMessages(msgs);
+      if (msgs.length > 0) setMessages(msgs);
+    }, async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: messagesRef.path,
+        operation: 'list',
+      } satisfies SecurityRuleContext));
     });
 
     return () => unsubscribe();
   }, [user, firestore]);
 
+  // Scroll automático
   React.useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
     }
   }, [messages, loading]);
 
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-    toast({ title: "Copiado!" });
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const uri = await fileToDataURI(file);
-      setAttachedImage(uri);
-    }
-  };
-
   const handleSend = async () => {
-    if ((!input.trim() && !attachedImage) || loading || !user || !firestore) return;
+    const trimmedInput = input.trim();
+    if ((!trimmedInput && !attachedImage) || loading) return;
 
-    if (!context?.apiKey) {
-      toast({ variant: "destructive", title: "IA Desativada", description: "Configure sua Gemini API Key no menu lateral." });
-      return;
-    }
-
-    const messagesRef = collection(firestore, 'user_data', user.uid, 'messages');
-    
-    // Salva a mensagem do usuário
-    const userMsgData: Message = { 
-      role: "user", 
-      parts: input, 
-      image: attachedImage || undefined,
-      createdAt: serverTimestamp()
-    };
-    
-    const currentInput = input;
+    const currentInput = trimmedInput;
     const currentImage = attachedImage;
     
+    // UI Feedback imediato
+    const userMsg: Message = { 
+      role: "user", 
+      parts: currentInput, 
+      image: currentImage || undefined, 
+      createdAt: new Date() 
+    };
+    
+    setMessages(prev => [...prev, userMsg]);
     setInput("");
     setAttachedImage(null);
     setLoading(true);
 
+    // Persistência Cloud (Se logado)
+    if (user && firestore) {
+      const messagesRef = collection(firestore, 'user_data', user.uid, 'messages');
+      addDoc(messagesRef, { ...userMsg, createdAt: serverTimestamp() }).catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: messagesRef.path, operation: 'create', requestResourceData: userMsg
+        } satisfies SecurityRuleContext));
+      });
+    }
+
     try {
-      await addDoc(messagesRef, userMsgData);
-
-      const workoutHistoryContext = `Perfil: ${profile?.name || 'Atleta'}. Peso: ${profile?.currentWeight}kg. Pace T: ${profile?.thresholdPace}. FC Limiar: ${profile?.thresholdHr}bpm.`;
-      const planContext = plan ? `Atualmente no bloco ${plan.blockType}. Objetivo: ${profile?.raceDistance} em ${profile?.raceDate}.` : "Sem plano ativo no momento.";
-      const anamnesisContext = context.getAnamnesisSummary();
-
-      const response = await chatWithAICoach({
-        apiKey: context.apiKey || undefined,
-        conversationHistory: messages.map(m => ({ role: m.role, parts: m.parts })),
+      const workoutHistoryContext = `Perfil: ${profile?.name || 'Atleta'}. Peso: ${profile?.currentWeight || '--'}kg. Pace T: ${profile?.thresholdPace || '--'}. FC Limiar: ${profile?.thresholdHr || '--'}bpm.`;
+      
+      const response = await chatWithCoachAction({
+        conversationHistory: messages.concat(userMsg).map(m => ({ role: m.role, parts: m.parts })),
         workoutHistory: workoutHistoryContext,
-        trainingPlan: planContext,
-        anamnesis: anamnesisContext,
+        trainingPlan: plan ? `Bloco ${plan.blockType}. Prova ${profile?.raceName}.` : "Sem plano ativo.",
+        anamnesis: context?.getAnamnesisSummary(),
         imageDataUri: currentImage || undefined
       });
 
-      // Salva a resposta da IA
-      await addDoc(messagesRef, {
-        role: "model",
-        parts: response.feedback,
-        createdAt: serverTimestamp()
-      });
+      const modelMsg: Message = { 
+        role: "model", 
+        parts: response.feedback, 
+        createdAt: new Date() 
+      };
 
+      setMessages(prev => [...prev, modelMsg]);
+
+      if (user && firestore) {
+        const messagesRef = collection(firestore, 'user_data', user.uid, 'messages');
+        addDoc(messagesRef, { ...modelMsg, createdAt: serverTimestamp() }).catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: messagesRef.path, operation: 'create', requestResourceData: modelMsg
+          } satisfies SecurityRuleContext));
+        });
+      }
     } catch (error) {
-      console.error(error);
-      toast({ variant: "destructive", title: "Erro na IA", description: "Não foi possível sincronizar sua conversa." });
+      toast({ variant: "destructive", title: "Erro na IA", description: "Verifique sua conexão ou API Key." });
     } finally {
       setLoading(false);
     }
@@ -146,92 +147,57 @@ export default function CoachPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in duration-700">
-        <div className="text-center space-y-2">
-          <h1 className="font-headline text-4xl md:text-5xl font-black uppercase italic tracking-tighter text-white">
+      <div className="max-w-5xl mx-auto space-y-4 md:space-y-10 h-[calc(100svh-8rem)] md:h-auto flex flex-col animate-in fade-in duration-700">
+        <div className="text-center shrink-0 px-2">
+          <h1 className="font-headline text-2xl md:text-5xl font-black uppercase italic tracking-tighter text-white leading-none">
             GEMINI <span className="text-primary">COACH</span>
           </h1>
-          <p className="text-muted-foreground text-sm md:text-lg font-medium">
-            Sincronizado entre todos os seus dispositivos.
-          </p>
+          <p className="text-muted-foreground text-[7px] md:text-sm font-bold uppercase tracking-widest italic mt-1 opacity-60">Sincronizado via Cloud Elite</p>
         </div>
 
-        <Tabs defaultValue="conversar" className="w-full space-y-8">
-          <TabsList className="grid w-full grid-cols-2 bg-secondary/20 p-1.5 rounded-2xl h-auto gap-2">
-            <TabsTrigger 
-              value="conversar" 
-              className="py-4 font-headline font-black text-xs md:text-sm uppercase italic gap-2 data-[state=active]:bg-primary data-[state=active]:text-black transition-all rounded-xl"
-            >
-              <MessageSquare className="size-4" /> Conversar
+        <Tabs defaultValue="conversar" className="w-full flex-1 flex flex-col space-y-3 md:space-y-8 overflow-hidden">
+          <TabsList className="grid w-full grid-cols-2 bg-secondary/20 p-1 rounded-xl md:rounded-2xl h-auto gap-1 shadow-inner shrink-0">
+            <TabsTrigger value="conversar" className="py-2 md:py-4 font-headline font-black text-[8px] md:text-sm uppercase italic gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-black rounded-lg md:rounded-xl">
+              <MessageSquare className="size-3 md:size-4" /> Conversar
             </TabsTrigger>
-            <TabsTrigger 
-              value="historico" 
-              className="py-4 font-headline font-black text-xs md:text-sm uppercase italic gap-2 data-[state=active]:bg-primary data-[state=active]:text-black transition-all rounded-xl"
-            >
-              <History className="size-4" /> Arquivo
+            <TabsTrigger value="historico" className="py-2 md:py-4 font-headline font-black text-[8px] md:text-sm uppercase italic gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-black rounded-lg md:rounded-xl">
+              <History className="size-3 md:size-4" /> Histórico
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="conversar" className="mt-0 animate-in slide-in-from-bottom-4 duration-500">
-            <Card className="bg-card/40 border-border/50 flex flex-col h-[600px] overflow-hidden rounded-3xl shadow-2xl relative">
-              <CardContent className="flex-1 p-0 overflow-hidden relative">
-                <ScrollArea className="h-full p-8" ref={scrollRef}>
-                  <div className="space-y-10">
+          <TabsContent value="conversar" className="mt-0 flex-1 overflow-hidden">
+            <Card className="bg-card/40 border-border/50 flex flex-col h-full md:h-[650px] overflow-hidden rounded-[1.25rem] md:rounded-[2.5rem] shadow-2xl relative">
+              <CardContent className="flex-1 p-0 overflow-hidden">
+                <ScrollArea className="h-full p-4 md:p-12" ref={scrollRef}>
+                  <div className="space-y-6 md:space-y-12 pb-4">
                     {messages.length === 0 && !loading && (
-                      <div className="text-center py-20 text-muted-foreground">
-                        <Sparkles className="mx-auto size-12 mb-4 opacity-20" />
-                        <p className="font-headline font-black uppercase italic tracking-widest">Inicie seu laboratório técnico</p>
+                      <div className="text-center py-10 md:py-20 text-muted-foreground/30 flex flex-col items-center space-y-4">
+                        <Sparkles className="size-10 md:size-16 animate-pulse" />
+                        <p className="font-headline font-black uppercase italic text-[8px] md:text-xs tracking-widest text-center">Inicie seu laboratório técnico.<br/>Relate um treino ou peça um ajuste.</p>
                       </div>
                     )}
                     {messages.map((msg, i) => (
-                      <div 
-                        key={msg.id || i} 
-                        className={cn(
-                          "flex items-start gap-4 group",
-                          msg.role === 'user' ? "flex-row-reverse" : "flex-row"
-                        )}
-                      >
-                        <Avatar className={cn(
-                          "size-10 border-2",
-                          msg.role === 'model' ? "border-primary bg-primary" : "border-border bg-secondary"
-                        )}>
-                          <AvatarFallback className="font-black">
-                            {msg.role === 'model' ? <Bot className="size-6 text-black" /> : <User className="size-6 text-white" />}
+                      <div key={msg.id || i} className={cn("flex items-start gap-2.5 md:gap-4 animate-in slide-in-from-bottom-2 duration-300", msg.role === 'user' ? "flex-row-reverse" : "flex-row")}>
+                        <Avatar className={cn("size-7 md:size-12 border-2 shadow-xl shrink-0", msg.role === 'model' ? "border-primary bg-primary" : "border-border/50 bg-secondary")}>
+                          <AvatarFallback className="font-black italic text-[10px] md:text-lg">
+                            {msg.role === 'model' ? <Bot className="size-3 md:size-6 text-black" /> : <User className="size-3 md:size-6 text-white" />}
                           </AvatarFallback>
                         </Avatar>
                         <div className={cn(
-                          "max-w-[80%] relative rounded-2xl p-5 text-sm leading-relaxed shadow-xl",
-                          msg.role === 'user' 
-                            ? "bg-primary text-black font-black italic rounded-tr-none" 
-                            : "bg-black/30 border border-border/50 text-white italic rounded-tl-none"
+                          "max-w-[85%] md:max-w-[70%] rounded-xl md:rounded-3xl p-3 md:p-6 text-[11px] md:text-base leading-relaxed shadow-xl",
+                          msg.role === 'user' ? "bg-primary text-black font-bold italic rounded-tr-none" : "bg-black/40 border border-white/5 text-white italic rounded-tl-none"
                         )}>
-                          {msg.image && (
-                            <div className="mb-4 rounded-xl overflow-hidden border border-white/20">
-                              <img src={msg.image} alt="Anexo" className="w-full h-auto max-h-60 object-contain" />
-                            </div>
-                          )}
-                          {msg.parts}
-                          
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleCopy(msg.parts, msg.id || i.toString())}
-                            className={cn(
-                              "absolute -bottom-10 opacity-0 group-hover:opacity-100 transition-opacity size-8 text-muted-foreground",
-                              msg.role === 'user' ? "left-0" : "right-0"
-                            )}
-                          >
-                            {copiedId === (msg.id || i.toString()) ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
-                          </Button>
+                          {msg.image && <img src={msg.image} alt="Anexo" className="mb-3 rounded-lg w-full max-h-40 md:max-h-80 object-contain border border-white/10" />}
+                          <div className="whitespace-pre-wrap">{msg.parts}</div>
                         </div>
                       </div>
                     ))}
                     {loading && (
-                      <div className="flex items-start gap-4 animate-pulse">
-                        <Avatar className="size-10 border-2 border-primary bg-primary"><AvatarFallback><Bot className="size-6 text-black" /></AvatarFallback></Avatar>
-                        <div className="bg-black/30 border border-border/50 rounded-2xl rounded-tl-none p-5 flex items-center gap-3">
-                          <Loader2 className="size-4 animate-spin text-primary" />
-                          <span className="text-[10px] font-black uppercase italic tracking-widest text-muted-foreground">Analisando na nuvem...</span>
+                      <div className="flex items-start gap-2.5 animate-in fade-in">
+                        <Avatar className="size-7 md:size-12 border-2 border-primary bg-primary shrink-0"><AvatarFallback><Bot className="size-3 md:size-6 text-black" /></AvatarFallback></Avatar>
+                        <div className="bg-black/40 border border-white/5 rounded-xl md:rounded-3xl rounded-tl-none p-3 md:p-6 flex items-center gap-2 shadow-xl">
+                          <Loader2 className="size-3 md:size-5 animate-spin text-primary" />
+                          <span className="text-[7px] md:text-[10px] font-black uppercase italic text-muted-foreground/60">Analisando Biometria...</span>
                         </div>
                       </div>
                     )}
@@ -239,32 +205,40 @@ export default function CoachPage() {
                 </ScrollArea>
               </CardContent>
 
-              <CardFooter className="p-6 border-t border-border/20 bg-secondary/10 flex-col gap-4">
+              <CardFooter className="p-3 md:p-8 border-t border-white/5 bg-secondary/10 flex-col gap-3 md:gap-6">
                 {attachedImage && (
-                  <div className="w-full flex items-center gap-3 p-2 bg-secondary/50 border border-primary/30 rounded-xl">
-                    <div className="size-12 rounded-lg overflow-hidden border border-border">
-                      <img src={attachedImage} className="w-full h-full object-cover" alt="Preview" />
+                  <div className="w-full flex items-center justify-between gap-2 p-1.5 md:p-3 bg-primary/10 border border-primary/30 rounded-lg md:rounded-2xl animate-in zoom-in-95">
+                    <div className="flex items-center gap-2 md:gap-4">
+                      <img src={attachedImage} className="size-10 md:size-16 rounded-lg object-cover border border-white/20" alt="Preview" />
+                      <div className="space-y-0.5">
+                        <p className="text-[8px] md:text-[10px] font-black uppercase italic text-primary leading-none">Imagem Pronta</p>
+                      </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="size-8" onClick={() => setAttachedImage(null)}>
-                      <X className="size-4" />
-                    </Button>
+                    <Button variant="ghost" size="icon" className="size-7 md:size-10 rounded-full" onClick={() => setAttachedImage(null)}><X className="size-3 md:size-5" /></Button>
                   </div>
                 )}
                 
-                <div className="flex w-full gap-4 items-center">
-                  <div className="flex-1 relative">
+                <div className="flex w-full gap-2 items-center">
+                  <div className="flex-1 relative group">
                     <Input 
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                      placeholder="Pergunte ou anexe um print de treino..."
-                      className="bg-black/30 border-border/50 h-16 px-6 pr-24 rounded-2xl font-medium italic border-2"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSend();
+                        }
+                      }}
+                      placeholder="Relate seu treino ou dor..."
+                      className="bg-black/40 border-white/5 h-11 md:h-16 px-4 md:px-8 pr-16 md:pr-28 rounded-xl md:rounded-2xl font-bold italic border-2 focus:border-primary text-xs md:text-sm"
                     />
-                    <div className="absolute right-3 top-3 flex gap-2">
-                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-                      <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="size-10"><Paperclip size={20} /></Button>
-                      <Button onClick={handleSend} disabled={loading} size="icon" className="size-10 bg-primary text-black"><Send size={20} /></Button>
+                    <div className="absolute right-1.5 top-1.5 md:right-3 md:top-3 flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="size-8 md:size-10 rounded-lg text-muted-foreground hover:text-primary"><Paperclip size={16} /></Button>
+                      <Button onClick={handleSend} disabled={loading || (!input.trim() && !attachedImage)} size="icon" className="size-8 md:size-10 bg-primary text-black rounded-lg shadow-xl active:scale-90"><Send size={16} /></Button>
                     </div>
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={async (e) => {
+                      if (e.target.files?.[0]) setAttachedImage(await fileToDataURI(e.target.files[0]));
+                    }} />
                   </div>
                 </div>
               </CardFooter>

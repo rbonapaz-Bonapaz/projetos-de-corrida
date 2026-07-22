@@ -1,12 +1,13 @@
+
 /**
- * @fileOverview Configuração oficial do Firebase para o projeto CorreJunto.
- * Sincronizado com o projeto: studio-1669701209-88700
+ * @fileOverview Configuração oficial do Firebase Client.
+ * Estas chaves são seguras para uso no navegador no Plano Spark.
  */
 export const firebaseConfig = {
-  apiKey: "AIzaSyBTHlgY_B4gElAUJ_d85xcgSThfLWw6iFo",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyA6jkom7BYWFtCxczpmv1Y_vGuP2XdyMi8",
   authDomain: "studio-1669701209-88700.firebaseapp.com",
   projectId: "studio-1669701209-88700",
   storageBucket: "studio-1669701209-88700.firebasestorage.app",
-  messagingSenderId: "1669701209",
-  appId: "1:1669701209:web:9c004c7c8c82736e4f1650",
+  messagingSenderId: "654958868324",
+  appId: "1:654958868324:web:c9870b2085e8078a286c71",
 };

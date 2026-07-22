@@ -1,47 +1,32 @@
 # 🏃‍♂️ CORRE JUNTO - Laboratório de Performance
 
-Sua plataforma de elite para periodização e análise biomecânica.
+## 🚀 COMO PUBLICAR
 
-## 🚀 COMO REALIZAR O DEPLOY (MODO DINÂMICO)
+### Opção 1: Pelo Terminal (Recomendado)
+Se o terminal estiver funcionando, digite o comando abaixo para realizar o build e o deploy automático:
+```bash
+npm run deploy
+```
 
-Como o sistema utiliza Next.js 15 com Server Actions e Genkit, ele deve ser implantado de uma das duas formas abaixo:
+### Opção 2: Sem Terminal (Botão Publicar)
+Como você está no **Firebase Studio**, a publicação pode ser feita via interface:
+1. Clique no ícone de **"Publish"** (Nuvem ou Foguete) no menu lateral ou superior.
+2. O Studio processará seu código e enviará para a URL do seu projeto.
 
-### 1. Firebase App Hosting (Recomendado)
-Este é o novo padrão do Firebase para Next.js:
-1. Acesse o [Console do Firebase](https://console.firebase.google.com/).
-2. Vá em **App Hosting** e clique em "Começar".
-3. Conecte seu repositório GitHub. O Firebase cuidará de todo o build dinâmico automaticamente.
+---
 
-### 2. Firebase Hosting (Via CLI com Web Frameworks)
-Se preferir usar o terminal, você **precisa habilitar o experimento** antes:
+## ⚠️ CONFIGURAÇÃO DA IA (MUITO IMPORTANTE)
+Para que a IA gere seus planos de treino, você **DEVE** configurar sua chave de API do Google Gemini:
 
-1. No seu terminal, execute:
-   ```bash
-   firebase experiments:enable webframeworks
-   ```
-2. Depois, realize o deploy:
-   ```bash
-   firebase deploy
-   ```
+1. Vá ao [Google AI Studio](https://aistudio.google.com/) e gere uma chave gratuita.
+2. No painel do **Firebase Console**, vá em **App Hosting** ou **Functions** (dependendo de onde o backend está rodando).
+3. Adicione uma variável de ambiente chamada `GEMINI_API_KEY` com o valor da sua chave.
+4. **Sem esta chave, o sistema retornará erro ao tentar gerar o ciclo.**
 
-**DICA:** Use o comando facilitador que criei: `npm run deploy`.
+---
 
-## 🛠️ RESOLVENDO O BLOQUEIO DE LOGIN
-
-Se você vir o erro "requests-to-this-api... are blocked", siga estes passos:
-
-### 1. Desbloqueio da Chave no Google Cloud
-1. Acesse o [Google Cloud Console - Credenciais](https://console.cloud.google.com/apis/credentials).
-2. Clique na sua chave `AIzaSyBTHlgY_B4gElAUJ_d85xcgSThfLWw6iFo`.
-3. Em **"Restrições de API"**, selecione a opção **"Nenhuma"** (Don't restrict key).
-4. Clique em **SALVAR**.
-
-### 2. Autorizar o Domínio do Laboratório
-1. Acesse: [Firebase Console - Domínios Autorizados](https://console.firebase.google.com/project/studio-1669701209-88700/authentication/settings).
-2. Adicione os domínios:
-   - `studio-1669701209-88700.web.app`
-   - `studio-1669701209-88700.firebaseapp.com`
-
-## 📱 Sincronização Cloud
-- **Sincronização:** PC e Celular conversam em tempo real via Firestore.
-- **Segurança:** As regras de segurança em `firestore.rules` garantem que apenas VOCÊ acesse seus dados biométricos.
+## 📱 FUNCIONALIDADES DE ELITE
+- **Acesso Biométrico**: Login via Digital ou FaceID.
+- **Semana Espelho Multimodal**: Anamnese via texto ou arquivos de sensores (.FIT/Prints).
+- **Diretriz de IA**: Paces numéricos exatos baseados em VDOT.
+- **Sincronização Cloud**: Seus dados são salvos no Firestore e acessíveis em qualquer dispositivo.

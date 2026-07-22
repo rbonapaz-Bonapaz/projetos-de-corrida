@@ -2,6 +2,7 @@
 export type ExperienceLevel = 'run_walk' | 'beginner' | 'intermediate' | 'advanced';
 export type PlanGenerationType = 'full' | 'blocks';
 export type Gender = 'male' | 'female' | 'other';
+export type ReferenceHandling = 'faithful' | 'optimized';
 
 export interface DietPreferences {
   aestheticGoal?: 'cutting' | 'bulking' | 'recomp' | 'performance';
@@ -51,6 +52,7 @@ export interface AnamnesisData {
   practiceTime?: string;
   consistency?: string;
   mirrorWeek?: string;
+  mirrorWeekFileUri?: string;
   easyPace?: string;
   hardPace?: string;
   trainingStructure?: string;
@@ -103,6 +105,7 @@ export interface AthleteProfile {
   experienceLevel: ExperienceLevel;
   trainingHistory: string;
   referenceDocumentUri?: string;
+  referenceHandling?: ReferenceHandling;
   trainingPlan?: TrainingPlan;
   dietPreferences?: DietPreferences;
   strengthPreferences?: StrengthPreferences;
@@ -138,6 +141,7 @@ export interface Workout {
   description: string;
   rpe?: number;
   estimatedDuration?: string;
+  technicalDetails?: Array<{ label: string, value: string }>;
   phases: Array<{
     name: string;
     distance: string;
@@ -150,6 +154,7 @@ export interface Workout {
 
 export interface WeeklyPlan {
   weekNumber: number;
+  dateRange?: string;
   focus: string;
   runs: Workout[];
   strength: string;

@@ -1,14 +1,16 @@
-
 "use client";
 
 import * as React from "react";
 import { TrainingContext } from "@/contexts/TrainingContext";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Timer, Calendar, Trophy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Zap, Timer, Trophy, ArrowRight, Activity, CalendarDays, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 /**
- * @fileOverview Uma visualização minimalista estilo 'Widget' para ser fixada na Home Screen do celular.
+ * @fileOverview Agenda de Elite (Widget de Tela de Início).
+ * Exibe o treino atual e os próximos 3 sessões em estilo linha do tempo.
  */
 export default function WidgetPage() {
   const context = React.useContext(TrainingContext);
@@ -27,60 +29,133 @@ export default function WidgetPage() {
     }
   }, [profile?.raceDate]);
 
-  const nextWorkout = plan?.weeklyPlans[0]?.runs[0];
+  // Busca os próximos 4 treinos não completados
+  const upcomingWorkouts = React.useMemo(() => {
+    if (!plan) return [];
+    const allWorkouts: any[] = [];
+    plan.weeklyPlans.forEach(week => {
+      week.runs.forEach(run => {
+        if (!run.completed && run.type !== "Descanso") {
+          allWorkouts.push(run);
+        }
+      });
+    });
+    return allWorkouts.slice(0, 4);
+  }, [plan]);
+
+  if (!context?.isHydrated) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <Activity className="size-12 text-primary animate-pulse" />
+        <p className="font-headline font-black uppercase italic text-primary text-xs tracking-widest">Sincronizando Lab...</p>
+      </div>
+    );
+  }
+
+  const mainWorkout = upcomingWorkouts[0];
+  const others = upcomingWorkouts.slice(1);
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-sm aspect-square bg-card border-2 border-primary/20 rounded-[2.5rem] shadow-2xl p-8 flex flex-col justify-between relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-6 opacity-5">
-           <Zap size={120} />
-        </div>
-        
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="font-headline font-black italic text-primary text-xl tracking-tighter">CORREJUNTO</div>
-            <Badge className="bg-primary/10 text-primary border-none text-[9px] font-black italic uppercase">WIDGET v1.0</Badge>
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-[10px] font-black uppercase text-muted-foreground/60 italic tracking-widest">PRÓXIMA SESSÃO</p>
-            <h2 className="text-3xl font-headline font-black uppercase italic text-white tracking-tighter leading-none">
-              {nextWorkout?.type || "DESCANSO"}
-            </h2>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge variant="outline" className="border-white/10 text-white font-black italic text-[10px] uppercase">
-                {nextWorkout?.distance || "0KM"}
-              </Badge>
-              <span className="text-[10px] font-bold text-primary italic uppercase tracking-widest">
-                {nextWorkout?.day || "HOJE"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 text-muted-foreground/60">
-              <Trophy size={10} />
-              <span className="text-[8px] font-black uppercase italic tracking-widest">META</span>
-            </div>
-            <p className="text-sm font-black italic text-white leading-none">{profile?.raceDistance || "--"}</p>
-          </div>
-          <div className="space-y-1 text-right">
-            <div className="flex items-center justify-end gap-1.5 text-primary">
-              <Timer size={10} />
-              <span className="text-[8px] font-black uppercase italic tracking-widest">CONTAGEM</span>
-            </div>
-            <p className="text-sm font-black italic text-white leading-none">{daysToRace ?? 0} DIAS</p>
-          </div>
-        </div>
-
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-12 h-1 bg-white/10 rounded-full" />
-      </div>
+    <div className="min-h-screen bg-black flex flex-col items-center py-10 px-4 select-none animate-in fade-in duration-700 overflow-y-auto">
       
-      <p className="mt-8 text-[10px] font-black uppercase italic text-muted-foreground/40 text-center tracking-widest leading-relaxed">
-        ADICIONE ESTA PÁGINA À TELA DE INÍCIO <br/> PARA USAR COMO WIDGET
-      </p>
+      {/* Header do Lab */}
+      <div className="w-full max-w-sm flex items-center justify-between mb-8 px-2">
+         <div className="space-y-1">
+            <h1 className="font-headline font-black italic text-primary text-2xl tracking-tighter leading-none">CORREJUNTO</h1>
+            <p className="text-[8px] font-black uppercase text-muted-foreground/60 tracking-[0.3em] italic">AGENDA DE ELITE</p>
+         </div>
+         <div className="flex flex-col items-end">
+            <span className="text-[10px] font-black text-white italic">{daysToRace} DIAS</span>
+            <span className="text-[7px] font-bold text-primary uppercase tracking-widest">PROVA ALVO</span>
+         </div>
+      </div>
+
+      {/* Container Principal */}
+      <div className="w-full max-w-sm space-y-8">
+        
+        {/* TREINO ATUAL - DESTAQUE */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 text-[9px] font-black uppercase italic text-primary/60 tracking-widest px-2">
+             <div className="size-1.5 rounded-full bg-primary animate-pulse" />
+             PRÓXIMA SESSÃO
+          </div>
+          
+          {mainWorkout ? (
+            <Link href="/training">
+              <div className="w-full bg-[#0c0e12] border-2 border-primary/30 rounded-[2.5rem] p-8 shadow-[0_0_40px_rgba(74,222,128,0.05)] relative overflow-hidden group active:scale-[0.98] transition-all">
+                <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-10 transition-opacity">
+                   <Activity size={160} />
+                </div>
+                
+                <div className="space-y-6 relative z-10">
+                  <div className="space-y-1">
+                    <h2 className="text-4xl font-headline font-black uppercase italic text-white tracking-tighter leading-none">
+                      {mainWorkout.type}
+                    </h2>
+                    <div className="flex items-center gap-2">
+                       <span className="text-xs font-bold text-primary italic uppercase">{mainWorkout.day}</span>
+                       <span className="text-[10px] text-muted-foreground italic">• {mainWorkout.paceZone}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                    <Badge className="bg-primary text-black font-black italic text-[12px] h-8 px-5 rounded-xl shadow-lg uppercase">
+                      {mainWorkout.distance}
+                    </Badge>
+                    <ChevronRight className="size-5 text-primary/40" />
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ) : (
+            <div className="p-12 border-2 border-dashed border-white/5 rounded-[2.5rem] text-center">
+               <p className="text-xs font-bold text-muted-foreground/30 uppercase italic">Nenhum treino pendente</p>
+            </div>
+          )}
+        </section>
+
+        {/* PRÓXIMAS SESSÕES - ESTILO AGENDA */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 text-[9px] font-black uppercase italic text-muted-foreground tracking-widest px-2">
+             CRONOGRAMA SEMANAL
+          </div>
+
+          <div className="space-y-3">
+             {others.length > 0 ? others.map((w, idx) => (
+               <Link key={idx} href="/training">
+                 <div className="flex items-center gap-4 p-5 bg-[#0a0c10] border border-white/5 rounded-2xl active:bg-white/5 transition-colors mb-3">
+                    <div className="size-10 rounded-xl bg-secondary flex flex-col items-center justify-center shrink-0 border border-white/5">
+                       <span className="text-[8px] font-black uppercase text-primary italic leading-none">{w.day.substring(0,3)}</span>
+                    </div>
+                    <div className="flex-1 space-y-0.5">
+                       <p className="text-sm font-black uppercase italic text-white tracking-tight leading-none">{w.type}</p>
+                       <p className="text-[9px] font-bold text-muted-foreground/60 italic uppercase tracking-wider">{w.distance} • {w.paceZone}</p>
+                    </div>
+                    <ChevronRight className="size-4 text-muted-foreground/20" />
+                 </div>
+               </Link>
+             )) : (
+                others.length === 0 && !mainWorkout && (
+                  <Button asChild className="w-full h-14 bg-primary text-black font-black uppercase italic rounded-2xl">
+                    <Link href="/profile">CONFIGURAR PLANO <Zap className="ml-2 size-4"/></Link>
+                  </Button>
+                )
+             )}
+          </div>
+        </section>
+      </div>
+
+      {/* Footer de Instrução */}
+      <div className="mt-auto pt-10 space-y-6 text-center w-full max-w-sm">
+        <p className="text-[9px] font-black uppercase italic text-muted-foreground/40 tracking-[0.2em] leading-relaxed">
+          PARA USAR COMO WIDGET: <br/>
+          ABRA NO SAFARI/CHROME E SELECIONE <br/>
+          <span className="text-primary/60">"ADICIONAR À TELA DE INÍCIO"</span>
+        </p>
+        <Button asChild variant="ghost" className="text-primary hover:text-white font-black italic uppercase text-xs h-12 w-full">
+          <Link href="/training" className="flex items-center justify-center gap-2">ABRIR LABORATÓRIO COMPLETO <ArrowRight size={14} /></Link>
+        </Button>
+      </div>
     </div>
   );
 }

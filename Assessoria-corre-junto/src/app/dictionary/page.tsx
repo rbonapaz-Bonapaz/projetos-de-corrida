@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -9,7 +10,6 @@ import {
   Heart, 
   Brain,
   Zap,
-  TrendingUp,
   Target,
   Clock,
   Dumbbell,
@@ -18,15 +18,16 @@ import {
 import { cn } from "@/lib/utils";
 
 const trainingTerms = [
-  { term: "RODAGEM (EASY RUN)", def: "É o \"arroz com feijão\" do treino. O objetivo é construir sua base aeróbica (seu motor). O ritmo deve ser leve o suficiente para você conseguir conversar normalmente. Ajuda a fortalecer articulações e queimar gordura de forma eficiente." },
-  { term: "LONGÃO (LSD)", def: "O treino mais longo da semana. Foco no \"tempo de pé\". Ensina o corpo a oxidar gordura como combustível e prepara a mente para distâncias maiores e fadiga acumulada." },
-  { term: "INTERVALADO (TIROS)", def: "Picos de esforço intenso (VO2 Máx) seguidos por descanso. É o treino que aumenta sua velocidade máxima e melhora a eficiência cardiovascular. Exige alta carga metabólica." },
-  { term: "TEMPO RUN (LIMIAR)", def: "Ritmo \"confortavelmente difícil\". Intensidade mantida no limiar de lactato (L2). Ensina o corpo a remover o lactato do sangue enquanto corre em velocidade firme." },
   { term: "REGENERATIVO", def: "Corrida extremamente leve (Z1) para ajudar na circulação e recuperação muscular após sessões intensas. Se houver qualquer esforço, está rápido demais." },
-  { term: "FARTLEK", def: "Do sueco \"brincar de correr\". Alternar ritmos usando o ambiente como referência, sem a pressão de tempos fixos. Excelente para desenvolver percepção de esforço (RPE)." },
-  { term: "SUBIDAS (HILL REPEATS)", def: "A musculação específica do corredor. Melhora a potência mecânica, a postura de corrida e previne lesões por fortalecer a cadeia posterior." },
+  { term: "RODAGEM (EASY RUN)", def: "É o \"arroz com feijão\" do treino. O objetivo é construir sua base aeróbica (seu motor). O ritmo deve ser leve o suficiente para você conseguir conversar normalmente." },
   { term: "PROGRESSIVO", def: "Treino que começa em ritmo leve e termina em ritmo de prova ou superior. Ótimo para controle de pacing e simulação de final de prova." },
-  { term: "DESCANSO (OFF)", def: "O treino mais importante. O momento em que o corpo absorve o estímulo e reconstrói as fibras musculares (Supercompensação). Sem descanso, não há evolução." },
+  { term: "FARTLEK", def: "Do sueco \"brincar de correr\". Alternar ritmos usando o ambiente como referência, sem a pressão de tempos fixos. Excelente para desenvolver percepção de esforço (RPE)." },
+  { term: "TEMPO RUN (LIMIAR)", def: "Ritmo \"confortavelmente difícil\". Intensidade mantida no limiar de lactato (L2). Ensina o corpo a remover o lactato do sangue enquanto corre em velocidade firme." },
+  { term: "SUBIDAS (HILL REPEATS)", def: "A musculação específica do corredor. Melhora a potência mecânica, a postura de corrida e previne lesões por fortalecer a cadeia posterior." },
+  { term: "INTERVALADO (TIROS)", def: "Picos de esforço intenso (VO2 Máx) seguidos por descanso. É o treino que aumenta sua velocidade máxima e melhora a eficiência cardiovascular." },
+  { term: "LONGÃO (LSD)", def: "O treino mais longo da semana. Foco no \"tempo de pé\". Ensina o corpo a oxidar gordura como combustível e prepara a mente para a fadiga acumulada." },
+  { term: "ESTRATÉGICO (SIMULADO)", def: "Sessão desenhada para replicar as condições da prova alvo. Foco em pacing, nutrição e mentalidade de competição." },
+  { term: "DESCANSO (OFF)", def: "O treino mais importante. O momento em que o corpo absorve o estímulo e reconstrói as fibras musculares (Supercompensação)." },
 ];
 
 const hrZones = [

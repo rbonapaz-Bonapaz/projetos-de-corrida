@@ -19,7 +19,9 @@ import {
   query, 
   where, 
   updateDoc,
-  onSnapshot
+  onSnapshot,
+  Query,
+  DocumentData
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -73,15 +75,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 2. Fallback: Chave de API do Treinador
   const [trainerApiKey, setTrainerApiKey] = useState<string | null>(null);
 
-  // 3. Busca perfis
+  // 3. Busca perfis com casting de tipo para evitar erro de compilação
   const coachProfilesQuery = useMemo(() => {
-    if (user) return query(collection(db, 'athletes'), where('ownerUid', '==', user.uid));
-    return query(collection(db, 'athletes'), where('ownerUid', '==', 'local-user'));
+    const athletesRef = collection(db, 'athletes');
+    if (user) return query(athletesRef, where('ownerUid', '==', user.uid)) as unknown as Query<AthleteProfile, DocumentData>;
+    return query(athletesRef, where('ownerUid', '==', 'local-user')) as unknown as Query<AthleteProfile, DocumentData>;
   }, [db, user]);
   const { data: coachProfiles } = useCollection<AthleteProfile>(coachProfilesQuery);
 
   const athleteProfilesQuery = useMemo(() => {
-    if (user?.email) return query(collection(db, 'athletes'), where('athleteEmail', '==', user.email));
+    const athletesRef = collection(db, 'athletes');
+    if (user?.email) return query(athletesRef, where('athleteEmail', '==', user.email)) as unknown as Query<AthleteProfile, DocumentData>;
     return null;
   }, [db, user]);
   const { data: athleteProfiles } = useCollection<AthleteProfile>(athleteProfilesQuery);
@@ -159,7 +163,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ownerUid,
     } as AthleteProfile;
 
-    // Mutation call (non-blocking per instructions)
     setDoc(docRef, newProfile, { merge: true }).catch(err => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: docRef.path,
@@ -219,8 +222,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       else if (profile.experienceLevel === 'intermediate') weeklyMileageGoal = 45;
       else if (profile.experienceLevel === 'advanced') weeklyMileageGoal = 75;
 
-      const result = await generateTrainingBlock({
-        apiKey: effectiveApiKey,
+      const resultRaw = await generateTrainingBlock({
         raceName: profile.raceName,
         currentVDOT: profile.vo2Max || 40,
         hrZone1End: Math.round((profile.thresholdHr || 160) * 0.8),
@@ -240,12 +242,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         injuryHistory: profile.trainingHistory || 'Nenhuma reportada',
         preferredWorkoutDays: profile.trainingDays.slice(0, 2).join(', '),
         legDay: profile.strengthPreferences?.legDay,
-        referenceFileDataUri: profile.referenceDocumentUri
+        referenceFileDataUri: profile.referenceDocumentUri,
+        referenceHandling: profile.referenceHandling || 'optimized',
+        anamnesisContext: ''
       });
 
-      result.weeklyPlans.forEach(week => {
-        week.runs.forEach(run => { if (!run.id) run.id = crypto.randomUUID(); });
-      });
+      // Garantir IDs e tipagem correta para o build
+      const result = {
+        ...resultRaw,
+        weeklyPlans: resultRaw.weeklyPlans.map(week => ({
+          ...week,
+          runs: week.runs.map(run => ({
+            ...run,
+            id: run.id || crypto.randomUUID()
+          } as Workout))
+        }))
+      } as TrainingPlan;
 
       await saveProfile({ ...profile, trainingPlan: result });
       setPlanGenerationStatus('success');

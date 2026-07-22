@@ -3,36 +3,35 @@
 import * as React from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { TrainingContext } from "@/contexts/TrainingContext";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
-  ClipboardList, 
   FileDown, 
   Stethoscope, 
   Activity, 
   Clock, 
   Save,
   Loader2,
-  Trophy,
-  Zap
+  Zap,
+  Upload,
+  FileDigit
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { cn, fileToDataURI } from "@/lib/utils";
 import Script from "next/script";
 
 const weekDays = [
+  { id: 'Dom', label: 'Domingo' },
   { id: 'Seg', label: 'Segunda' },
   { id: 'Ter', label: 'Terça' },
   { id: 'Qua', label: 'Quarta' },
   { id: 'Qui', label: 'Quinta' },
   { id: 'Sex', label: 'Sexta' },
   { id: 'Sab', label: 'Sábado' },
-  { id: 'Dom', label: 'Domingo' },
 ];
 
 const injuryOptions = ['Canelite', 'Fascite Plantar', 'Dor Joelho', 'Aquiles', 'Outros', 'Nenhuma'];
@@ -42,6 +41,7 @@ export default function AnamnesisPage() {
   const { toast } = useToast();
   const profile = context?.activeProfile;
   const [isSaving, setIsSaving] = React.useState(false);
+  const mirrorWeekFileRef = React.useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = React.useState<any>({
     whatsapp: "",
@@ -56,6 +56,7 @@ export default function AnamnesisPage() {
     practiceTime: "",
     consistency: "",
     mirrorWeek: "",
+    mirrorWeekFileUri: "",
     footwear: "",
     preferredShift: "",
     strengthDays: [],
@@ -70,7 +71,6 @@ export default function AnamnesisPage() {
     targetRace: ""
   });
 
-  // Sincroniza dados iniciais do contexto
   React.useEffect(() => {
     if (profile) {
       setFormData((prev: any) => ({
@@ -78,12 +78,12 @@ export default function AnamnesisPage() {
         ...profile.anamnesis,
         objective: profile.anamnesis?.objective || (profile.raceDistance ? `Completar ${profile.raceDistance}` : ""),
         targetRace: profile.anamnesis?.targetRace || profile.raceName || "",
-        strengthDays: profile.anamnesis?.strengthDays || (profile.strengthPreferences?.legDay ? [profile.strengthPreferences.legDay.substring(0,3)] : []),
+        strengthDays: profile.anamnesis?.strengthDays || [],
         injuryHistory: profile.anamnesis?.injuryHistory || [],
         devices: profile.anamnesis?.devices || []
       }));
     }
-  }, [profile]);
+  }, [profile?.id]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
@@ -97,26 +97,22 @@ export default function AnamnesisPage() {
     setFormData((prev: any) => ({ ...prev, [field]: updated }));
   };
 
+  const handleMirrorFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      const uri = await fileToDataURI(e.target.files[0]);
+      handleInputChange('mirrorWeekFileUri', uri);
+      toast({ title: "Arquivo Carregado", description: "O Gemini Coach analisará seus treinos reais." });
+    }
+  };
+
   const onSave = async () => {
     if (!context) return;
     setIsSaving(true);
     try {
-      const updates: any = { 
+      await context.saveProfile({ 
         anamnesis: formData,
         raceName: formData.targetRace || profile?.raceName,
-      };
-
-      if (formData.strengthDays.length > 0) {
-        const fullDay = weekDays.find(d => d.id === formData.strengthDays[0])?.label;
-        if (fullDay) {
-          updates.strengthPreferences = {
-            ...profile?.strengthPreferences,
-            legDay: fullDay
-          };
-        }
-      }
-
-      await context.saveProfile(updates);
+      });
       toast({ title: "Laboratório Atualizado", description: "Dados sincronizados com o motor de IA." });
     } catch (e) {
       toast({ variant: "destructive", title: "Erro ao salvar" });
@@ -139,42 +135,12 @@ export default function AnamnesisPage() {
           <h1 style="color: #10b981; margin: 0; font-size: 28px; text-transform: uppercase; font-weight: 900; italic: true;">FICHA DE ANAMNESE ESPORTIVA</h1>
           <p style="margin: 5px 0 0 0; color: #6b7280; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">CORREJUNTO - Performance Laboratorial</p>
         </div>
-
         <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">1. Identificação do Atleta</h2>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
           <tr><td style="padding: 5px; font-weight: bold; width: 30%;">Atleta:</td><td>${profile?.name || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Peso / Altura:</td><td>${profile?.currentWeight || '--'} kg / ${profile?.height || '--'} cm</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">WhatsApp:</td><td>${formData.whatsapp || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Profissão:</td><td>${formData.profession || '--'}</td></tr>
         </table>
-
-        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">2. Saúde e Histórico Clínico</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 5px; font-weight: bold; width: 30%;">Liberação Médica:</td><td>${formData.medicalRelease || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Doença Crônica:</td><td>${formData.chronicIllness} ${formData.chronicIllnessDetail ? `(${formData.chronicIllnessDetail})` : ''}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Medicação:</td><td>${formData.medication || 'Nenhuma'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Lesões Antigas:</td><td>${(formData.injuryHistory || []).join(', ') || 'Nenhuma'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Dores Atuais:</td><td>${formData.activeInjuries || 'Nenhuma'}</td></tr>
-        </table>
-
-        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">3. Perfil Técnico e Logística</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 5px; font-weight: bold; width: 30%;">Tempo Prática:</td><td>${formData.practiceTime || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Monitorização:</td><td>${formData.intensityMonitoring || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Terreno / Turno:</td><td>${formData.terrain || '--'} / ${formData.preferredShift || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Semana Espelho:</td><td>${formData.mirrorWeek || '--'}</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Força (Dias):</td><td>${(formData.strengthDays || []).join(', ') || 'Não realiza'}</td></tr>
-        </table>
-
-        <h2 style="color: #10b981; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; font-size: 16px; text-transform: uppercase; font-weight: 900;">4. Estilo de Vida e Objetivos</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-          <tr><td style="padding: 5px; font-weight: bold; width: 30%;">Sono / Estresse:</td><td>Sono: ${formData.sleepQuality}/5 | Estresse: ${formData.stressLevel}/5</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Objetivo:</td><td>${formData.objective || '--'} (${formData.targetRace || '--'})</td></tr>
-          <tr><td style="padding: 5px; font-weight: bold;">Comprometimento:</td><td>${formData.commitmentLevel}/10</td></tr>
-        </table>
-
         <div style="margin-top: 50px; font-size: 10px; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 10px; font-style: italic;">
-          Relatório gerado via Cloud Sincronizada CorreJunto. Dados biométricos confidenciais.
+          Relatório gerado via Cloud Sincronizada CorreJunto.
         </div>
       </div>
     `;
@@ -194,310 +160,148 @@ export default function AnamnesisPage() {
     <DashboardLayout>
       <Script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" strategy="lazyOnload" />
       
-      <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-700 pb-20">
+      <div className="max-w-4xl mx-auto space-y-8 md:space-y-10 animate-in fade-in duration-700 pb-20">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
-          <div className="space-y-2">
-            <h1 className="text-4xl md:text-5xl font-headline font-black uppercase italic tracking-tighter text-white">
+          <div className="space-y-1 md:space-y-2">
+            <h1 className="text-3xl md:text-5xl font-headline font-black uppercase italic tracking-tighter text-white">
               ANAMNESE <span className="text-primary">TÉCNICA</span>
             </h1>
-            <p className="text-muted-foreground text-xs md:text-sm font-bold uppercase tracking-widest italic opacity-60">
-              O cérebro biométrico da sua periodização IA
-            </p>
           </div>
-          <div className="flex gap-4">
-             <Button 
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <Button 
                 variant="outline" 
                 onClick={exportPDF}
-                className="h-14 border-primary/20 text-primary font-black uppercase italic tracking-widest rounded-2xl hover:bg-primary hover:text-black gap-2"
+                className="h-12 border-primary/20 text-primary font-black uppercase italic text-[11px] tracking-widest rounded-2xl hover:bg-primary hover:text-black gap-2 w-full sm:w-auto"
               >
-                <FileDown size={20} /> EXPORTAR PDF
+                <FileDown size={18} /> EXPORTAR PDF
               </Button>
               <Button 
                 onClick={onSave}
                 disabled={isSaving}
-                className="h-14 bg-primary text-black font-black uppercase italic tracking-widest rounded-2xl shadow-xl hover:bg-white gap-2 px-8"
+                className="h-12 bg-primary text-black font-black uppercase italic text-[11px] tracking-widest rounded-2xl shadow-xl hover:bg-white gap-2 px-8 w-full sm:w-auto"
               >
-                {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />} SALVAR
+                {isSaving ? <Loader2 className="animate-spin size-4" /> : <Save size={18} />} SALVAR
               </Button>
           </div>
         </header>
 
-        <div className="space-y-12">
-          {/* SEÇÃO 1: CLÍNICA */}
-          <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
-            <CardHeader className="bg-secondary/10 border-b border-border/10 p-8">
-              <div className="flex items-center gap-4">
-                <div className="size-12 rounded-2xl bg-destructive/10 flex items-center justify-center text-destructive">
-                  <Stethoscope size={24} />
+        <div className="space-y-10 md:space-y-12">
+          <Card className="bg-card/40 border-border/50 rounded-2xl md:rounded-3xl overflow-hidden shadow-xl">
+            <CardHeader className="bg-secondary/10 border-b border-border/10 p-6 md:p-8">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="size-10 md:size-12 rounded-xl md:rounded-2xl bg-destructive/10 flex items-center justify-center text-destructive">
+                  <Stethoscope size={20} />
                 </div>
                 <div>
-                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Clínica e Contato</CardTitle>
-                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Segurança e triagem inicial</CardDescription>
+                  <CardTitle className="font-headline text-lg md:text-xl uppercase italic font-black text-white">Clínica e Contato</CardTitle>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
-               <div className="space-y-3">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">WhatsApp de Contato</Label>
+            <CardContent className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+               <div className="space-y-2">
+                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">WhatsApp</Label>
                  <Input 
-                   value={formData.whatsapp} 
+                   value={formData.whatsapp || ""} 
                    onChange={(e) => handleInputChange('whatsapp', e.target.value)} 
-                   placeholder="(00) 00000-0000"
-                   className="bg-black/30 border-border/40 h-14 font-bold rounded-xl"
+                   className="bg-black/30 border-border/40 h-11 font-bold rounded-xl text-xs"
                  />
                </div>
-               <div className="space-y-3">
+               <div className="space-y-2">
                  <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Profissão</Label>
                  <Input 
-                   value={formData.profession} 
+                   value={formData.profession || ""} 
                    onChange={(e) => handleInputChange('profession', e.target.value)} 
-                   className="bg-black/30 border-border/40 h-14 font-bold rounded-xl"
+                   className="bg-black/30 border-border/40 h-11 font-bold rounded-xl text-xs"
                  />
-               </div>
-               <div className="space-y-3">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Liberação Médica Recente?</Label>
-                   <Select value={formData.medicalRelease} onValueChange={(v) => handleInputChange('medicalRelease', v)}>
-                      <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Sim, recente (-1 ano)" className="font-bold italic uppercase">SIM, RECENTE</SelectItem>
-                        <SelectItem value="Sim, antiga (+1 ano)" className="font-bold italic uppercase">SIM, ANTIGA</SelectItem>
-                        <SelectItem value="Não possuo" className="font-bold italic uppercase">NÃO POSSUO</SelectItem>
-                      </SelectContent>
-                   </Select>
-               </div>
-               <div className="space-y-3">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Doença Crônica?</Label>
-                   <div className="flex gap-4">
-                     <Select value={formData.chronicIllness} onValueChange={(v) => handleInputChange('chronicIllness', v)}>
-                        <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic w-32 uppercase">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Não" className="font-bold italic uppercase">NÃO</SelectItem>
-                          <SelectItem value="Sim" className="font-bold italic uppercase">SIM</SelectItem>
-                        </SelectContent>
-                     </Select>
-                     <Input 
-                       disabled={formData.chronicIllness !== "Sim"}
-                       value={formData.chronicIllnessDetail} 
-                       onChange={(e) => handleInputChange('chronicIllnessDetail', e.target.value)}
-                       placeholder="Qual?"
-                       className="bg-black/30 border-border/40 h-14 font-bold rounded-xl"
-                     />
-                   </div>
                </div>
             </CardContent>
           </Card>
 
-          {/* SEÇÃO 2: HISTÓRICO MECÂNICO */}
-          <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
-            <CardHeader className="bg-primary/10 border-b border-border/10 p-8">
-              <div className="flex items-center gap-4">
-                <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                  <Activity size={24} />
+          <Card className="bg-card/40 border-border/50 rounded-2xl md:rounded-3xl overflow-hidden shadow-xl">
+            <CardHeader className="bg-primary/10 border-b border-border/10 p-6 md:p-8">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="size-10 md:size-12 rounded-xl md:rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                  <Activity size={20} />
                 </div>
                 <div>
-                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Histórico Mecânico</CardTitle>
-                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Ajuste de carga e proteção</CardDescription>
+                  <CardTitle className="font-headline text-lg md:text-xl uppercase italic font-black text-white">Histórico Mecânico</CardTitle>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-10 space-y-10">
+            <CardContent className="p-6 md:p-10 space-y-8 md:space-y-10">
                <div className="space-y-4">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Histórico de Lesões (Já te fizeram parar?)</Label>
-                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Lesões Anteriores</Label>
+                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     {injuryOptions.map(injury => (
-                      <div key={injury} className="flex items-center space-x-3 bg-black/20 p-4 rounded-xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer" onClick={() => handleToggleArray('injuryHistory', injury)}>
-                        <Checkbox checked={formData.injuryHistory?.includes(injury)} />
+                      <div key={injury} className="flex items-center space-x-2 bg-black/20 p-3 rounded-xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer" onClick={() => handleToggleArray('injuryHistory', injury)}>
+                        <Checkbox checked={(formData.injuryHistory || []).includes(injury)} className="size-4" />
                         <span className="text-[10px] font-black uppercase italic text-white/80">{injury}</span>
                       </div>
                     ))}
                  </div>
                </div>
-               <div className="space-y-3">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Incômodos Atuais (Onde dói agora?)</Label>
-                 <Textarea 
-                   value={formData.activeInjuries} 
-                   onChange={(e) => handleInputChange('activeInjuries', e.target.value)}
-                   placeholder="Descreva local e frequência de incômodos recentes..."
-                   className="bg-black/30 border-border/40 min-h-[100px] font-bold rounded-2xl italic"
-                 />
-               </div>
-               <div className="space-y-3">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">"Semana Espelho" (O que realmente treinou na última semana?)</Label>
-                 <Textarea 
-                   value={formData.mirrorWeek} 
-                   onChange={(e) => handleInputChange('mirrorWeek', e.target.value)}
-                   placeholder="Relate sua realidade recente de volume e frequência..."
-                   className="bg-black/30 border-border/40 min-h-[100px] font-bold rounded-2xl italic"
-                 />
-               </div>
-            </CardContent>
-          </Card>
 
-          {/* SEÇÃO 3: LOGÍSTICA E VIDA */}
-          <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
-            <CardHeader className="bg-orange-500/10 border-b border-border/10 p-8">
-              <div className="flex items-center gap-4">
-                <div className="size-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500">
-                  <Clock size={24} />
-                </div>
-                <div>
-                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Logística e Monitorização</CardTitle>
-                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Como você treina no dia a dia</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-10 space-y-10">
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Monitorização de Intensidade</Label>
-                    <Select value={formData.intensityMonitoring} onValueChange={(v) => handleInputChange('intensityMonitoring', v)}>
-                        <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
-                          <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Pace" className="font-bold italic uppercase">POR PACE / VELOCIDADE</SelectItem>
-                          <SelectItem value="FC" className="font-bold italic uppercase">FREQUÊNCIA CARDÍACA</SelectItem>
-                          <SelectItem value="RPE" className="font-bold italic uppercase">PERCEPÇÃO DE ESFORÇO</SelectItem>
-                        </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Terreno Principal</Label>
-                    <Select value={formData.terrain} onValueChange={(v) => handleInputChange('terrain', v)}>
-                        <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
-                          <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Asfalto" className="font-bold italic uppercase">ASFALTO / CIDADE</SelectItem>
-                          <SelectItem value="Esteira" className="font-bold italic uppercase">ESTEIRA</SelectItem>
-                          <SelectItem value="Trilha" className="font-bold italic uppercase">TERRA / TRILHAS</SelectItem>
-                        </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Turno Preferido</Label>
-                    <Select value={formData.preferredShift} onValueChange={(v) => handleInputChange('preferredShift', v)}>
-                        <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
-                          <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Manhã" className="font-bold italic uppercase">MANHÃ</SelectItem>
-                          <SelectItem value="Tarde" className="font-bold italic uppercase">TARDE</SelectItem>
-                          <SelectItem value="Noite" className="font-bold italic uppercase">NOITE</SelectItem>
-                        </SelectContent>
-                    </Select>
-                  </div>
-               </div>
-
-               <div className="space-y-4">
-                 <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Dias de Treino de Força (Sincronizado com Perfil)</Label>
-                 <div className="flex flex-wrap gap-2">
-                    {weekDays.map(day => (
-                      <button
-                        key={day.id}
-                        type="button"
-                        onClick={() => handleToggleArray('strengthDays', day.id)}
+               <div className="pt-6 border-t border-white/5 space-y-6">
+                 <div className="flex items-center gap-2">
+                    <Clock className="text-primary size-4" />
+                    <Label className="text-[10px] font-black uppercase italic text-white tracking-widest">"Semana Espelho" (Relato e/ou Arquivo)</Label>
+                 </div>
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-[8px] font-black uppercase text-muted-foreground/60 italic">RELATO TÉCNICO</Label>
+                      <Textarea 
+                        value={formData.mirrorWeek || ""} 
+                        onChange={(e) => handleInputChange('mirrorWeek', e.target.value)}
+                        placeholder="Ex: Corri 30km em 3 treinos, pace médio 5:30..."
+                        className="bg-black/30 border-border/40 min-h-[120px] font-bold rounded-xl italic text-xs"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-[8px] font-black uppercase text-muted-foreground/60 italic">ARQUIVO DE TREINO (.FIT, .JPG, .PDF)</Label>
+                      <div 
+                        onClick={() => mirrorWeekFileRef.current?.click()}
                         className={cn(
-                          "flex-1 min-w-[70px] h-12 rounded-xl border transition-all flex flex-col items-center justify-center gap-1 group",
-                          (formData.strengthDays || []).includes(day.id)
-                            ? "border-purple-500 bg-purple-500/10 text-purple-400"
-                            : "border-border/40 bg-black/20 text-muted-foreground hover:border-purple-500/50"
+                          "border-2 border-dashed rounded-xl h-[120px] flex flex-col items-center justify-center transition-all cursor-pointer",
+                          formData.mirrorWeekFileUri ? "border-primary bg-primary/5" : "border-border/40 hover:border-primary/50"
                         )}
                       >
-                        <span className="text-[9px] font-black italic uppercase">{day.id}</span>
-                      </button>
-                    ))}
-                 </div>
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                 <div className="space-y-3 text-center">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Qualidade do Sono (1-5)</Label>
-                   <div className="flex justify-center gap-2 mt-2">
-                     {[1,2,3,4,5].map(n => (
-                        <button key={n} type="button" onClick={() => handleInputChange('sleepQuality', n)} className={cn("size-8 rounded-full font-black text-xs transition-all", formData.sleepQuality === n ? "bg-primary text-black scale-110" : "bg-black/30 text-white/30 border border-white/5")}>{n}</button>
-                     ))}
-                   </div>
-                 </div>
-                 <div className="space-y-3 text-center">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Nível de Estresse (1-5)</Label>
-                   <div className="flex justify-center gap-2 mt-2">
-                     {[1,2,3,4,5].map(n => (
-                        <button key={n} type="button" onClick={() => handleInputChange('stressLevel', n)} className={cn("size-8 rounded-full font-black text-xs transition-all", formData.stressLevel === n ? "bg-rose-500 text-black scale-110" : "bg-black/30 text-white/30 border border-white/5")}>{n}</button>
-                     ))}
-                   </div>
-                 </div>
-                 <div className="space-y-3">
-                   <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Comprometimento (1-10)</Label>
-                   <Input 
-                      type="number" 
-                      min="1" max="10" 
-                      value={formData.commitmentLevel} 
-                      onChange={(e) => handleInputChange('commitmentLevel', parseInt(e.target.value))}
-                      className="bg-black/30 border-border/40 h-10 text-center font-bold rounded-xl"
-                   />
+                         <input type="file" ref={mirrorWeekFileRef} className="sr-only" onChange={handleMirrorFileChange} accept="image/*,.fit,.csv,.pdf" />
+                         {formData.mirrorWeekFileUri ? (
+                           <div className="flex items-center gap-3">
+                              <div className="p-2 bg-primary text-black rounded-lg"><FileDigit size={20}/></div>
+                              <div className="text-left">
+                                <p className="text-[10px] font-black uppercase text-primary italic">Documento Pronto</p>
+                                <Button variant="ghost" size="sm" className="h-6 p-0 text-[7px] text-muted-foreground hover:text-rose-500" onClick={(e) => { e.stopPropagation(); handleInputChange('mirrorWeekFileUri', ''); }}>REMOVER</Button>
+                              </div>
+                           </div>
+                         ) : (
+                           <div className="text-center space-y-2">
+                              <Upload className="size-6 text-muted-foreground/40 mx-auto" />
+                              <p className="text-[8px] font-bold uppercase italic text-muted-foreground/40">Upload de Treinos</p>
+                           </div>
+                         )}
+                      </div>
+                    </div>
                  </div>
                </div>
             </CardContent>
           </Card>
 
-          {/* SEÇÃO 4: OBJETIVOS SINCRONIZADOS */}
-          <Card className="bg-card/40 border-border/50 rounded-3xl overflow-hidden shadow-2xl">
-            <CardHeader className="bg-primary/10 border-b border-border/10 p-8">
-              <div className="flex items-center gap-4">
-                <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                  <Trophy size={24} />
-                </div>
-                <div>
-                  <CardTitle className="font-headline text-xl uppercase italic font-black text-white">Objetivos de Elite</CardTitle>
-                  <CardDescription className="text-[10px] uppercase font-bold italic tracking-widest">Onde queremos chegar</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
-               <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Qual o seu objetivo principal?</Label>
-                  <Select value={formData.objective} onValueChange={(v) => handleInputChange('objective', v)}>
-                      <SelectTrigger className="bg-black/30 border-border/40 h-14 font-bold rounded-xl italic uppercase">
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Emagrecimento" className="font-bold italic uppercase">EMAGRECIMENTO</SelectItem>
-                        <SelectItem value="Condicionamento" className="font-bold italic uppercase">CONDICIONAMENTO E SAÚDE</SelectItem>
-                        <SelectItem value="Completar" className="font-bold italic uppercase">COMPLETAR UMA PROVA</SelectItem>
-                        <SelectItem value="Performance" className="font-bold italic uppercase">PERFORMANCE / TEMPO</SelectItem>
-                      </SelectContent>
-                  </Select>
-               </div>
-               <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Prova Alvo / Distância (Sync Perfil)</Label>
-                  <Input 
-                    value={formData.targetRace} 
-                    onChange={(e) => handleInputChange('targetRace', e.target.value)} 
-                    placeholder="Ex: Meia Maratona de SP"
-                    className="bg-black/30 border-border/40 h-14 font-bold rounded-xl"
-                  />
-               </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <div className="p-10 border-2 border-dashed border-primary/20 rounded-[2.5rem] bg-primary/5 text-center space-y-6">
-           <Zap className="size-12 text-primary mx-auto animate-pulse" />
-           <p className="text-sm font-bold italic text-muted-foreground max-w-lg mx-auto uppercase tracking-tighter">
-             "ESTES DADOS ALIMENTAM O MOTOR DE IA PARA QUE SEU CICLO SEJA TÃO ÚNICO QUANTO SUA BIOMETRIA."
-           </p>
-           <Button 
-            onClick={onSave}
-            disabled={isSaving}
-            className="bg-white text-black font-black uppercase italic tracking-[0.2em] px-12 h-16 rounded-2xl shadow-2xl hover:bg-primary transition-all"
-           >
-             {isSaving ? <Loader2 className="animate-spin mr-3" /> : null} SINCRONIZAR LABORATÓRIO AGORA
-           </Button>
+          <div className="p-6 md:p-10 border-2 border-dashed border-primary/20 rounded-[1.5rem] md:rounded-[2.5rem] bg-primary/5 text-center space-y-6">
+             <Zap className="size-8 md:size-12 text-primary mx-auto animate-pulse" />
+             <p className="text-[10px] md:text-sm font-bold italic text-muted-foreground max-w-lg mx-auto uppercase tracking-tighter">
+               "ESTES DADOS ALIMENTAM O MOTOR DE IA PARA QUE SEU CICLO SEJA TÃO ÚNICO QUANTO SUA BIOMETRIA."
+             </p>
+             <Button 
+              onClick={onSave}
+              disabled={isSaving}
+              className="bg-white text-black font-black uppercase italic tracking-[0.2em] px-8 md:px-12 h-14 md:h-16 rounded-xl md:rounded-2xl shadow-2xl text-[10px] md:text-sm w-full sm:w-auto"
+             >
+               {isSaving ? <Loader2 className="animate-spin mr-3 size-4" /> : null} SINCRONIZAR LABORATÓRIO AGORA
+             </Button>
+          </div>
         </div>
       </div>
     </DashboardLayout>

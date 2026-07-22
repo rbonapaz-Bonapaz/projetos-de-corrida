@@ -1,9 +1,14 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
 
+/**
+ * @fileOverview Página 404 customizada (Client Component).
+ * Diretiva "use client" é obrigatória para evitar erros de PageNotFoundError durante build estático.
+ */
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-[#06080a] flex flex-col items-center justify-center p-6 text-center">
@@ -14,7 +19,7 @@ export default function NotFound() {
             ROTA <span className="text-primary">NÃO ENCONTRADA</span>
           </h2>
           <p className="text-muted-foreground text-sm font-medium">
-            O laboratório não conseguiu localizar os dados solicitados. A página pode ter sido movida ou excluída.
+            O laboratório não conseguiu localizar os dados solicitados.
           </p>
         </div>
         <div className="pt-4">

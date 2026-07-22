@@ -1,14 +1,12 @@
-
-'use server';
 /**
- * @fileOverview Fluxo Genkit para gerar blocos de treinamento personalizados.
+ * @fileOverview Fluxo Genkit Elite para gerar blocos de treinamento.
+ * OBRIGATORIAMENTE NUMÉRICO e baseado em VDOT.
  */
 
-import { getAiWithKey } from '@/ai/genkit';
+import { getAi } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const GenerateTrainingBlockInputSchema = z.object({
-  apiKey: z.string().optional().describe('Chave de API do usuário para processamento.'),
   raceName: z.string().optional().describe('Nome da prova alvo.'),
   currentVDOT: z.number().describe('Score VDOT/VO2 atual do atleta.'),
   hrZone1End: z.number().describe('Limite superior da Zona 1.'),
@@ -16,20 +14,21 @@ const GenerateTrainingBlockInputSchema = z.object({
   hrZone3End: z.number().describe('Limite superior da Zona 3.'),
   hrZone4End: z.number().describe('Limite superior da Zona 4.'),
   hrMax: z.number().describe('Frequência cardíaca máxima.'),
-  trainingBlockType: z.enum(['Base', 'Construction', 'Polishing']).describe('Fase atual do bloco de treinamento.'),
-  planGenerationType: z.enum(['full', 'blocks']).describe('Se deve gerar 4 semanas ou o ciclo até a prova.'),
-  raceDate: z.string().describe('Data da prova alvo no formato YYYY-MM-DD.'),
-  weeklyMileageGoal: z.number().describe('Meta de volume semanal em quilômetros.'),
-  targetRaceDistance: z.string().describe('Distância da prova (ex: 10k, 21k, 42k).'),
-  targetPace: z.string().optional().describe('Pace alvo para a prova (min/km).'),
-  targetTime: z.string().optional().describe('Tempo alvo para a prova (HH:MM:SS).'),
-  currentLongRunDistance: z.number().describe('Distância atual do treino longo mais recente.'),
-  weeklyAvailability: z.string().describe('Dias da semana disponíveis para treino.'),
-  injuryHistory: z.string().describe('Histórico de lesões para moderação de carga.'),
-  preferredWorkoutDays: z.string().describe('Dias preferidos para treinos de qualidade/tiros.'),
-  legDay: z.string().optional().describe('Dia da semana reservado para treino de pernas na musculação.'),
-  referenceFileDataUri: z.string().optional().describe('URI de dados de arquivo de referência.'),
-  anamnesisContext: z.string().optional().describe('Contexto completo de anamnese clínica e técnica.'),
+  trainingBlockType: z.enum(['Base', 'Construction', 'Polishing']).describe('Fase atual do bloco.'),
+  planGenerationType: z.enum(['full', 'blocks']).describe('Volume de geração.'),
+  raceDate: z.string().describe('Data da prova (YYYY-MM-DD).'),
+  weeklyMileageGoal: z.number().describe('Meta de volume semanal (KM).'),
+  targetRaceDistance: z.string().describe('Distância (ex: 21k).'),
+  targetPace: z.string().optional().describe('Pace alvo.'),
+  targetTime: z.string().optional().describe('Tempo alvo.'),
+  currentLongRunDistance: z.number().describe('Último longo realizado.'),
+  weeklyAvailability: z.string().describe('Dias disponíveis.'),
+  injuryHistory: z.string().describe('Histórico clínico.'),
+  preferredWorkoutDays: z.string().describe('Dias de intensidade.'),
+  legDay: z.string().optional().describe('Dia de treino de pernas.'),
+  referenceFileDataUri: z.string().optional().describe('Documento de referência.'),
+  referenceHandling: z.enum(['faithful', 'optimized']).optional().default('optimized'),
+  anamnesisContext: z.string().optional().describe('Contexto biométrico completo.'),
 });
 
 export type GenerateTrainingBlockInput = z.infer<typeof GenerateTrainingBlockInputSchema>;
@@ -39,6 +38,7 @@ const GenerateTrainingBlockOutputSchema = z.object({
   durationWeeks: z.number(),
   weeklyPlans: z.array(z.object({
     weekNumber: z.number(),
+    dateRange: z.string().optional(),
     focus: z.string(),
     runs: z.array(z.object({
       id: z.string().optional(),
@@ -47,8 +47,12 @@ const GenerateTrainingBlockOutputSchema = z.object({
       distance: z.string(),
       paceZone: z.string(),
       description: z.string(),
-      rpe: z.number().describe('Nível de esforço percebido de 1 a 10.'),
-      estimatedDuration: z.string().describe('Duração estimada do treino em minutos.'),
+      rpe: z.number(),
+      estimatedDuration: z.string(),
+      technicalDetails: z.array(z.object({
+        label: z.string(),
+        value: z.string()
+      })).optional(),
       phases: z.array(z.object({
         name: z.string(),
         distance: z.string(),
@@ -64,37 +68,32 @@ const GenerateTrainingBlockOutputSchema = z.object({
 export type GenerateTrainingBlockOutput = z.infer<typeof GenerateTrainingBlockOutputSchema>;
 
 export async function generateTrainingBlock(input: GenerateTrainingBlockInput): Promise<GenerateTrainingBlockOutput> {
-  const aiInstance = getAiWithKey(input.apiKey);
-
-  const systemPrompt = `Você é um treinador de corrida de elite e especialista em performance. 
-    REGRAS CRÍTICAS:
-    1. Use VDOT ${input.currentVDOT} para prescrever ritmos exatos.
-    2. Meta de Volume: ${input.weeklyMileageGoal}km semanais.
-    3. Prova Alvo: ${input.raceName || 'Objetivo'} em ${input.raceDate}.
-    4. Disponibilidade: ${input.weeklyAvailability}.
-    5. Zonas de FC: Z1<${input.hrZone1End}, Z2<${input.hrZone2End}, Z3<${input.hrZone3End}, Z4<${input.hrZone4End}.
-    6. Jamais prescreva treinos de alta intensidade no dia seguinte ao Leg Day (${input.legDay || 'Não definido'}).
-    7. Se houver histórico de lesão recente (${input.injuryHistory}), adote uma progressão de volume 15% mais conservadora.
-    8. A semana deve começar no DOMINGO.
-    9. Para treinos de qualidade (Intervalados, Tempo Run), divida sempre em fases: Aquecimento, Principal e Desaquecimento.
-    
-    CONTEXTO DO ATLETA (ANAMNESE):
-    ${input.anamnesisContext || 'Nenhum contexto extra fornecido.'}`;
-
-  const { output } = await aiInstance.generate({
-    model: 'googleai/gemini-2.5-flash',
-    system: systemPrompt,
-    prompt: `Gere um bloco de treinamento de performance para o atleta seguindo rigorosamente os dados fornecidos. 
-    Bloco: ${input.trainingBlockType}. 
-    Referência Visual: ${input.referenceFileDataUri ? `Use este arquivo como base visual para o plano: ${input.referenceFileDataUri}` : 'Nenhuma'}`,
+  const ai = getAi();
+  
+  const prompt = ai.definePrompt({
+    name: 'generateTrainingBlockPrompt',
+    input: { schema: GenerateTrainingBlockInputSchema },
     output: { schema: GenerateTrainingBlockOutputSchema },
+    prompt: `Você é o Diretor Técnico do CorreJunto Lab. Gere uma periodização de ELITE.
+      
+      REGRAS DE OURO:
+      1. VDOT {{currentVDOT}}: Todos os paces devem ser baseados EXATAMENTE nesta métrica.
+      2. CAMPO 'paceZone': Exiba a faixa exata (ex: "4:30 - 4:40/KM").
+      3. ESTRUTURA: Se o treino for INTERVALADO, detalhe as fases (Aquecimento, Tiros, Arrefecimento).
+      4. SEGURANÇA: Se houver Leg Day ({{legDay}}), o dia seguinte DEVE ser Regenerativo ou OFF.
+      5. TERMINOLOGIA: Use apenas REGENERATIVO, RODAGEM, PROGRESSIVO, FARTLEK, LIMIAR, TIROS, SUBIDAS, LONGÃO.
+
+      CONTEXTO BIOMÉTRICO:
+      {{anamnesisContext}}
+      
+      OBJETIVO: {{targetRaceDistance}} em {{raceDate}}.`,
   });
 
+  const { output } = await prompt(input);
   if (!output) throw new Error('Falha na geração do plano de performance.');
 
-  // Garantir IDs únicos para os treinos
-  output.weeklyPlans.forEach(week => {
-    week.runs.forEach(run => {
+  output.weeklyPlans.forEach((week: any) => {
+    week.runs.forEach((run: any) => {
       if (!run.id) run.id = Math.random().toString(36).substring(2, 11);
     });
   });

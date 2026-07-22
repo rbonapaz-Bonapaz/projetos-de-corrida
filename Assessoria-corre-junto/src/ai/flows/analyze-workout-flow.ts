@@ -1,13 +1,11 @@
-'use server';
 /**
- * @fileOverview Fluxo Genkit para analisar o desempenho biomecânico considerando a saúde do atleta.
+ * @fileOverview Fluxo Genkit para analisar o desempenho biomecânico.
  */
 
-import { getAiWithKey } from '@/ai/genkit';
+import { getAi } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const AnalyzeWorkoutInputSchema = z.object({
-  apiKey: z.string().optional().describe('A chave de API do usuário.'),
   prescribedWorkout: z.string().describe('O treino que foi planejado.'),
   athleteFeedback: z.string().describe('O relato do atleta sobre o treino.'),
   fileDataUri: z.string().optional().describe("URI de dados do arquivo (.FIT, .CSV ou imagem)."),
@@ -36,9 +34,9 @@ const AnalyzeWorkoutOutputSchema = z.object({
 export type AnalyzeWorkoutOutput = z.infer<typeof AnalyzeWorkoutOutputSchema>;
 
 export async function analyzeWorkout(input: AnalyzeWorkoutInput): Promise<AnalyzeWorkoutOutput> {
-  const aiInstance = getAiWithKey(input.apiKey);
+  const ai = getAi();
 
-  const { output } = await aiInstance.generate({
+  const { output } = await ai.generate({
     model: 'googleai/gemini-2.5-flash',
     system: `Você é um analista biomecânico de elite. Sua missão é extrair métricas de arquivos e feedbacks para avaliar a eficiência do atleta.
     Compare o que foi prescrito (${input.prescribedWorkout}) com o que foi realizado.

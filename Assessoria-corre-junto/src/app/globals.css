@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,7 +11,7 @@
     --card-foreground: 0 0% 100%;
     --popover: 160 15% 7%;
     --popover-foreground: 0 0% 100%;
-    --primary: 145 72% 56%; /* Verde JUNTO */
+    --primary: 145 72% 56%;
     --primary-foreground: 160 15% 5%;
     --secondary: 160 15% 12%;
     --secondary-foreground: 0 0% 100%;
@@ -31,9 +32,25 @@
   * {
     @apply border-border;
   }
+  html {
+    @apply bg-background;
+    min-height: 100svh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
   body {
     @apply bg-background text-foreground font-body antialiased;
+    width: 100%;
+    min-height: 100svh;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    position: relative;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
   }
+  
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline tracking-tighter uppercase italic font-black;
   }
@@ -43,30 +60,32 @@
   @apply bg-card/40 backdrop-blur-xl border border-white/5;
 }
 
-.text-gradient {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-white to-primary;
+.custom-scrollbar {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.animate-spin-slow {
-  animation: spin 3s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 ::-webkit-scrollbar-track {
   @apply bg-background;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-border rounded-full hover:bg-primary/50 transition-colors;
+  @apply bg-border rounded-full hover:bg-primary/50;
+}
+
+.truncate-text {
+  @apply truncate;
+}
+
+@media (max-width: 640px) {
+  .font-headline {
+    letter-spacing: -0.02em;
+  }
+  
+  /* Melhora o padding de containers em mobile */
+  .container {
+    @apply px-4;
+  }
 }

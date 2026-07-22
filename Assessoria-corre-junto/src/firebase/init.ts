@@ -1,3 +1,4 @@
+
 'use client';
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
@@ -6,15 +7,14 @@ import { getAuth, Auth } from 'firebase/auth';
 import { firebaseConfig } from './config';
 
 /**
- * Inicializa o Firebase de forma segura para o Next.js 15.
- * Resiliência total para o ambiente de build onde o 'window' não existe.
+ * Inicializa o Firebase de forma segura para o Next.js.
+ * Garante que a execução ocorra apenas no ambiente de navegador e uma única vez.
  */
 export function initializeFirebase(): {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
 } {
-  // Segurança para o ambiente de servidor/build
   if (typeof window === 'undefined') {
     return { 
       firebaseApp: null as any, 
@@ -24,14 +24,13 @@ export function initializeFirebase(): {
   }
 
   try {
-    // Singleton pattern robusto
-    const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     const firestore = getFirestore(firebaseApp);
     const auth = getAuth(firebaseApp);
 
     return { firebaseApp, firestore, auth };
   } catch (error) {
-    console.error("Firebase init error:", error);
+    console.error("Firebase initialization failed:", error);
     return { 
       firebaseApp: null as any, 
       firestore: null as any, 
