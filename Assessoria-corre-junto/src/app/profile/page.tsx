@@ -13,33 +13,32 @@ import { fileToDataURI, cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-    Form, 
-    FormControl, 
-    FormField, 
-    FormItem, 
-    FormLabel, 
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-    Select, 
-    SelectContent, 
-    SelectItem, 
-    SelectTrigger, 
-    SelectValue 
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-    Loader2, 
-    Zap, 
-    Camera, 
+import {
+    Loader2,
+    Zap,
+    Camera,
     CheckCircle2,
-    ShieldCheck,
+    UserRound,
     Activity,
     Trophy,
     Calendar,
@@ -111,7 +110,7 @@ export default function ProfilePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [targetMode, setTargetMode] = useState<'time' | 'pace'>('pace');
-  
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -228,7 +227,7 @@ export default function ProfilePage() {
           prDeadlift: data.prDeadlift
         }
       });
-      toast({ title: "Laboratório Sincronizado" });
+      toast({ title: "Perfil sincronizado" });
     } finally {
       setIsSaving(false);
     }
@@ -254,426 +253,473 @@ export default function ProfilePage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700 pb-20">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
-          <div className="flex items-center gap-4">
-            <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-              <ShieldCheck size={28} />
-            </div>
-            <div>
-              <h1 className="text-3xl font-headline font-black uppercase italic tracking-tighter text-white leading-none">MEUS <span className="text-primary">DADOS</span></h1>
-              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest italic mt-1 opacity-60">Cockpit de Performance CorreJunto</p>
-            </div>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <UserRound size={20} />
           </div>
-          
-          <Button asChild variant="outline" className="h-12 border-primary/20 text-primary font-black uppercase italic text-[11px] tracking-widest rounded-2xl hover:bg-primary hover:text-black transition-all gap-2 px-6">
-            <Link href="/coach">
-              <MessageSquare size={18} /> TREINADOR IA
-            </Link>
-          </Button>
-        </header>
+          <div>
+            <h1 className="text-2xl md:text-[26px] font-bold tracking-tight">Meus dados</h1>
+            <p className="text-[13px] text-muted-foreground mt-0.5">Identidade, treino, dieta e força.</p>
+          </div>
+        </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSave)} className="space-y-8">
-            <Tabs defaultValue="corrida" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-secondary/20 p-1 rounded-xl h-auto gap-1">
-                <TabsTrigger value="perfil" className="py-3 font-headline font-black text-[9px] uppercase italic">IDENTIDADE</TabsTrigger>
-                <TabsTrigger value="corrida" className="py-3 font-headline font-black text-[9px] uppercase italic text-primary">CORRIDA</TabsTrigger>
-                <TabsTrigger value="dieta" className="py-3 font-headline font-black text-[9px] uppercase italic text-green-400">DIETA</TabsTrigger>
-                <TabsTrigger value="forca" className="py-3 font-headline font-black text-[9px] uppercase italic text-orange-500">FORÇA</TabsTrigger>
-              </TabsList>
+        <Button asChild variant="outline" className="rounded-xl gap-2 w-fit">
+          <Link href="/coach">
+            <MessageSquare size={16} /> Treinador IA
+          </Link>
+        </Button>
+      </header>
 
-              <TabsContent value="perfil" className="mt-8 space-y-6">
-                <Card className="bg-[#0a0c10] border-border/50 rounded-[2.5rem] overflow-hidden shadow-2xl">
-                  <CardHeader className="bg-secondary/10 border-b border-border/10 p-8 flex flex-row items-center gap-8">
-                    <div className="relative">
-                      <Avatar className="h-20 w-20 md:h-24 md:w-24 border-4 border-primary/20 rounded-2xl">
-                        <AvatarImage src={form.watch('avatarUrl')} className="object-cover" />
-                        <AvatarFallback className="font-black italic bg-secondary text-2xl">{form.watch('name')?.[0] || '?'}</AvatarFallback>
-                      </Avatar>
-                      <Button type="button" variant="secondary" size="icon" className="absolute -bottom-2 -right-2 rounded-lg bg-primary text-black size-8" onClick={() => document.getElementById('avatar-input')?.click()}>
-                        <Camera size={14} />
-                      </Button>
-                      <input id="avatar-input" type="file" className="sr-only" onChange={handleAvatarChange} accept="image/*" />
-                    </div>
-                    <div className="space-y-1">
-                      <h2 className="text-2xl font-headline font-black uppercase italic text-white leading-none">Perfil Atleta</h2>
-                      <p className="text-xs font-bold text-muted-foreground italic">Identificação de elite.</p>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField control={form.control} name="name" render={({field}) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Nome Completo</FormLabel>
-                        <FormControl><Input {...field} className="bg-black/30 border-border/40 font-bold h-12 rounded-xl" /></FormControl>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSave)} className="flex flex-col gap-6">
+          <Tabs defaultValue="corrida" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto p-1.5 rounded-xl gap-1.5">
+              <TabsTrigger value="perfil" className="py-2.5 text-[12px] font-semibold rounded-lg">Identidade</TabsTrigger>
+              <TabsTrigger value="corrida" className="py-2.5 text-[12px] font-semibold rounded-lg">Corrida</TabsTrigger>
+              <TabsTrigger value="dieta" className="py-2.5 text-[12px] font-semibold rounded-lg">Dieta</TabsTrigger>
+              <TabsTrigger value="forca" className="py-2.5 text-[12px] font-semibold rounded-lg">Força</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="perfil" className="mt-6">
+              <section className="card-plain">
+                <div className="flex items-center gap-5 pb-6 mb-6 border-b border-border">
+                  <div className="relative shrink-0">
+                    <Avatar className="h-20 w-20 border-4 border-primary/15 rounded-2xl">
+                      <AvatarImage src={form.watch('avatarUrl')} className="object-cover" />
+                      <AvatarFallback className="bg-secondary text-xl font-bold">{form.watch('name')?.[0] || '?'}</AvatarFallback>
+                    </Avatar>
+                    <Button type="button" variant="secondary" size="icon" className="absolute -bottom-1.5 -right-1.5 rounded-lg bg-primary text-primary-foreground size-7" onClick={() => document.getElementById('avatar-input')?.click()}>
+                      <Camera size={13} />
+                    </Button>
+                    <input id="avatar-input" type="file" className="sr-only" onChange={handleAvatarChange} accept="image/*" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-[15px]">Perfil do atleta</h2>
+                    <p className="text-[12px] text-muted-foreground">Identificação básica.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <FormField control={form.control} name="name" render={({field}) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="eyebrow">Nome completo</FormLabel>
+                      <FormControl><Input {...field} className="h-11 rounded-xl text-sm" /></FormControl>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="birthDate" render={({field}) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="eyebrow">Data de nascimento</FormLabel>
+                      <FormControl><Input type="date" {...field} className="h-11 rounded-xl text-sm" /></FormControl>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="gender" render={({field}) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="eyebrow">Gênero</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="male">Masculino</SelectItem>
+                          <SelectItem value="female">Feminino</SelectItem>
+                          <SelectItem value="other">Outro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                </div>
+              </section>
+            </TabsContent>
+
+            <TabsContent value="corrida" className="mt-6">
+              <div className="bento">
+                {/* FISIOLOGIA */}
+                <section className="card-plain span-4">
+                  <h3 className="eyebrow flex items-center gap-1.5 mb-5"><Activity className="size-3.5 text-primary" /> Fisiologia</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="currentWeight" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Peso (kg)</Label>
+                        <FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl>
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="birthDate" render={({field}) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Data de Nascimento</FormLabel>
-                        <FormControl><Input type="date" {...field} className="bg-black/30 border-border/40 font-bold h-12 rounded-xl text-center" /></FormControl>
+                    <FormField control={form.control} name="vo2Max" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow !text-primary">VDOT / VO2</Label>
+                        <FormControl><Input type="number" step="0.1" {...field} className="h-11 text-center rounded-xl text-sm num text-primary border-primary/30" /></FormControl>
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="gender" render={({field}) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel className="text-[10px] font-black uppercase italic text-muted-foreground tracking-widest">Gênero</FormLabel>
+                  </div>
+                  <div className="space-y-4 mt-5 pt-5 border-t border-border">
+                    <FormField control={form.control} name="thresholdPace" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Pace limiar (T-pace)</Label>
+                        <FormControl><Input placeholder="4:50" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="thresholdHr" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">FC limiar (LTHR)</Label>
+                        <FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="restingHr" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">FC repouso</Label>
+                        <FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
+                </section>
+
+                {/* PLANEJAMENTO */}
+                <section className="card-plain span-4">
+                  <h3 className="eyebrow flex items-center gap-1.5 mb-5"><Calendar className="size-3.5 text-primary" /> Planejamento</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="experienceLevel" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Nível</Label>
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger className="bg-black/30 border-border/40 h-12 rounded-xl"><SelectValue /></SelectTrigger></FormControl>
-                          <SelectContent className="bg-[#0c0e12]">
-                            <SelectItem value="male">Masculino</SelectItem>
-                            <SelectItem value="female">Feminino</SelectItem>
-                            <SelectItem value="other">Outro</SelectItem>
+                          <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="run_walk">Caminhada/corrida</SelectItem>
+                            <SelectItem value="beginner">Iniciante</SelectItem>
+                            <SelectItem value="intermediate">Intermediário</SelectItem>
+                            <SelectItem value="advanced">Avançado</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormItem>
                     )} />
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                    <FormField control={form.control} name="weeklyMileageGoal" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow !text-primary flex items-center gap-1"><Milestone size={11} /> Meta km</Label>
+                        <FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num border-primary/30" /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
 
-              <TabsContent value="corrida" className="mt-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-                  {/* FISIOLOGIA */}
-                  <Card className="bg-[#0a0c10] border-border/50 rounded-[2rem] overflow-hidden shadow-2xl h-full">
-                    <CardHeader className="bg-primary/5 border-b border-white/5 p-8">
-                      <h2 className="text-xl font-headline font-black uppercase italic text-primary leading-none flex items-center gap-3">
-                        <Activity className="size-6" /> FISIOLOGIA
-                      </h2>
-                    </CardHeader>
-                    <CardContent className="p-8 space-y-8">
-                      <div className="grid grid-cols-2 gap-6">
-                        <FormField control={form.control} name="currentWeight" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest text-center block">PESO (KG)</Label>
-                            <FormControl><Input type="number" {...field} className="bg-black/40 text-center font-black h-12 rounded-2xl border-white/5 text-lg" /></FormControl>
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="vo2Max" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[9px] font-black text-primary uppercase italic tracking-widest text-center block">VDOT / VO2</Label>
-                            <FormControl><Input type="number" step="0.1" {...field} className="bg-black/40 text-center font-black h-12 rounded-2xl border-primary/30 text-lg text-primary" /></FormControl>
-                          </FormItem>
-                        )} />
-                      </div>
-                      <div className="space-y-6 pt-4 border-t border-white/5">
-                        <FormField control={form.control} name="thresholdPace" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">PACE LIMIAR (T-PACE)</Label>
-                            <FormControl><Input placeholder="4:50" {...field} className="bg-black/40 h-12 text-center font-black italic rounded-2xl border-primary/20 text-lg" /></FormControl>
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="thresholdHr" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">FC LIMIAR (LTHR)</Label>
-                            <FormControl><Input type="number" {...field} className="bg-black/40 h-12 text-center font-black italic rounded-2xl border-primary/20 text-lg" /></FormControl>
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="restingHr" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">FC REPOUSO</Label>
-                            <FormControl><Input type="number" {...field} className="bg-black/40 h-12 text-center font-black italic rounded-2xl border-white/5 text-lg" /></FormControl>
-                          </FormItem>
-                        )} />
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="mt-4">
+                    <FormField control={form.control} name="mainObjective" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Objetivo principal</Label>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="saude">Saúde / condicionamento</SelectItem>
+                            <SelectItem value="emagrecimento">Emagrecimento</SelectItem>
+                            <SelectItem value="primeira_prova">Terminar primeira prova</SelectItem>
+                            <SelectItem value="recorde">Bater recorde (PR)</SelectItem>
+                            <SelectItem value="performance">Performance / competir</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                  </div>
 
-                  {/* PLANEJAMENTO */}
-                  <Card className="bg-[#0a0c10] border-border/50 rounded-[2rem] overflow-hidden shadow-2xl h-full">
-                    <CardHeader className="bg-secondary/10 border-b border-white/5 p-8">
-                      <h2 className="text-xl font-headline font-black uppercase italic text-white leading-none flex items-center gap-3">
-                        <Calendar className="size-6 text-primary" /> PLANEJAMENTO
-                      </h2>
-                    </CardHeader>
-                    <CardContent className="p-8 space-y-8">
-                      <div className="grid grid-cols-2 gap-6">
-                        <FormField control={form.control} name="experienceLevel" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">NÍVEL</Label>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl><SelectTrigger className="bg-black/40 border-white/5 h-11 font-black italic rounded-xl"><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent className="bg-[#0c0e12]">
-                                <SelectItem value="run_walk" className="font-bold italic">CAMINHADA/CORRIDA</SelectItem>
-                                <SelectItem value="beginner" className="font-bold italic">INICIANTE</SelectItem>
-                                <SelectItem value="intermediate" className="font-bold italic">INTERMEDIÁRIO</SelectItem>
-                                <SelectItem value="advanced" className="font-bold italic">ELITE</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="weeklyMileageGoal" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[10px] font-black text-primary uppercase italic tracking-widest flex items-center gap-1.5"><Milestone size={12}/> META KM</Label>
-                            <FormControl><Input type="number" {...field} className="bg-black/40 h-11 text-center font-black rounded-xl border-primary/20" /></FormControl>
-                          </FormItem>
-                        )} />
-                      </div>
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <FormField control={form.control} name="currentWeeklyMileage" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Volume atual (km/sem)</Label>
+                        <FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="longestRun" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Maior longo (km)</Label>
+                        <FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
 
-                      <FormField control={form.control} name="mainObjective" render={({field}) => (
-                        <FormItem className="space-y-2">
-                          <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">OBJETIVO PRINCIPAL</Label>
+                  <div className="space-y-2.5 mt-5 pt-5 border-t border-border">
+                    <Label className="eyebrow">Dias de treino</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {weekDays.map((day) => (
+                        <div key={day} className={cn("flex items-center gap-2.5 p-2.5 rounded-lg border transition-all cursor-pointer", selectedTrainingDays.includes(day) ? "bg-primary/10 border-primary/40" : "bg-secondary/40 border-border hover:border-primary/30")} onClick={() => {
+                            const current = form.getValues('trainingDays') || [];
+                            const next = current.includes(day) ? current.filter(d => d !== day) : [...current, day];
+                            form.setValue('trainingDays', next);
+                          }}>
+                          <Checkbox checked={selectedTrainingDays.includes(day)} className="size-4" />
+                          <span className="text-[11px] font-medium">{day}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <FormField control={form.control} name="longRunDay" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Dia do longão</Label>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {weekDays.filter(day => selectedTrainingDays.includes(day)).map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                            {selectedTrainingDays.length === 0 && <SelectItem value="Domingo" disabled>Selecione dias primeiro</SelectItem>}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                  </div>
+
+                  <div className="mt-4">
+                    <FormField control={form.control} name="trainingHistory" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow flex items-center gap-1"><History size={11} /> Histórico técnico</Label>
+                        <FormControl><Textarea {...field} placeholder="Relate seu volume recente ou lesões..." className="rounded-xl min-h-[80px] text-sm" /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
+                </section>
+
+                {/* PROVA ALVO */}
+                <section className="card-plain span-4">
+                  <h3 className="eyebrow flex items-center gap-1.5 mb-5"><Trophy className="size-3.5 text-primary" /> Prova alvo</h3>
+                  <FormField control={form.control} name="raceName" render={({field}) => (
+                    <FormItem className="space-y-1.5">
+                      <Label className="eyebrow">Nome da prova</Label>
+                      <FormControl><Input {...field} className="h-11 rounded-xl text-sm" placeholder="Ex: Maratona de SP" /></FormControl>
+                    </FormItem>
+                  )} />
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <FormField control={form.control} name="raceDistance" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Distância</Label>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="5k">5K</SelectItem>
+                            <SelectItem value="10k">10K</SelectItem>
+                            <SelectItem value="21k">Meia (21K)</SelectItem>
+                            <SelectItem value="42k">Maratona (42K)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="raceDate" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Data</Label>
+                        <FormControl><Input type="date" {...field} className="h-11 rounded-xl text-sm text-center" /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
+
+                  <div className="space-y-3 mt-5 pt-5 border-t border-border">
+                    <div className="flex bg-secondary/50 p-1 rounded-xl gap-1">
+                      <button type="button" onClick={() => setTargetMode('time')} className={cn("flex-1 py-2 text-[11px] font-semibold rounded-lg transition-all", targetMode === 'time' ? "bg-foreground text-background" : "text-muted-foreground")}>Tempo alvo</button>
+                      <button type="button" onClick={() => setTargetMode('pace')} className={cn("flex-1 py-2 text-[11px] font-semibold rounded-lg transition-all", targetMode === 'pace' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>Pace alvo</button>
+                    </div>
+
+                    {targetMode === 'time' ? (
+                      <FormField control={form.control} name="targetTime" render={({field}) => (
+                        <FormItem><FormControl><Input placeholder="00:00:00" {...field} className="text-center h-14 rounded-xl text-xl num font-bold" /></FormControl></FormItem>
+                      )} />
+                    ) : (
+                      <FormField control={form.control} name="targetPace" render={({field}) => (
+                        <FormItem><FormControl><Input placeholder="4:30" {...field} className="text-center h-14 rounded-xl text-primary border-primary/30 text-xl num font-bold" /></FormControl></FormItem>
+                      )} />
+                    )}
+                  </div>
+                </section>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="dieta" className="mt-6">
+              <div className="bento">
+                <section className="card-plain span-6">
+                  <h3 className="eyebrow flex items-center gap-1.5 mb-5"><Apple className="size-3.5 text-primary" /> Nutrição</h3>
+                  <div className="space-y-4">
+                    <FormField control={form.control} name="dietAestheticGoal" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Objetivo</Label>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="performance">Performance</SelectItem>
+                            <SelectItem value="cutting">Cutting (emagrecer)</SelectItem>
+                            <SelectItem value="bulking">Bulking (ganhar)</SelectItem>
+                            <SelectItem value="recomp">Recomposição</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField control={form.control} name="dietTargetWeight" render={({field}) => (
+                        <FormItem className="space-y-1.5"><Label className="eyebrow">Peso-alvo (kg)</Label><FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl></FormItem>
+                      )} />
+                      <FormField control={form.control} name="dietMealCount" render={({field}) => (
+                        <FormItem className="space-y-1.5"><Label className="eyebrow">Refeições/dia</Label><FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl></FormItem>
+                      )} />
+                    </div>
+                    <FormField control={form.control} name="dietActivityLevel" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Nível de atividade diária</Label>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="sedentary">Sedentário (escritório)</SelectItem>
+                            <SelectItem value="light">Leve</SelectItem>
+                            <SelectItem value="moderate">Moderado</SelectItem>
+                            <SelectItem value="active">Ativo</SelectItem>
+                            <SelectItem value="very_active">Muito ativo (físico)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="dietStyle" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Padrão alimentar</Label>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="onivoro">Onívoro</SelectItem>
+                            <SelectItem value="vegetariano">Vegetariano</SelectItem>
+                            <SelectItem value="vegano">Vegano</SelectItem>
+                            <SelectItem value="low_carb">Low carb</SelectItem>
+                            <SelectItem value="cetogenica">Cetogênica</SelectItem>
+                            <SelectItem value="flexivel">Flexível (IIFYM)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="dietTrainingTiming" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Horário do treino</Label>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="jejum">Em jejum</SelectItem>
+                            <SelectItem value="manha">Manhã</SelectItem>
+                            <SelectItem value="meio-dia">Meio-dia</SelectItem>
+                            <SelectItem value="tarde">Tarde</SelectItem>
+                            <SelectItem value="noite">Noite</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="dietSupplements" render={({field}) => (
+                      <FormItem className="space-y-1.5"><Label className="eyebrow">Suplementação</Label><FormControl><Input {...field} className="h-11 rounded-xl text-sm" placeholder="Whey, creatina, géis..." /></FormControl></FormItem>
+                    )} />
+                  </div>
+                </section>
+                <section className="card-plain span-6">
+                  <h3 className="eyebrow flex items-center gap-1.5 mb-5"><Timer className="size-3.5 text-primary" /> Preferências e restrições</h3>
+                  <div className="space-y-4">
+                    <FormField control={form.control} name="dietPreferredFoods" render={({field}) => (<FormItem className="space-y-1.5"><Label className="eyebrow">Alimentos preferidos</Label><FormControl><Textarea {...field} placeholder="Ex: frango, arroz, batata-doce, frutas..." className="rounded-xl min-h-[80px] text-sm" /></FormControl></FormItem>)} />
+                    <FormField control={form.control} name="dietAllergies" render={({field}) => (<FormItem className="space-y-1.5"><Label className="eyebrow !text-destructive">Alergias / intolerâncias</Label><FormControl><Textarea {...field} placeholder="Ex: lactose, glúten, amendoim..." className="rounded-xl min-h-[70px] text-sm border-destructive/25" /></FormControl></FormItem>)} />
+                    <FormField control={form.control} name="dietExcludedFoods" render={({field}) => (<FormItem className="space-y-1.5"><Label className="eyebrow">Alimentos excluídos</Label><FormControl><Textarea {...field} placeholder="Desgostos ou o que evita comer..." className="rounded-xl min-h-[70px] text-sm" /></FormControl></FormItem>)} />
+                  </div>
+                </section>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="forca" className="mt-6">
+              <div className="bento">
+                <section className="card-plain span-6">
+                  <h3 className="eyebrow flex items-center gap-1.5 mb-5"><Dumbbell className="size-3.5 text-primary" /> Musculação</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField control={form.control} name="strengthObjective" render={({field}) => (
+                        <FormItem className="space-y-1.5">
+                          <Label className="eyebrow">Objetivo</Label>
                           <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger className="bg-black/40 border-white/5 h-11 font-black italic rounded-xl text-[11px]"><SelectValue /></SelectTrigger></FormControl>
-                            <SelectContent className="bg-[#0c0e12]">
-                              <SelectItem value="saude" className="font-bold italic">SAÚDE / CONDICIONAMENTO</SelectItem>
-                              <SelectItem value="emagrecimento" className="font-bold italic">EMAGRECIMENTO</SelectItem>
-                              <SelectItem value="primeira_prova" className="font-bold italic">TERMINAR PRIMEIRA PROVA</SelectItem>
-                              <SelectItem value="recorde" className="font-bold italic">BATER RECORDE (PR)</SelectItem>
-                              <SelectItem value="performance" className="font-bold italic">PERFORMANCE / COMPETIR</SelectItem>
+                            <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              <SelectItem value="hypertryphy">Hipertrofia</SelectItem>
+                              <SelectItem value="strength">Força</SelectItem>
+                              <SelectItem value="endurance">Resistência</SelectItem>
+                              <SelectItem value="performance">Performance</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormItem>
                       )} />
-
-                      <div className="grid grid-cols-2 gap-6">
-                        <FormField control={form.control} name="currentWeeklyMileage" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest text-center block">VOLUME ATUAL (KM/SEM)</Label>
-                            <FormControl><Input type="number" {...field} className="bg-black/40 h-11 text-center font-black rounded-xl border-white/5" /></FormControl>
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="longestRun" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest text-center block">MAIOR LONGO (KM)</Label>
-                            <FormControl><Input type="number" {...field} className="bg-black/40 h-11 text-center font-black rounded-xl border-white/5" /></FormControl>
-                          </FormItem>
-                        )} />
-                      </div>
-
-                      <div className="space-y-4">
-                        <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">DIAS DE TREINO</Label>
-                        <div className="grid grid-cols-2 gap-3">
-                          {weekDays.map((day) => (
-                            <div key={day} className={cn("flex items-center space-x-3 p-3 rounded-2xl border transition-all cursor-pointer", selectedTrainingDays.includes(day) ? "bg-primary/10 border-primary/40" : "bg-black/30 border-white/5 hover:border-primary/20")} onClick={() => {
-                                const current = form.getValues('trainingDays') || [];
-                                const next = current.includes(day) ? current.filter(d => d !== day) : [...current, day];
-                                form.setValue('trainingDays', next);
-                              }}>
-                              <Checkbox checked={selectedTrainingDays.includes(day)} className="size-4" />
-                              <span className="text-[10px] font-black uppercase italic text-white/90">{day}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <FormField control={form.control} name="longRunDay" render={({field}) => (
-                        <FormItem className="space-y-2">
-                          <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">DIA DO LONGÃO</Label>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger className="bg-black/40 h-11 rounded-xl text-[10px] font-bold"><SelectValue /></SelectTrigger></FormControl>
-                            <SelectContent className="bg-[#0c0e12]">
-                              {weekDays.filter(day => selectedTrainingDays.includes(day)).map(d => <SelectItem key={d} value={d} className="text-[10px] font-bold italic">{d.toUpperCase()}</SelectItem>)}
-                              {selectedTrainingDays.length === 0 && <SelectItem value="Domingo" disabled className="text-[10px]">Selecione dias primeiro</SelectItem>}
-                            </SelectContent>
-                          </Select>
+                      <FormField control={form.control} name="strengthFrequency" render={({field}) => (
+                        <FormItem className="space-y-1.5">
+                          <Label className="eyebrow">Frequência/sem</Label>
+                          <FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl>
                         </FormItem>
                       )} />
-
-                      <FormField control={form.control} name="trainingHistory" render={({field}) => (
-                        <FormItem className="space-y-2">
-                          <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest flex items-center gap-1.5"><History size={12}/> HISTÓRICO TÉCNICO</Label>
-                          <FormControl><Textarea {...field} placeholder="Relate seu volume recente ou lesões..." className="bg-black/40 border-white/5 rounded-xl min-h-[80px] text-xs italic" /></FormControl>
-                        </FormItem>
-                      )} />
-                    </CardContent>
-                  </Card>
-
-                  {/* PROVA ALVO */}
-                  <Card className="bg-[#0a0c10] border-border/50 rounded-[2rem] overflow-hidden shadow-2xl h-full">
-                    <CardHeader className="bg-primary/10 border-b border-white/5 p-8">
-                      <h2 className="text-xl font-headline font-black uppercase italic text-primary leading-none flex items-center gap-3">
-                        <Trophy className="size-6" /> PROVA ALVO
-                      </h2>
-                    </CardHeader>
-                    <CardContent className="p-8 space-y-8">
-                      <FormField control={form.control} name="raceName" render={({field}) => (
-                        <FormItem className="space-y-2">
-                          <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">NOME DA PROVA</Label>
-                          <FormControl><Input {...field} className="bg-black/40 font-bold h-12 rounded-2xl border-white/5" placeholder="Ex: Maratona de SP" /></FormControl>
-                        </FormItem>
-                      )} />
-                      <div className="grid grid-cols-2 gap-6">
-                        <FormField control={form.control} name="raceDistance" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">DISTÂNCIA</Label>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl><SelectTrigger className="bg-black/40 h-12 rounded-2xl font-black italic"><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent className="bg-[#0c0e12]">
-                                <SelectItem value="5k" className="font-bold italic">5K</SelectItem>
-                                <SelectItem value="10k" className="font-bold italic">10K</SelectItem>
-                                <SelectItem value="21k" className="font-bold italic">MEIA (21K)</SelectItem>
-                                <SelectItem value="42k" className="font-bold italic">MARA (42K)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="raceDate" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">DATA</Label>
-                            <FormControl><Input type="date" {...field} className="bg-black/40 font-bold h-12 rounded-2xl border-white/5 text-center" /></FormControl>
-                          </FormItem>
-                        )} />
-                      </div>
-
-                      <div className="space-y-4 pt-6 border-t border-white/5">
-                        {/* TOGGLE INTELIGENTE */}
-                        <div className="flex bg-secondary/20 p-1 rounded-xl gap-1">
-                          <button type="button" onClick={() => setTargetMode('time')} className={cn("flex-1 py-2 text-[9px] font-black uppercase italic tracking-widest rounded-lg transition-all", targetMode === 'time' ? "bg-white text-black shadow-lg" : "text-muted-foreground/40")}>TEMPO ALVO</button>
-                          <button type="button" onClick={() => setTargetMode('pace')} className={cn("flex-1 py-2 text-[9px] font-black uppercase italic tracking-widest rounded-lg transition-all", targetMode === 'pace' ? "bg-primary text-black shadow-lg" : "text-muted-foreground/40")}>PACE ALVO</button>
-                        </div>
-
-                        {targetMode === 'time' ? (
-                          <FormField control={form.control} name="targetTime" render={({field}) => (
-                            <FormItem><FormControl><Input placeholder="00:00:00" {...field} className="bg-black/40 font-black text-center h-14 rounded-2xl border-white/5 text-xl" /></FormControl></FormItem>
-                          )} />
-                        ) : (
-                          <FormField control={form.control} name="targetPace" render={({field}) => (
-                            <FormItem><FormControl><Input placeholder="4:30" {...field} className="bg-black/40 font-black text-center h-14 rounded-2xl border-primary/30 text-primary text-xl" /></FormControl></FormItem>
-                          )} />
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="dieta" className="mt-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <Card className="bg-[#0a0c10] border-border/50 rounded-[2rem] overflow-hidden shadow-2xl">
-                    <CardHeader className="bg-green-500/10 border-b border-white/5 p-8"><h2 className="text-xl font-headline font-black uppercase italic text-green-400 leading-none flex items-center gap-3"><Apple className="size-6" /> NUTRIÇÃO</h2></CardHeader>
-                    <CardContent className="p-8 space-y-6">
-                       <FormField control={form.control} name="dietAestheticGoal" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">OBJETIVO</Label>
-                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="performance" className="font-bold italic">PERFORMANCE</SelectItem><SelectItem value="cutting" className="font-bold italic">CUTTING (EMAGRECER)</SelectItem><SelectItem value="bulking" className="font-bold italic">BULKING (GANHAR)</SelectItem><SelectItem value="recomp" className="font-bold italic">RECOMPOSIÇÃO</SelectItem></SelectContent></Select>
-                          </FormItem>
-                        )} />
-                       <div className="grid grid-cols-2 gap-4">
-                         <FormField control={form.control} name="dietTargetWeight" render={({field}) => (
-                          <FormItem className="space-y-2"><Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">PESO-ALVO (KG)</Label><FormControl><Input type="number" {...field} className="bg-black/40 h-12 text-center font-black rounded-xl" /></FormControl></FormItem>
-                        )} />
-                         <FormField control={form.control} name="dietMealCount" render={({field}) => (
-                          <FormItem className="space-y-2"><Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">REFEIÇÕES/DIA</Label><FormControl><Input type="number" {...field} className="bg-black/40 h-12 text-center font-black rounded-xl" /></FormControl></FormItem>
-                        )} />
-                       </div>
-                       <FormField control={form.control} name="dietActivityLevel" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">NÍVEL DE ATIVIDADE DIÁRIA</Label>
-                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold text-[11px]"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="sedentary" className="font-bold italic">SEDENTÁRIO (ESCRITÓRIO)</SelectItem><SelectItem value="light" className="font-bold italic">LEVE</SelectItem><SelectItem value="moderate" className="font-bold italic">MODERADO</SelectItem><SelectItem value="active" className="font-bold italic">ATIVO</SelectItem><SelectItem value="very_active" className="font-bold italic">MUITO ATIVO (FÍSICO)</SelectItem></SelectContent></Select>
-                          </FormItem>
-                        )} />
-                       <FormField control={form.control} name="dietStyle" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">PADRÃO ALIMENTAR</Label>
-                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold text-[11px]"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="onivoro" className="font-bold italic">ONÍVORO</SelectItem><SelectItem value="vegetariano" className="font-bold italic">VEGETARIANO</SelectItem><SelectItem value="vegano" className="font-bold italic">VEGANO</SelectItem><SelectItem value="low_carb" className="font-bold italic">LOW CARB</SelectItem><SelectItem value="cetogenica" className="font-bold italic">CETOGÊNICA</SelectItem><SelectItem value="flexivel" className="font-bold italic">FLEXÍVEL (IIFYM)</SelectItem></SelectContent></Select>
-                          </FormItem>
-                        )} />
-                       <FormField control={form.control} name="dietTrainingTiming" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">HORÁRIO DO TREINO</Label>
-                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold text-[11px]"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="jejum" className="font-bold italic">EM JEJUM</SelectItem><SelectItem value="manha" className="font-bold italic">MANHÃ</SelectItem><SelectItem value="meio-dia" className="font-bold italic">MEIO-DIA</SelectItem><SelectItem value="tarde" className="font-bold italic">TARDE</SelectItem><SelectItem value="noite" className="font-bold italic">NOITE</SelectItem></SelectContent></Select>
-                          </FormItem>
-                        )} />
-                       <FormField control={form.control} name="dietSupplements" render={({field}) => (
-                        <FormItem className="space-y-2"><Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">SUPLEMENTAÇÃO</Label><FormControl><Input {...field} className="bg-black/40 h-12 rounded-xl" placeholder="Whey, Creatina, Géis..." /></FormControl></FormItem>
-                      )} />
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-[#0a0c10] border-border/50 rounded-[2rem] overflow-hidden shadow-2xl">
-                    <CardHeader className="bg-secondary/10 border-b border-white/5 p-8"><h2 className="text-xl font-headline font-black uppercase italic text-white leading-none flex items-center gap-3"><Timer className="size-6 text-green-400" /> PREFERÊNCIAS & RESTRIÇÕES</h2></CardHeader>
-                    <CardContent className="p-8 space-y-6">
-                      <FormField control={form.control} name="dietPreferredFoods" render={({field}) => (<FormItem className="space-y-2"><Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">ALIMENTOS PREFERIDOS</Label><FormControl><Textarea {...field} placeholder="Ex: frango, arroz, batata-doce, frutas..." className="bg-black/40 rounded-xl min-h-[80px] text-xs italic" /></FormControl></FormItem>)} />
-                      <FormField control={form.control} name="dietAllergies" render={({field}) => (<FormItem className="space-y-2"><Label className="text-[10px] font-black text-rose-400 uppercase italic tracking-widest">ALERGIAS / INTOLERÂNCIAS</Label><FormControl><Textarea {...field} placeholder="Ex: lactose, glúten, amendoim..." className="bg-black/40 rounded-xl min-h-[70px] text-xs italic border-rose-500/20" /></FormControl></FormItem>)} />
-                      <FormField control={form.control} name="dietExcludedFoods" render={({field}) => (<FormItem className="space-y-2"><Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">ALIMENTOS EXCLUÍDOS</Label><FormControl><Textarea {...field} placeholder="Desgostos ou o que evita comer..." className="bg-black/40 rounded-xl min-h-[70px] text-xs italic" /></FormControl></FormItem>)} />
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="forca" className="mt-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <Card className="bg-[#0a0c10] border-border/50 rounded-[2rem] overflow-hidden shadow-2xl">
-                    <CardHeader className="bg-orange-500/10 border-b border-white/5 p-8"><h2 className="text-xl font-headline font-black uppercase italic text-orange-500 leading-none flex items-center gap-3"><Dumbbell className="size-6" /> MUSCULAÇÃO</h2></CardHeader>
-                    <CardContent className="p-8 space-y-6">
-                       <div className="grid grid-cols-2 gap-4">
-                         <FormField control={form.control} name="strengthObjective" render={({field}) => (
-                            <FormItem className="space-y-2">
-                              <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">OBJETIVO</Label>
-                              <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold text-[11px]"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="hypertryphy" className="font-bold italic">HIPERTROFIA</SelectItem><SelectItem value="strength" className="font-bold italic">FORÇA</SelectItem><SelectItem value="endurance" className="font-bold italic">RESISTÊNCIA</SelectItem><SelectItem value="performance" className="font-bold italic">PERFORMANCE</SelectItem></SelectContent></Select>
-                            </FormItem>
-                          )} />
-                         <FormField control={form.control} name="strengthFrequency" render={({field}) => (
-                            <FormItem className="space-y-2">
-                              <Label className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">FREQUÊNCIA/SEM</Label>
-                              <FormControl><Input type="number" {...field} className="bg-black/40 h-12 text-center font-black rounded-xl" /></FormControl>
-                            </FormItem>
-                          )} />
-                       </div>
-                       <FormField control={form.control} name="strengthSplit" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">DIVISÃO DE TREINO</Label>
-                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="full_body" className="font-bold italic">FULL BODY</SelectItem><SelectItem value="upper_lower" className="font-bold italic">UPPER/LOWER</SelectItem><SelectItem value="ppl" className="font-bold italic">PUSH/PULL/LEGS</SelectItem></SelectContent></Select>
-                          </FormItem>
-                        )} />
-                       <FormField control={form.control} name="strengthLocation" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">LOCAL / EQUIPAMENTOS</Label>
-                            <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-bold text-[11px]"><SelectValue /></SelectTrigger></FormControl><SelectContent className="bg-[#0c0e12]"><SelectItem value="academia" className="font-bold italic">ACADEMIA COMPLETA</SelectItem><SelectItem value="halteres_casa" className="font-bold italic">CASA (HALTERES/ELÁSTICOS)</SelectItem><SelectItem value="peso_corporal" className="font-bold italic">SÓ PESO CORPORAL</SelectItem></SelectContent></Select>
-                          </FormItem>
-                        )} />
-                        <div className="space-y-3">
-                          <Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">DIAS DE MUSCULAÇÃO</Label>
-                          <div className="grid grid-cols-2 gap-2">
-                            {weekDays.map((day) => (
-                              <div key={day} className={cn("flex items-center space-x-2 p-2.5 rounded-xl border transition-all cursor-pointer", selectedStrengthDays.includes(day) ? "bg-orange-500/10 border-orange-500/40" : "bg-black/30 border-white/5 hover:border-orange-500/20")} onClick={() => {
-                                  const current = form.getValues('strengthDays') || [];
-                                  const next = current.includes(day) ? current.filter(d => d !== day) : [...current, day];
-                                  form.setValue('strengthDays', next);
-                                }}>
-                                <Checkbox checked={selectedStrengthDays.includes(day)} className="size-4" />
-                                <span className="text-[9px] font-black uppercase italic text-white/90">{day}</span>
-                              </div>
-                            ))}
+                    </div>
+                    <FormField control={form.control} name="strengthSplit" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Divisão de treino</Label>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="full_body">Full body</SelectItem>
+                            <SelectItem value="upper_lower">Upper/lower</SelectItem>
+                            <SelectItem value="ppl">Push/pull/legs</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="strengthLocation" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <Label className="eyebrow">Local / equipamentos</Label>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="academia">Academia completa</SelectItem>
+                            <SelectItem value="halteres_casa">Casa (halteres/elásticos)</SelectItem>
+                            <SelectItem value="peso_corporal">Só peso corporal</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                    <div className="space-y-2.5">
+                      <Label className="eyebrow">Dias de musculação</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {weekDays.map((day) => (
+                          <div key={day} className={cn("flex items-center gap-2 p-2.5 rounded-lg border transition-all cursor-pointer", selectedStrengthDays.includes(day) ? "bg-amber-500/10 border-amber-500/40" : "bg-secondary/40 border-border hover:border-amber-500/30")} onClick={() => {
+                              const current = form.getValues('strengthDays') || [];
+                              const next = current.includes(day) ? current.filter(d => d !== day) : [...current, day];
+                              form.setValue('strengthDays', next);
+                            }}>
+                            <Checkbox checked={selectedStrengthDays.includes(day)} className="size-4" />
+                            <span className="text-[11px] font-medium">{day}</span>
                           </div>
-                        </div>
-                        <FormField control={form.control} name="legDay" render={({field}) => (
-                          <FormItem className="space-y-2">
-                            <FormLabel className="text-[10px] font-black text-orange-500 uppercase italic tracking-widest">LEG DAY (TREINO PESADO)</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl><SelectTrigger className="bg-black/40 h-12 rounded-xl font-black italic"><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent className="bg-[#0c0e12]">
-                                {weekDays.map(d => <SelectItem key={d} value={d} className="text-[10px] font-bold italic">{d.toUpperCase()}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="strengthFocusAreas" render={({field}) => (
-                          <FormItem className="space-y-2"><Label className="text-[10px] font-black text-muted-foreground uppercase italic tracking-widest">ÁREAS DE FOCO</Label><FormControl><Input {...field} placeholder="Ex: glúteos, core, panturrilhas" className="bg-black/40 h-11 rounded-xl text-xs italic" /></FormControl></FormItem>
-                        )} />
-                        <FormField control={form.control} name="strengthLimitations" render={({field}) => (
-                          <FormItem className="space-y-2"><Label className="text-[10px] font-black text-rose-400 uppercase italic tracking-widest">LIMITAÇÕES / LESÕES</Label><FormControl><Textarea {...field} placeholder="Ex: dor no ombro, evitar impacto no joelho..." className="bg-black/40 rounded-xl min-h-[70px] text-xs italic border-rose-500/20" /></FormControl></FormItem>
-                        )} />
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-[#0a0c10] border-border/50 rounded-[2rem] overflow-hidden shadow-2xl">
-                    <CardHeader className="bg-secondary/10 border-b border-white/5 p-8"><h2 className="text-xl font-headline font-black uppercase italic text-white leading-none flex items-center gap-3"><Zap className="size-6 text-orange-500" /> COFRE DE PRs</h2></CardHeader>
-                    <CardContent className="p-8 grid grid-cols-3 gap-4">
-                      <FormField control={form.control} name="prBench" render={({field}) => (<FormItem className="space-y-1"><FormLabel className="text-[8px] text-center block">SUPINO</FormLabel><FormControl><Input type="number" {...field} className="bg-black/40 h-10 text-center font-bold" /></FormControl></FormItem>)} />
-                      <FormField control={form.control} name="prSquat" render={({field}) => (<FormItem className="space-y-1"><FormLabel className="text-[8px] text-center block">AGACHA</FormLabel><FormControl><Input type="number" {...field} className="bg-black/40 h-10 text-center font-bold" /></FormControl></FormItem>)} />
-                      <FormField control={form.control} name="prDeadlift" render={({field}) => (<FormItem className="space-y-1"><FormLabel className="text-[8px] text-center block">TERRA</FormLabel><FormControl><Input type="number" {...field} className="bg-black/40 h-10 text-center font-bold" /></FormControl></FormItem>)} />
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            </Tabs>
+                        ))}
+                      </div>
+                    </div>
+                    <FormField control={form.control} name="legDay" render={({field}) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="eyebrow !text-amber-400">Leg day (treino pesado)</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {weekDays.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="strengthFocusAreas" render={({field}) => (
+                      <FormItem className="space-y-1.5"><Label className="eyebrow">Áreas de foco</Label><FormControl><Input {...field} placeholder="Ex: glúteos, core, panturrilhas" className="h-11 rounded-xl text-sm" /></FormControl></FormItem>
+                    )} />
+                    <FormField control={form.control} name="strengthLimitations" render={({field}) => (
+                      <FormItem className="space-y-1.5"><Label className="eyebrow !text-destructive">Limitações / lesões</Label><FormControl><Textarea {...field} placeholder="Ex: dor no ombro, evitar impacto no joelho..." className="rounded-xl min-h-[70px] text-sm border-destructive/25" /></FormControl></FormItem>
+                    )} />
+                  </div>
+                </section>
+                <section className="card-plain span-6 h-fit">
+                  <h3 className="eyebrow flex items-center gap-1.5 mb-5"><Zap className="size-3.5 text-primary" /> Cofre de PRs</h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    <FormField control={form.control} name="prBench" render={({field}) => (<FormItem className="space-y-1.5"><FormLabel className="eyebrow text-center block">Supino</FormLabel><FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl></FormItem>)} />
+                    <FormField control={form.control} name="prSquat" render={({field}) => (<FormItem className="space-y-1.5"><FormLabel className="eyebrow text-center block">Agacha</FormLabel><FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl></FormItem>)} />
+                    <FormField control={form.control} name="prDeadlift" render={({field}) => (<FormItem className="space-y-1.5"><FormLabel className="eyebrow text-center block">Terra</FormLabel><FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl></FormItem>)} />
+                  </div>
+                </section>
+              </div>
+            </TabsContent>
+          </Tabs>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-10 border-t border-white/5 px-2">
-              <Button type="submit" disabled={isSaving} className="h-16 flex-1 bg-white text-black font-black uppercase tracking-widest italic rounded-2xl shadow-2xl">{isSaving ? <Loader2 className="animate-spin mr-3 size-5" /> : <CheckCircle2 className="mr-3 size-5" />} SALVAR LABORATÓRIO</Button>
-              <Button type="button" onClick={handleGenerate} disabled={isProcessing} className="h-16 flex-1 bg-primary text-black font-black uppercase tracking-widest italic rounded-2xl shadow-2xl">{isProcessing ? <Loader2 className="animate-spin mr-3 size-5" /> : <Zap className="mr-3 size-5" />} GERAR CICLO IA</Button>
-            </div>
-          </form>
-        </Form>
-      </div>
+          <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-border">
+            <Button type="submit" disabled={isSaving} variant="outline" className="h-12 flex-1 rounded-xl gap-2">
+              {isSaving ? <Loader2 className="animate-spin size-4" /> : <CheckCircle2 className="size-4" />} Salvar perfil
+            </Button>
+            <Button type="button" onClick={handleGenerate} disabled={isProcessing} className="h-12 flex-1 rounded-xl gap-2">
+              {isProcessing ? <Loader2 className="animate-spin size-4" /> : <Zap className="size-4" />} Gerar ciclo IA
+            </Button>
+          </div>
+        </form>
+      </Form>
     </DashboardLayout>
   );
 }
