@@ -5,26 +5,38 @@
 
 @layer base {
   :root {
-    --background: 160 15% 4%;
-    --foreground: 0 0% 100%;
-    --card: 160 15% 7%;
-    --card-foreground: 0 0% 100%;
-    --popover: 160 15% 7%;
-    --popover-foreground: 0 0% 100%;
+    --background: 160 18% 4%;
+    --foreground: 150 20% 92%;
+    --card: 160 16% 7%;
+    --card-foreground: 150 20% 92%;
+    --popover: 160 16% 7%;
+    --popover-foreground: 150 20% 92%;
     --primary: 145 72% 56%;
     --primary-foreground: 160 15% 5%;
-    --secondary: 160 15% 12%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 160 15% 12%;
-    --muted-foreground: 160 10% 60%;
+    --secondary: 160 14% 11%;
+    --secondary-foreground: 150 20% 92%;
+    --muted: 160 14% 11%;
+    --muted-foreground: 155 10% 58%;
     --accent: 145 72% 56%;
     --accent-foreground: 160 15% 5%;
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 78% 62%;
     --destructive-foreground: 0 0% 98%;
-    --border: 160 15% 15%;
-    --input: 160 15% 15%;
+    --border: 160 14% 15%;
+    --input: 160 14% 15%;
     --ring: 145 72% 56%;
-    --radius: 1.25rem;
+    --radius: 1.1rem;
+
+    /* Design tokens (mockup) — raw H S% L% triples, wrap with hsl() at use site */
+    --surface-2: 160 15% 9%;
+    --ink-2: 155 12% 68%;
+    --accent-soft: 145 55% 14%;
+    --good: 145 72% 56%;
+    --warn: 38 92% 58%;
+    --crit: 0 78% 62%;
+    --info: 200 80% 62%;
+    --ring-track: 160 14% 14%;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 12px 32px -16px rgba(0,0,0,.7);
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
   }
 }
 
@@ -50,9 +62,9 @@
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
-    @apply font-headline tracking-tighter uppercase italic font-black;
+    @apply font-headline tracking-tight font-bold;
   }
 }
 
@@ -80,12 +92,136 @@
 }
 
 @media (max-width: 640px) {
-  .font-headline {
-    letter-spacing: -0.02em;
-  }
-  
   /* Melhora o padding de containers em mobile */
   .container {
     @apply px-4;
   }
+}
+
+/* ============================================================
+   Sistema de layout "bento" — cartões consistentes, números
+   monoespaçados, grid de 12 colunas. Compartilhado por todas
+   as telas via DashboardLayout + página inicial.
+   ============================================================ */
+
+.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: hsl(var(--muted-foreground));
+}
+
+.bento {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+}
+.span-3 { grid-column: span 3 / span 3; }
+.span-4 { grid-column: span 4 / span 4; }
+.span-5 { grid-column: span 5 / span 5; }
+.span-6 { grid-column: span 6 / span 6; }
+.span-7 { grid-column: span 7 / span 7; }
+.span-8 { grid-column: span 8 / span 8; }
+.span-12 { grid-column: span 12 / span 12; }
+@media (max-width: 1180px) {
+  .span-3, .span-4 { grid-column: span 6 / span 6; }
+  .span-5, .span-7 { grid-column: span 12 / span 12; }
+  .span-6, .span-8 { grid-column: span 12 / span 12; }
+}
+@media (max-width: 640px) {
+  .span-3, .span-4 { grid-column: span 12 / span 12; }
+}
+
+.card-plain {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--ink-2));
+}
+.chip .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: hsl(var(--good));
+}
+
+.tag {
+  font-size: 11px;
+  font-weight: 650;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: hsl(var(--secondary));
+  color: hsl(var(--ink-2));
+}
+.tag.acc {
+  background: hsl(var(--accent-soft));
+  color: hsl(var(--primary));
+}
+
+.stat-tile {
+  background: hsl(var(--surface-2));
+  border: 1px solid hsl(var(--border));
+  border-radius: 14px;
+  padding: 15px;
+  min-width: 0;
+}
+.stat-tile small {
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: hsl(var(--muted-foreground)); font-weight: 700;
+}
+.stat-tile b {
+  display: block; font-size: 26px; font-weight: 750; letter-spacing: -.03em; margin-top: 6px;
+}
+.stat-tile .trend {
+  font-size: 11px; font-weight: 650; margin-top: 4px; color: hsl(var(--good));
+}
+
+.phase-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 10px;
+  background: hsl(var(--surface-2)); border: 1px solid hsl(var(--border));
+}
+.phase-row .n {
+  width: 24px; height: 24px; border-radius: 7px;
+  background: hsl(var(--accent-soft)); color: hsl(var(--primary));
+  display: grid; place-items: center; font-weight: 750; font-size: 12px; flex: none;
+}
+
+.metric-tile {
+  text-align: center; padding: 12px 8px; border-radius: 11px;
+  background: hsl(var(--surface-2)); border: 1px solid hsl(var(--border));
+}
+.metric-tile small {
+  font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase;
+  color: hsl(var(--muted-foreground)); font-weight: 700;
+}
+.metric-tile b {
+  display: block; font-family: var(--mono); font-size: 18px; font-weight: 650;
+  margin-top: 5px; letter-spacing: -.02em;
+}
+
+.ring-wrap { position: relative; flex: none; }
+.ring-wrap svg { transform: rotate(-90deg); }
+.ring-wrap .rv {
+  position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
 }
