@@ -35,6 +35,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
     Loader2,
     Zap,
@@ -54,8 +55,23 @@ import {
     Upload,
     KeyRound,
     Eye,
-    EyeOff
+    EyeOff,
+    Info
 } from 'lucide-react';
+
+/** Ícone de "?" com tooltip — explica campos técnicos ou ambíguos ao passar o mouse. */
+function FieldHint({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button type="button" className="text-muted-foreground/50 hover:text-primary transition-colors" aria-label="Mais informações">
+          <Info size={12} />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[240px] text-[12px] leading-relaxed">{text}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 const weekDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -322,6 +338,7 @@ export default function ProfilePage() {
 
   return (
     <DashboardLayout>
+      <TooltipProvider delayDuration={150}>
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
@@ -473,7 +490,10 @@ export default function ProfilePage() {
                     )} />
                     <FormField control={form.control} name="vo2Max" render={({field}) => (
                       <FormItem className="space-y-1.5">
-                        <Label className="eyebrow !text-primary">VDOT / VO2</Label>
+                        <Label className="eyebrow !text-primary flex items-center gap-1">
+                          VDOT / VO2
+                          <FieldHint text="Índice de capacidade aeróbica (fórmula de Jack Daniels). Quanto maior, mais rápido seu potencial de corrida. Calculado a partir de uma prova recente — use nossa Central de Cálculos se não souber o seu." />
+                        </Label>
                         <FormControl><Input type="number" step="0.1" {...field} className="h-11 text-center rounded-xl text-sm num text-primary border-primary/30" /></FormControl>
                       </FormItem>
                     )} />
@@ -481,13 +501,19 @@ export default function ProfilePage() {
                   <div className="space-y-4 mt-5 pt-5 border-t border-border">
                     <FormField control={form.control} name="thresholdPace" render={({field}) => (
                       <FormItem className="space-y-1.5">
-                        <Label className="eyebrow">Pace limiar (T-pace)</Label>
+                        <Label className="eyebrow flex items-center gap-1">
+                          Pace limiar (T-pace)
+                          <FieldHint text="O ritmo mais rápido que você sustenta por ~1 hora sem acumular fadiga (limiar de lactato). Referência para treinos de tempo run. Formato mm:ss (ex: 4:50)." />
+                        </Label>
                         <FormControl><Input placeholder="4:50" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl>
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="thresholdHr" render={({field}) => (
                       <FormItem className="space-y-1.5">
-                        <Label className="eyebrow">FC limiar (LTHR)</Label>
+                        <Label className="eyebrow flex items-center gap-1">
+                          FC limiar (LTHR)
+                          <FieldHint text="Frequência cardíaca no seu limiar de lactato — a batida sustentável por ~1 hora de esforço forte. Usada para calcular suas zonas de treino." />
+                        </Label>
                         <FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl>
                       </FormItem>
                     )} />
@@ -506,7 +532,10 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="experienceLevel" render={({field}) => (
                       <FormItem className="space-y-1.5">
-                        <Label className="eyebrow">Nível</Label>
+                        <Label className="eyebrow flex items-center gap-1">
+                          Nível
+                          <FieldHint text="Sua experiência com corrida estruturada. Iniciantes recebem progressão mais conservadora e menos dias de intensidade; avançados recebem ciclos mais agressivos." />
+                        </Label>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent>
@@ -520,7 +549,10 @@ export default function ProfilePage() {
                     )} />
                     <FormField control={form.control} name="weeklyMileageGoal" render={({field}) => (
                       <FormItem className="space-y-1.5">
-                        <Label className="eyebrow !text-primary flex items-center gap-1"><Milestone size={11} /> Meta km</Label>
+                        <Label className="eyebrow !text-primary flex items-center gap-1">
+                          <Milestone size={11} /> Meta de volume (km/sem)
+                          <FieldHint text="Quantos quilômetros por SEMANA você quer estar rodando ao final do ciclo — não é a distância da prova. A distância da prova fica em 'Prova alvo' → Distância." />
+                        </Label>
                         <FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num border-primary/30" /></FormControl>
                       </FormItem>
                     )} />
@@ -547,13 +579,19 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <FormField control={form.control} name="currentWeeklyMileage" render={({field}) => (
                       <FormItem className="space-y-1.5">
-                        <Label className="eyebrow">Volume atual (km/sem)</Label>
+                        <Label className="eyebrow flex items-center gap-1">
+                          Volume atual (km/sem)
+                          <FieldHint text="Quanto você está correndo por semana HOJE, antes de começar o ciclo. Usado como ponto de partida real para a progressão — evita saltos bruscos de volume." />
+                        </Label>
                         <FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl>
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="longestRun" render={({field}) => (
                       <FormItem className="space-y-1.5">
-                        <Label className="eyebrow">Maior longo (km)</Label>
+                        <Label className="eyebrow flex items-center gap-1">
+                          Maior longo (km)
+                          <FieldHint text="A distância do seu treino mais longo recente (não precisa ser prova). Ajuda a calibrar o ritmo de progressão do longão semanal." />
+                        </Label>
                         <FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl>
                       </FormItem>
                     )} />
@@ -578,7 +616,10 @@ export default function ProfilePage() {
                   <div className="mt-4">
                     <FormField control={form.control} name="longRunDay" render={({field}) => (
                       <FormItem className="space-y-1.5">
-                        <Label className="eyebrow">Dia do longão</Label>
+                        <Label className="eyebrow flex items-center gap-1">
+                          Dia do longão
+                          <FieldHint text="Em qual dos seus dias de treino você prefere fazer o treino longo da semana (geralmente o mais tranquilo, tipo fim de semana)." />
+                        </Label>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent>
@@ -811,7 +852,10 @@ export default function ProfilePage() {
                     </div>
                     <FormField control={form.control} name="legDay" render={({field}) => (
                       <FormItem className="space-y-1.5">
-                        <FormLabel className="eyebrow !text-amber-400">Leg day (treino pesado)</FormLabel>
+                        <FormLabel className="eyebrow !text-amber-400 flex items-center gap-1">
+                          Leg day (treino pesado)
+                          <FieldHint text="O dia da musculação de pernas mais pesado da semana. A IA evita colocar corrida de qualidade (tiros, limiar) no dia seguinte a esse treino." />
+                        </FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl><SelectTrigger className="h-11 rounded-xl text-sm"><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent>
@@ -829,7 +873,10 @@ export default function ProfilePage() {
                   </div>
                 </section>
                 <section className="card-plain span-6 h-fit">
-                  <h3 className="eyebrow flex items-center gap-1.5 mb-5"><Zap className="size-3.5 text-primary" /> Cofre de PRs</h3>
+                  <h3 className="eyebrow flex items-center gap-1.5 mb-5">
+                    <Zap className="size-3.5 text-primary" /> Cofre de PRs
+                    <FieldHint text="Seus recordes pessoais (peso máximo, em kg) nesses três levantamentos — opcional, ajuda a calibrar a carga sugerida nos treinos de força." />
+                  </h3>
                   <div className="grid grid-cols-3 gap-3">
                     <FormField control={form.control} name="prBench" render={({field}) => (<FormItem className="space-y-1.5"><FormLabel className="eyebrow text-center block">Supino</FormLabel><FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl></FormItem>)} />
                     <FormField control={form.control} name="prSquat" render={({field}) => (<FormItem className="space-y-1.5"><FormLabel className="eyebrow text-center block">Agacha</FormLabel><FormControl><Input type="number" {...field} className="h-11 text-center rounded-xl text-sm num" /></FormControl></FormItem>)} />
@@ -850,6 +897,7 @@ export default function ProfilePage() {
           </div>
         </form>
       </Form>
+      </TooltipProvider>
     </DashboardLayout>
   );
 }
