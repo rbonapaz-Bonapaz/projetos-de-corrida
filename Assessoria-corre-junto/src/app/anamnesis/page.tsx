@@ -17,8 +17,6 @@ import {
   Save,
   Loader2,
   Zap,
-  Upload,
-  FileDigit,
   Target,
   Dumbbell,
   Apple,
@@ -26,8 +24,9 @@ import {
   Gauge
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { cn, fileToDataURI } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import Script from "next/script";
+import Link from "next/link";
 
 const injuryOptions = ['Canelite', 'Fascite Plantar', 'Dor Joelho', 'Aquiles', 'Outros', 'Nenhuma'];
 const weekDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -88,7 +87,6 @@ export default function AnamnesisPage() {
   const { toast } = useToast();
   const profile = context?.activeProfile;
   const [isSaving, setIsSaving] = React.useState(false);
-  const mirrorWeekFileRef = React.useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = React.useState<any>({
     whatsapp: "",
@@ -103,7 +101,6 @@ export default function AnamnesisPage() {
     practiceTime: "",
     consistency: "",
     mirrorWeek: "",
-    mirrorWeekFileUri: "",
     easyPace: "",
     hardPace: "",
     trainingStructure: "",
@@ -152,14 +149,6 @@ export default function AnamnesisPage() {
       ? current.filter((v: string) => v !== value)
       : [...current, value];
     setFormData((prev: any) => ({ ...prev, [field]: updated }));
-  };
-
-  const handleMirrorFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      const uri = await fileToDataURI(e.target.files[0]);
-      handleInputChange('mirrorWeekFileUri', uri);
-      toast({ title: "Arquivo carregado", description: "O Coach IA vai considerar seus treinos reais." });
-    }
   };
 
   const onSave = async () => {
@@ -427,46 +416,21 @@ export default function AnamnesisPage() {
           <div className="pt-5 mt-5 border-t border-border space-y-4">
             <div className="flex items-center gap-2">
               <Clock className="text-primary size-4" />
-              <Label className="eyebrow !text-foreground">Semana espelho (relato e/ou arquivo)</Label>
+              <Label className="eyebrow !text-foreground">Semana espelho (relato)</Label>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <Label className="eyebrow">Relato técnico</Label>
-                <Textarea
-                  value={formData.mirrorWeek || ""}
-                  onChange={(e) => handleInputChange('mirrorWeek', e.target.value)}
-                  placeholder="Ex: Corri 30km em 3 treinos, pace médio 5:30..."
-                  className="min-h-[110px] rounded-xl text-sm"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="eyebrow">Arquivo de treino (.fit, .jpg, .pdf)</Label>
-                <div
-                  onClick={() => mirrorWeekFileRef.current?.click()}
-                  className={cn(
-                    "border-2 border-dashed rounded-xl h-[110px] flex flex-col items-center justify-center transition-all cursor-pointer",
-                    formData.mirrorWeekFileUri ? "border-primary bg-primary/5" : "border-border hover:bg-secondary/30"
-                  )}
-                >
-                  <input type="file" ref={mirrorWeekFileRef} className="sr-only" onChange={handleMirrorFileChange} accept="image/*,.fit,.csv,.pdf" />
-                  {formData.mirrorWeekFileUri ? (
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-primary text-primary-foreground rounded-lg"><FileDigit size={18} /></div>
-                      <div className="text-left">
-                        <p className="text-[11px] font-semibold text-primary">Documento pronto</p>
-                        <Button variant="ghost" size="sm" className="h-6 p-0 text-[10px] text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleInputChange('mirrorWeekFileUri', ''); }}>Remover</Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center space-y-1.5">
-                      <Upload className="size-5 text-muted-foreground/50 mx-auto" />
-                      <p className="text-[11px] text-muted-foreground">Upload de treinos</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="space-y-1.5">
+              <Label className="eyebrow">Relato técnico</Label>
+              <Textarea
+                value={formData.mirrorWeek || ""}
+                onChange={(e) => handleInputChange('mirrorWeek', e.target.value)}
+                placeholder="Ex: Corri 30km em 3 treinos, pace médio 5:30..."
+                className="min-h-[110px] rounded-xl text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Para importar seus treinos reais (.fit) e calibrar o plano por eles, use{" "}
+                <Link href="/integrations" className="text-primary font-semibold underline">Integrações</Link>.
+              </p>
             </div>
           </div>
         </section>

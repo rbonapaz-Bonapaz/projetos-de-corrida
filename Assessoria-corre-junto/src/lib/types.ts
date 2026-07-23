@@ -58,7 +58,6 @@ export interface AnamnesisData {
   practiceTime?: string;
   consistency?: string;
   mirrorWeek?: string;
-  mirrorWeekFileUri?: string;
   easyPace?: string;
   hardPace?: string;
   trainingStructure?: string;
