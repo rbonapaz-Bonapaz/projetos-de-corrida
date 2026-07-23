@@ -9,9 +9,10 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { parseFitFile } from "@/lib/fit-parser";
-import { mergePersonalRecords, addActivityStats, trimRecentActivities, fitSummaryToEntry } from "@/lib/records";
+import { mergePersonalRecords, addActivityStats, trimRecentActivities, fitSummaryToEntry, fitSummaryToImportedActivity } from "@/lib/records";
 import { syncCorosActivities } from "@/lib/coros-sync";
 import type { ImportedActivity } from "@/lib/types";
+import { ActivityDetailDialog } from "@/components/shared/activity-detail-dialog";
 import { CheckCircle2, Link2, Upload, Loader2, Trash2, Activity as ActivityIcon, RefreshCw, Eye, EyeOff, ShieldAlert } from "lucide-react";
 
 const StravaLogo = () => (
@@ -74,6 +75,7 @@ export default function IntegrationsPage() {
   const [showCorosPassword, setShowCorosPassword] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
   const lastSync = context?.activeProfile?.integrations?.coros?.lastSync;
+  const [selectedActivity, setSelectedActivity] = React.useState<ImportedActivity | null>(null);
 
   const handleToggle = (service: 'strava' | 'coros') => {
     const isConnected = service === 'strava' ? stravaConnected : corosConnected;
@@ -141,24 +143,7 @@ export default function IntegrationsPage() {
       const { name, buffer } = newRawFiles[i];
       try {
         const summary = await parseFitFile(buffer);
-        batch.push({
-          id: (typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2)),
-          source: 'coros',
-          fileName: name,
-          importedAt: new Date().toISOString(),
-          sport: summary.sport,
-          startTime: summary.startTime,
-          distanceKm: summary.distanceKm,
-          durationSec: summary.durationSec,
-          durationText: summary.durationText,
-          avgPace: summary.avgPace,
-          avgHr: summary.avgHr,
-          avgCadenceSpm: summary.avgCadenceSpm,
-          avgGroundContactTimeMs: summary.avgGroundContactTimeMs,
-          avgVerticalOscillationCm: summary.avgVerticalOscillationCm,
-          totalAscentM: summary.totalAscentM,
-          calories: summary.calories,
-        });
+        batch.push(fitSummaryToImportedActivity(summary, { fileName: name, source: 'coros' }));
       } catch {
         skipped++;
       }
@@ -439,7 +424,11 @@ export default function IntegrationsPage() {
               </div>
               <div className="max-h-[420px] overflow-y-auto custom-scrollbar flex flex-col gap-2.5 pr-1">
                 {recentActivities.map((a) => (
-                  <div key={a.id} className="flex items-center gap-3 p-3.5 rounded-xl border border-border bg-secondary/30">
+                  <div
+                    key={a.id}
+                    onClick={() => setSelectedActivity(a)}
+                    className="flex items-center gap-3 p-3.5 rounded-xl border border-border bg-secondary/30 cursor-pointer transition-colors hover:border-primary/40"
+                  >
                     <div className="size-9 rounded-lg bg-secondary flex items-center justify-center shrink-0 border border-border text-primary">
                       <ActivityIcon size={16} />
                     </div>
@@ -455,7 +444,7 @@ export default function IntegrationsPage() {
                       {a.startTime ? new Date(a.startTime).toLocaleDateString('pt-BR') : '—'}
                     </span>
                     <button
-                      onClick={() => handleRemoveFromRecent(a.id)}
+                      onClick={(e) => { e.stopPropagation(); handleRemoveFromRecent(a.id); }}
                       className="text-muted-foreground hover:text-destructive shrink-0"
                       aria-label="Remover da lista"
                     >
@@ -471,6 +460,8 @@ export default function IntegrationsPage() {
           )}
         </section>
       </div>
+
+      <ActivityDetailDialog activity={selectedActivity} onOpenChange={(open) => !open && setSelectedActivity(null)} />
     </DashboardLayout>
   );
 }

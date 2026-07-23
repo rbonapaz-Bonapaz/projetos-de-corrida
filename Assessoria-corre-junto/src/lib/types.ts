@@ -162,11 +162,20 @@ export interface ImportedActivity {
   durationSec?: number;
   durationText?: string;
   avgPace?: string;
+  maxPace?: string;
+  avgSpeedKmh?: number;
   avgHr?: number;
+  maxHr?: number;
   avgCadenceSpm?: number;
+  maxCadenceSpm?: number;
   avgGroundContactTimeMs?: number;
   avgVerticalOscillationCm?: number;
+  avgVerticalRatio?: number;
+  avgStrideLengthM?: number;
+  avgPowerW?: number;
   totalAscentM?: number;
+  totalDescentM?: number;
+  avgTemperatureC?: number;
   calories?: number;
 }
 

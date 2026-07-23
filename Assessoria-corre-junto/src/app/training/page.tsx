@@ -35,11 +35,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn, fileToDataURI } from '@/lib/utils';
 import { parseFitFile, fitSummaryToText, type FitSummary } from '@/lib/fit-parser';
-import type { Workout } from "@/lib/types";
+import type { Workout, ImportedActivity } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { generateGoogleCalendarUrl, calculateWorkoutDate, downloadPlanAsICS, normalizeDayName } from "@/lib/calendar-utils";
 import { MonthCalendar } from "@/components/training/month-calendar";
+import { ActivityDetailDialog } from "@/components/shared/activity-detail-dialog";
 
 const dayOrder = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -55,6 +56,7 @@ export default function TrainingPage() {
   const [analyzing, setAnalyzing] = React.useState(false);
   const [selectedWorkout, setSelectedWorkout] = React.useState<Workout | null>(null);
   const [selectedWorkoutWeek, setSelectedWorkoutWeek] = React.useState<number>(1);
+  const [selectedActivity, setSelectedActivity] = React.useState<ImportedActivity | null>(null);
   const [athleteFeedback, setAthleteFeedback] = React.useState("");
   const [uploadedFileUri, setUploadedFileUri] = React.useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = React.useState<string | null>(null);
@@ -265,10 +267,12 @@ export default function TrainingPage() {
                   plan={plan}
                   raceDate={profile?.raceDate}
                   anchorToRaceDate={anchorToRaceDate}
+                  realActivities={profile?.importedActivities}
                   onSelectWorkout={(workout, weekNumber) => {
                     setSelectedWorkout(workout);
                     setSelectedWorkoutWeek(weekNumber);
                   }}
+                  onSelectActivity={setSelectedActivity}
                 />
               </TabsContent>
 
@@ -560,6 +564,8 @@ export default function TrainingPage() {
               )}
             </DialogContent>
           </Dialog>
+
+          <ActivityDetailDialog activity={selectedActivity} onOpenChange={(open) => !open && setSelectedActivity(null)} />
         </div>
       </TooltipProvider>
     </DashboardLayout>

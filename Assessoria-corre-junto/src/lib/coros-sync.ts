@@ -13,7 +13,7 @@
 import { getApps, getApp } from 'firebase/app';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { parseFitFile } from '@/lib/fit-parser';
-import { fitSummaryToEntry, mergePersonalRecords, addActivityStats, trimRecentActivities } from '@/lib/records';
+import { fitSummaryToEntry, fitSummaryToImportedActivity, mergePersonalRecords, addActivityStats, trimRecentActivities } from '@/lib/records';
 import type { AthleteProfile, ImportedActivity, IntegrationData } from '@/lib/types';
 
 const FUNCTIONS_REGION = 'southamerica-east1';
@@ -79,24 +79,7 @@ export async function syncCorosActivities(
     try {
       const buffer = base64ToArrayBuffer(a.fitBase64);
       const summary = await parseFitFile(buffer);
-      batch.push({
-        id: typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2),
-        source: 'coros',
-        fileName: corosApiFileName(a.labelId),
-        importedAt: new Date().toISOString(),
-        sport: summary.sport,
-        startTime: summary.startTime,
-        distanceKm: summary.distanceKm,
-        durationSec: summary.durationSec,
-        durationText: summary.durationText,
-        avgPace: summary.avgPace,
-        avgHr: summary.avgHr,
-        avgCadenceSpm: summary.avgCadenceSpm,
-        avgGroundContactTimeMs: summary.avgGroundContactTimeMs,
-        avgVerticalOscillationCm: summary.avgVerticalOscillationCm,
-        totalAscentM: summary.totalAscentM,
-        calories: summary.calories,
-      });
+      batch.push(fitSummaryToImportedActivity(summary, { fileName: corosApiFileName(a.labelId), source: 'coros' }));
     } catch {
       skippedUnparseable++;
     }

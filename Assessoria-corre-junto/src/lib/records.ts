@@ -11,6 +11,7 @@
  */
 
 import type { AthleteProfile, PersonalRecordEntry, StoredPersonalRecord, ActivityStats, ImportedActivity } from '@/lib/types';
+import type { FitSummary } from '@/lib/fit-parser';
 
 const DISTANCE_BUCKETS = [
   { key: '5k', label: '5K', km: 5, tolerance: 0.6 },
@@ -33,7 +34,7 @@ export function parsePaceToSecPerKm(pace?: string): number | undefined {
   return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
 }
 
-function parseWorkoutDistanceKm(distance?: string): number | undefined {
+export function parseWorkoutDistanceKm(distance?: string): number | undefined {
   if (!distance) return undefined;
   const m = distance.replace(',', '.').match(/(\d+(\.\d+)?)/);
   if (!m) return undefined;
@@ -106,6 +107,40 @@ export function fitSummaryToEntry(
     date: summary.startTime,
     label: summary.sport ? summary.sport.charAt(0).toUpperCase() + summary.sport.slice(1) : 'Atividade importada',
     source: 'coros',
+  };
+}
+
+/** Converte um resumo de .fit completo numa atividade importada pronta pra persistir — usado tanto na importação manual quanto na sincronização automática, pra manter os dois caminhos com o mesmo conjunto de campos. */
+export function fitSummaryToImportedActivity(
+  summary: FitSummary,
+  opts: { fileName: string; source: ImportedActivity['source'] }
+): ImportedActivity {
+  return {
+    id: typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2),
+    source: opts.source,
+    fileName: opts.fileName,
+    importedAt: new Date().toISOString(),
+    sport: summary.sport,
+    startTime: summary.startTime,
+    distanceKm: summary.distanceKm,
+    durationSec: summary.durationSec,
+    durationText: summary.durationText,
+    avgPace: summary.avgPace,
+    maxPace: summary.maxPace,
+    avgSpeedKmh: summary.avgSpeedKmh,
+    avgHr: summary.avgHr,
+    maxHr: summary.maxHr,
+    avgCadenceSpm: summary.avgCadenceSpm,
+    maxCadenceSpm: summary.maxCadenceSpm,
+    avgGroundContactTimeMs: summary.avgGroundContactTimeMs,
+    avgVerticalOscillationCm: summary.avgVerticalOscillationCm,
+    avgVerticalRatio: summary.avgVerticalRatio,
+    avgStrideLengthM: summary.avgStrideLengthM,
+    avgPowerW: summary.avgPowerW,
+    totalAscentM: summary.totalAscentM,
+    totalDescentM: summary.totalDescentM,
+    avgTemperatureC: summary.avgTemperatureC,
+    calories: summary.calories,
   };
 }
 

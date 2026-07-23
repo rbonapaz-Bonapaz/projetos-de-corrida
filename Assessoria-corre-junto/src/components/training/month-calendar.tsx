@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateWorkoutDate, getWorkoutTypeColor } from "@/lib/calendar-utils";
-import type { TrainingPlan, Workout } from "@/lib/types";
+import type { TrainingPlan, Workout, ImportedActivity } from "@/lib/types";
 
 const weekDayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
+const REALIZADO_COLOR = "var(--good)";
 
 interface DayWorkout {
   date: Date;
@@ -19,14 +20,24 @@ interface MonthCalendarProps {
   raceDate?: string;
   /** true só para ciclo completo (planGenerationType 'full') — ver calculateWorkoutDate. */
   anchorToRaceDate?: boolean;
+  /** Atividades reais importadas (COROS) — sobrepostas ao plano no mesmo dia. */
+  realActivities?: ImportedActivity[];
   onSelectWorkout: (workout: Workout, weekNumber: number) => void;
+  onSelectActivity: (activity: ImportedActivity) => void;
 }
 
 function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-export function MonthCalendar({ plan, raceDate, anchorToRaceDate = false, onSelectWorkout }: MonthCalendarProps) {
+export function MonthCalendar({
+  plan,
+  raceDate,
+  anchorToRaceDate = false,
+  realActivities = [],
+  onSelectWorkout,
+  onSelectActivity,
+}: MonthCalendarProps) {
   const today = React.useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -62,6 +73,18 @@ export function MonthCalendar({ plan, raceDate, anchorToRaceDate = false, onSele
     return map;
   }, [dayWorkouts]);
 
+  const byDayKeyReal = React.useMemo(() => {
+    const map = new Map<string, ImportedActivity[]>();
+    realActivities.forEach((a) => {
+      if (!a.startTime) return;
+      const key = new Date(a.startTime).toDateString();
+      const arr = map.get(key) || [];
+      arr.push(a);
+      map.set(key, arr);
+    });
+    return map;
+  }, [realActivities]);
+
   const monthLabel = viewDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
   const cells = React.useMemo(() => {
@@ -80,6 +103,7 @@ export function MonthCalendar({ plan, raceDate, anchorToRaceDate = false, onSele
   };
 
   const legend = React.useMemo(() => Array.from(new Set(dayWorkouts.map((d) => d.workout.type))), [dayWorkouts]);
+  const hasRealActivities = realActivities.length > 0;
 
   return (
     <div className="card-plain">
@@ -125,6 +149,7 @@ export function MonthCalendar({ plan, raceDate, anchorToRaceDate = false, onSele
           const inMonth = d.getMonth() === viewDate.getMonth();
           const isToday = sameDay(d, today);
           const items = byDayKey.get(d.toDateString()) || [];
+          const realItems = byDayKeyReal.get(d.toDateString()) || [];
           return (
             <div
               key={i}
@@ -164,13 +189,37 @@ export function MonthCalendar({ plan, raceDate, anchorToRaceDate = false, onSele
                     </button>
                   );
                 })}
+                {realItems.map((activity) => {
+                  const label = `Realizado: ${activity.sport || 'atividade'}${activity.distanceKm ? ` · ${activity.distanceKm} km` : ''}`;
+                  return (
+                    <button
+                      key={activity.id}
+                      type="button"
+                      onClick={() => onSelectActivity(activity)}
+                      title={label}
+                      aria-label={label}
+                      className="transition-transform hover:scale-[1.03]"
+                    >
+                      <span className="sm:hidden flex items-center justify-center">
+                        <CheckCircle2 size={10} style={{ color: `hsl(${REALIZADO_COLOR})` }} />
+                      </span>
+                      <span
+                        className="hidden sm:flex items-center gap-1 text-left rounded-md px-1.5 py-1 text-[10px] font-semibold leading-tight truncate border"
+                        style={{ borderColor: `hsl(${REALIZADO_COLOR} / 0.4)`, color: `hsl(${REALIZADO_COLOR})` }}
+                      >
+                        <CheckCircle2 size={10} className="shrink-0" />
+                        {activity.distanceKm ? `${activity.distanceKm} km` : (activity.sport || 'Real')}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
         })}
       </div>
 
-      {!!legend.length && (
+      {(!!legend.length || hasRealActivities) && (
         <div className="flex flex-wrap gap-x-4 gap-y-2 mt-5 pt-4 border-t border-border">
           {legend.map((type) => {
             const color = getWorkoutTypeColor(type);
@@ -181,6 +230,12 @@ export function MonthCalendar({ plan, raceDate, anchorToRaceDate = false, onSele
               </div>
             );
           })}
+          {hasRealActivities && (
+            <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-muted-foreground">
+              <CheckCircle2 size={11} style={{ color: `hsl(${REALIZADO_COLOR})` }} />
+              Realizado (COROS)
+            </div>
+          )}
         </div>
       )}
     </div>
