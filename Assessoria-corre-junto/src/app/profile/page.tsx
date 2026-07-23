@@ -359,9 +359,14 @@ export default function ProfilePage() {
               <h3 className="font-bold text-[15px]">Chave de API (Gemini)</h3>
               <span className={cn("tag num", aiReady ? "acc" : "")}>{aiReady ? "IA configurada" : "IA não configurada"}</span>
             </div>
-            <p className="text-[12px] text-muted-foreground mt-1">
-              Opcional. Use sua própria chave se a chave padrão do app ficar sem cota/saldo, ou se você quiser usar a sua.
-              Fica salva só neste navegador — nunca é enviada para a nuvem. Gere uma em{" "}
+            <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+              Cole sua própria chave de API do Gemini para usar o botão <span className="text-foreground font-medium">"Gerar ciclo IA"</span> (neste perfil),{" "}
+              <span className="text-foreground font-medium">"Gerar plano alimentar"</span> (Nutrição), o <span className="text-foreground font-medium">Coach IA</span> (chat)
+              e a <span className="text-foreground font-medium">análise de treinos</span> (Meu Plano / Evolução). A chave fica salva só neste navegador e a chamada é
+              feita direto do seu navegador para o Google — não passa por nenhum servidor nosso.
+            </p>
+            <p className="text-[12px] text-muted-foreground mt-1.5">
+              Não tem uma chave? Crie gratuitamente em{" "}
               <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-primary font-semibold underline">
                 aistudio.google.com/apikey
               </a>.
