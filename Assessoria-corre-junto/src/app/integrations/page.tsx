@@ -10,8 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { parseFitFile } from "@/lib/fit-parser";
 import { mergePersonalRecords, addActivityStats, trimRecentActivities, fitSummaryToEntry } from "@/lib/records";
+import { syncCorosActivities } from "@/lib/coros-sync";
 import type { ImportedActivity } from "@/lib/types";
-import { CheckCircle2, Link2, Upload, Loader2, Trash2, Activity as ActivityIcon } from "lucide-react";
+import { CheckCircle2, Link2, Upload, Loader2, Trash2, Activity as ActivityIcon, RefreshCw, Eye, EyeOff, ShieldAlert } from "lucide-react";
 
 const StravaLogo = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="size-7">
@@ -68,9 +69,37 @@ export default function IntegrationsPage() {
   const [progress, setProgress] = React.useState({ done: 0, total: 0, stage: '' });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  const [corosEmail, setCorosEmail] = React.useState('');
+  const [corosPassword, setCorosPassword] = React.useState('');
+  const [showCorosPassword, setShowCorosPassword] = React.useState(false);
+  const [syncing, setSyncing] = React.useState(false);
+  const lastSync = context?.activeProfile?.integrations?.coros?.lastSync;
+
   const handleToggle = (service: 'strava' | 'coros') => {
     const isConnected = service === 'strava' ? stravaConnected : corosConnected;
     context?.toggleIntegration(service, !isConnected);
+  };
+
+  const handleAutoSync = async () => {
+    if (!context?.activeProfile) return;
+    if (!corosEmail.trim() || !corosPassword.trim()) {
+      toast({ variant: "destructive", title: "Preencha email e senha da COROS" });
+      return;
+    }
+    setSyncing(true);
+    try {
+      const result = await syncCorosActivities(context.activeProfile, corosEmail.trim(), corosPassword);
+      context.saveProfile(result.update as any);
+      const parts = [`${result.imported} nova(s) atividade(s) importada(s)`];
+      if (result.skippedAlreadyKnown) parts.push(`${result.skippedAlreadyKnown} já sincronizada(s) antes`);
+      if (result.skippedUnparseable) parts.push(`${result.skippedUnparseable} não reconhecida(s)`);
+      toast({ title: "Sincronização concluída", description: parts.join(' · ') });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erro ao sincronizar", description: err?.message || "Não foi possível conectar à COROS." });
+    } finally {
+      setCorosPassword(''); // nunca fica guardada além do necessário pra essa chamada
+      setSyncing(false);
+    }
   };
 
   const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -241,7 +270,8 @@ export default function IntegrationsPage() {
         <section className="card-plain">
           <h3 className="eyebrow mb-1">Conexões</h3>
           <p className="text-[12px] text-muted-foreground mb-5">
-            Marca a plataforma como conectada — hoje ainda não sincroniza automaticamente (sem OAuth). Use a importação manual abaixo para o COROS.
+            Marca a plataforma como conectada. Para o COROS, use a sincronização automática ou a importação manual abaixo — o Strava ainda não
+            tem integração (precisa de OAuth oficial).
           </p>
 
           <div className="flex flex-wrap gap-5">
@@ -284,6 +314,71 @@ export default function IntegrationsPage() {
                 </div>
               )}
             </button>
+          </div>
+        </section>
+
+        <section className="card-plain">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <RefreshCw size={18} className={cn(syncing && "animate-spin")} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-[15px]">Sincronização automática (COROS)</h3>
+              <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                Busca suas atividades mais recentes direto da sua conta COROS — sem precisar esperar o export e fazer upload manual. Traz até 15
+                atividades novas por vez, sem repetir o que já foi importado.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-secondary/40 border border-border mb-4">
+            <ShieldAlert size={15} className="text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Isso usa a API não-oficial da COROS (sem OAuth) — sua senha é enviada uma única vez pra um Cloud Function nosso, que a usa só pra
+              fazer login na COROS e nunca a guarda. Ainda assim, é uma integração não-oficial: use por sua conta e risco. Se preferir não digitar
+              sua senha aqui, use a importação manual abaixo.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            <input
+              type="email"
+              value={corosEmail}
+              onChange={(e) => setCorosEmail(e.target.value)}
+              placeholder="Email da conta COROS"
+              disabled={syncing}
+              className="h-11 rounded-xl border border-border bg-secondary/30 px-3.5 text-sm outline-none focus:border-primary/50"
+            />
+            <div className="relative">
+              <input
+                type={showCorosPassword ? "text" : "password"}
+                value={corosPassword}
+                onChange={(e) => setCorosPassword(e.target.value)}
+                placeholder="Senha"
+                disabled={syncing}
+                className="h-11 w-full rounded-xl border border-border bg-secondary/30 px-3.5 pr-10 text-sm outline-none focus:border-primary/50"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCorosPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showCorosPassword ? "Ocultar senha" : "Mostrar senha"}
+              >
+                {showCorosPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <Button onClick={handleAutoSync} disabled={syncing} className="rounded-xl gap-2">
+              {syncing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+              {syncing ? "Sincronizando…" : "Sincronizar agora"}
+            </Button>
+            {lastSync && (
+              <span className="text-[11px] text-muted-foreground">
+                Última sincronização: {new Date(lastSync).toLocaleString('pt-BR')}
+              </span>
+            )}
           </div>
         </section>
 

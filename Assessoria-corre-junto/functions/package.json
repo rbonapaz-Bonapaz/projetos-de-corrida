@@ -1,0 +1,21 @@
+{
+  "name": "correjunto-functions",
+  "description": "Cloud Functions do CorreJunto — hoje só a ponte (proxy) de sincronização com o COROS, contornando o bloqueio de CORS do navegador para a API não-oficial da COROS.",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "npm run build && firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-functions": "^6.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
