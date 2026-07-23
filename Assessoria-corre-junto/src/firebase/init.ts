@@ -2,7 +2,7 @@
 'use client';
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, Firestore } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
 import { firebaseConfig } from './config';
 
@@ -25,7 +25,18 @@ export function initializeFirebase(): {
 
   try {
     const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-    const firestore = getFirestore(firebaseApp);
+    // Muitos objetos do app (atividades importadas, recordes, etc.) têm campos
+    // opcionais que ficam `undefined` — o setDoc() do Firestore rejeita isso
+    // por padrão ("Unsupported field value: undefined"). Em vez de sanitizar
+    // manualmente cada gravação, ignora undefined globalmente (equivale a
+    // omitir o campo, que é o comportamento que já queríamos).
+    let firestore: Firestore;
+    try {
+      firestore = initializeFirestore(firebaseApp, { ignoreUndefinedProperties: true });
+    } catch {
+      // Já inicializado nesta sessão (ex.: hot reload) — reaproveita a instância.
+      firestore = getFirestore(firebaseApp);
+    }
     const auth = getAuth(firebaseApp);
 
     return { firebaseApp, firestore, auth };

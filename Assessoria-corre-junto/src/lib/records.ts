@@ -80,7 +80,6 @@ export function derivePlanEntries(profile: AthleteProfile | null | undefined): P
         distanceKm,
         timeSeconds: distanceKm * paceSecPerKm,
         paceSecPerKm,
-        date: undefined,
         label: run.type,
         source: 'plano',
       });
