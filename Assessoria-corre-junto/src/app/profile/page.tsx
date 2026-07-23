@@ -11,6 +11,7 @@ import { TrainingContext } from '@/contexts/TrainingContext';
 import { useToast } from '@/hooks/use-toast';
 import { fileToDataURI, cn } from "@/lib/utils";
 import { downloadProfileBackup, parseProfileBackup } from '@/lib/backup';
+import { getUserApiKey, setUserApiKey, isAiConfigured } from '@/ai/genkit';
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 
 import { Button } from '@/components/ui/button';
@@ -50,7 +51,10 @@ import {
     Milestone,
     History,
     Download,
-    Upload
+    Upload,
+    KeyRound,
+    Eye,
+    EyeOff
 } from 'lucide-react';
 
 const weekDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -113,6 +117,18 @@ export default function ProfilePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [targetMode, setTargetMode] = useState<'time' | 'pace'>('pace');
+
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeySaved, setApiKeySaved] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [aiReady, setAiReady] = useState(false);
+
+  useEffect(() => {
+    const current = getUserApiKey();
+    setApiKeyInput(current);
+    setApiKeySaved(!!current);
+    setAiReady(isAiConfigured());
+  }, []);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -281,6 +297,26 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSaveApiKey = () => {
+    setUserApiKey(apiKeyInput);
+    setApiKeySaved(!!apiKeyInput.trim());
+    setAiReady(isAiConfigured());
+    toast({
+      title: apiKeyInput.trim() ? "Chave de API salva" : "Chave removida",
+      description: apiKeyInput.trim()
+        ? "Salva só neste navegador. O Coach IA vai usá-la a partir de agora."
+        : "Voltando a usar a chave padrão do app (se houver)."
+    });
+  };
+
+  const handleClearApiKey = () => {
+    setUserApiKey('');
+    setApiKeyInput('');
+    setApiKeySaved(false);
+    setAiReady(isAiConfigured());
+    toast({ title: "Chave removida", description: "Voltando a usar a chave padrão do app (se houver)." });
+  };
+
   const selectedTrainingDays = form.watch('trainingDays') || [];
   const selectedStrengthDays = form.watch('strengthDays') || [];
 
@@ -312,6 +348,53 @@ export default function ProfilePage() {
           </Button>
         </div>
       </header>
+
+      <section className="card-plain mb-6">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <KeyRound size={18} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-bold text-[15px]">Chave de API (Gemini)</h3>
+              <span className={cn("tag num", aiReady ? "acc" : "")}>{aiReady ? "IA configurada" : "IA não configurada"}</span>
+            </div>
+            <p className="text-[12px] text-muted-foreground mt-1">
+              Opcional. Use sua própria chave se a chave padrão do app ficar sem cota/saldo, ou se você quiser usar a sua.
+              Fica salva só neste navegador — nunca é enviada para a nuvem. Gere uma em{" "}
+              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-primary font-semibold underline">
+                aistudio.google.com/apikey
+              </a>.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          <div className="relative flex-1">
+            <Input
+              type={showApiKey ? "text" : "password"}
+              value={apiKeyInput}
+              onChange={(e) => setApiKeyInput(e.target.value)}
+              placeholder="AIzaSy..."
+              className="h-11 rounded-xl text-sm pr-10 font-mono"
+              autoComplete="off"
+            />
+            <button
+              type="button"
+              onClick={() => setShowApiKey((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={showApiKey ? "Ocultar chave" : "Mostrar chave"}
+            >
+              {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          <div className="flex gap-2.5">
+            <Button type="button" onClick={handleSaveApiKey} className="rounded-xl h-11 px-5">Salvar chave</Button>
+            {apiKeySaved && (
+              <Button type="button" variant="outline" onClick={handleClearApiKey} className="rounded-xl h-11 px-5">Remover</Button>
+            )}
+          </div>
+        </div>
+      </section>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSave)} className="flex flex-col gap-6">

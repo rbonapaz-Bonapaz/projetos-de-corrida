@@ -10,24 +10,67 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { ZodType } from 'zod';
 
-const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+const ENV_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
 const MODEL_ID = 'gemini-2.5-flash';
+const USER_KEY_STORAGE = 'corre_junto_gemini_api_key';
+
+/**
+ * Chave de IA em dois níveis: a do ambiente (definida no build, via
+ * NEXT_PUBLIC_GEMINI_API_KEY) e uma opcional definida pelo próprio atleta
+ * em Meus Dados, guardada só neste navegador (nunca vai para o Firestore).
+ * A chave do atleta, quando existe, tem prioridade — útil quando a chave
+ * padrão do app fica sem cota/saldo e o app já está publicado (estático,
+ * sem servidor para trocar a variável de ambiente sem novo build).
+ */
+export function getUserApiKey(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    return localStorage.getItem(USER_KEY_STORAGE) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setUserApiKey(key: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (key.trim()) localStorage.setItem(USER_KEY_STORAGE, key.trim());
+    else localStorage.removeItem(USER_KEY_STORAGE);
+  } catch {
+    // Armazenamento indisponível (modo privado etc.) — ignora silenciosamente.
+  }
+  client = null;
+  cachedKey = null;
+}
+
+export function hasCustomApiKey(): boolean {
+  return !!getUserApiKey();
+}
+
+function getEffectiveApiKey(): string {
+  return getUserApiKey() || ENV_API_KEY;
+}
 
 let client: GoogleGenerativeAI | null = null;
+let cachedKey: string | null = null;
 
 function getClient(): GoogleGenerativeAI {
-  if (!API_KEY) {
+  const key = getEffectiveApiKey();
+  if (!key) {
     throw new Error(
-      'Chave de IA não configurada. Defina NEXT_PUBLIC_GEMINI_API_KEY para ativar o Coach.'
+      'Chave de IA não configurada. Adicione sua chave em Meus Dados → Chave de API, ou defina NEXT_PUBLIC_GEMINI_API_KEY no ambiente.'
     );
   }
-  if (!client) client = new GoogleGenerativeAI(API_KEY);
+  if (!client || cachedKey !== key) {
+    client = new GoogleGenerativeAI(key);
+    cachedKey = key;
+  }
   return client;
 }
 
-/** Indica se a IA está pronta para uso (chave presente). */
+/** Indica se a IA está pronta para uso (chave presente — do atleta ou do ambiente). */
 export function isAiConfigured(): boolean {
-  return !!API_KEY;
+  return !!getEffectiveApiKey();
 }
 
 /**
@@ -45,7 +88,7 @@ function translateAiError(error: unknown): string {
     return 'A IA atingiu o limite de uso no momento (muitas requisições em pouco tempo, ou cota esgotada). Aguarde alguns minutos e tente novamente — se persistir, verifique o saldo em aistudio.google.com.';
   }
   if (/API[_ ]?KEY[_ ]?INVALID|API key not valid/i.test(raw)) {
-    return 'A chave de IA configurada (NEXT_PUBLIC_GEMINI_API_KEY) é inválida. Gere uma nova em aistudio.google.com/apikey e atualize o .env.local.';
+    return 'A chave de IA configurada é inválida. Gere uma nova em aistudio.google.com/apikey e atualize em Meus Dados → Chave de API (ou no .env.local, se for a chave padrão do app).';
   }
   if (/PERMISSION_DENIED|\[403/.test(raw)) {
     return 'A chave de IA não tem permissão para este modelo. Confira as restrições da chave em aistudio.google.com.';
