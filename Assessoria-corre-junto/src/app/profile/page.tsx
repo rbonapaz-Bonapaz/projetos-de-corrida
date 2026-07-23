@@ -13,6 +13,7 @@ import { fileToDataURI, cn } from "@/lib/utils";
 import { downloadProfileBackup, parseProfileBackup } from '@/lib/backup';
 import { getUserApiKey, setUserApiKey, isAiConfigured } from '@/ai/genkit';
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { ProgressPhotosTab } from '@/components/profile/progress-photos-tab';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -56,7 +57,8 @@ import {
     KeyRound,
     Eye,
     EyeOff,
-    Info
+    Info,
+    Lock
 } from 'lucide-react';
 
 /** Ícone de "?" com tooltip — explica campos técnicos ou ambíguos ao passar o mouse. */
@@ -421,11 +423,14 @@ export default function ProfilePage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSave)} className="flex flex-col gap-6">
           <Tabs defaultValue="corrida" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto p-1.5 rounded-xl gap-1.5">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto p-1.5 rounded-xl gap-1.5">
               <TabsTrigger value="perfil" className="py-2.5 text-[12px] font-semibold rounded-lg">Identidade</TabsTrigger>
               <TabsTrigger value="corrida" className="py-2.5 text-[12px] font-semibold rounded-lg">Corrida</TabsTrigger>
               <TabsTrigger value="dieta" className="py-2.5 text-[12px] font-semibold rounded-lg">Dieta</TabsTrigger>
               <TabsTrigger value="forca" className="py-2.5 text-[12px] font-semibold rounded-lg">Força</TabsTrigger>
+              <TabsTrigger value="fotos" className="py-2.5 text-[12px] font-semibold rounded-lg flex items-center justify-center gap-1.5">
+                Fotos <Lock size={11} />
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="perfil" className="mt-6">
@@ -884,6 +889,14 @@ export default function ProfilePage() {
                   </div>
                 </section>
               </div>
+            </TabsContent>
+
+            <TabsContent value="fotos" className="mt-6">
+              <ProgressPhotosTab
+                uid={context?.user?.uid}
+                athleteId={context?.activeProfile?.id}
+                athleteContext={`${form.watch('experienceLevel')}, objetivo: ${form.watch('mainObjective')}`}
+              />
             </TabsContent>
           </Tabs>
 

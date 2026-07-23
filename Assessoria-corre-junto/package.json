@@ -8,6 +8,7 @@
     "build": "next build",
     "deploy": "npm run build && firebase deploy --only hosting",
     "deploy:functions": "cd functions && npm install && npm run build && cd .. && firebase deploy --only functions",
+    "deploy:rules": "firebase deploy --only firestore:rules,storage:rules",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },

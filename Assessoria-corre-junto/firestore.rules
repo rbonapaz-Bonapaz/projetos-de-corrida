@@ -28,5 +28,15 @@ service cloud.firestore {
       allow create: if request.auth != null &&
         request.resource.data.ownerUid == request.auth.uid;
     }
+
+    // Metadados de fotos de progresso (a foto em si vai pro Storage — ver
+    // storage.rules; aqui só data/nota/comentário da IA, dono sempre exigido).
+    match /progress_photos/{photoId} {
+      allow read, delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if request.auth != null &&
+        resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.ownerUid == request.auth.uid;
+    }
   }
 }

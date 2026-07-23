@@ -133,6 +133,24 @@ export interface AthleteProfile {
   importedFileNames?: string[];
 }
 
+/**
+ * Metadados de uma foto de progresso. A imagem em si fica no Firebase
+ * Storage (progress-photos/{uid}/...), nunca em Firestore — só o caminho
+ * é guardado aqui. Vive numa coleção própria (progress_photos), não dentro
+ * do documento do atleta, pra não competir pelo limite de 1MB do Firestore.
+ */
+export interface ProgressPhoto {
+  id: string;
+  ownerUid: string;
+  athleteId: string;
+  storagePath: string;
+  /** Data que a foto representa (YYYY-MM-DD), não a data do upload. */
+  takenAt: string;
+  note?: string;
+  aiComment?: string;
+  createdAt: string;
+}
+
 export interface ImportedActivity {
   id: string;
   source: 'coros' | 'strava' | 'manual';

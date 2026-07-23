@@ -1,0 +1,14 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Fotos de progresso — só o dono (uid do Firebase Auth) lê/escreve as
+    // próprias. Nunca exposto via link público: o app busca os bytes com
+    // getBytes() (sempre passa por esta regra), nunca getDownloadURL().
+    match /progress-photos/{uid}/{fileName} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == uid
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
