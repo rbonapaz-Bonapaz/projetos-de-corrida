@@ -140,6 +140,16 @@ async function findOrCreateCalendar(accessToken: string, summary: string, existi
   return created.id;
 }
 
+/**
+ * Cria ou atualiza um evento pelo iCalUID estável.
+ *
+ * Antes usava events.import, que segue semântica de "sequence" do iCalendar
+ * (pensada pra importar arquivos .ics com histórico de revisão) — como
+ * nunca enviávamos um número de sequência, qualquer edição manual do
+ * atleta direto na Google Agenda (que incrementa a sequência do lado do
+ * Google) fazia o próximo sync falhar com "Invalid sequence value".
+ * events.update por ID real não tem essa restrição.
+ */
 async function upsertEvent(
   accessToken: string,
   calendarId: string,
@@ -147,16 +157,30 @@ async function upsertEvent(
 ): Promise<void> {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const end = new Date(params.start.getTime() + params.durationMinutes * 60 * 1000);
-  await gcalFetch(accessToken, `/calendars/${encodeURIComponent(calendarId)}/events/import`, {
-    method: 'POST',
-    body: JSON.stringify({
-      iCalUID: params.uid,
-      summary: params.summary,
-      description: params.description,
-      start: { dateTime: params.start.toISOString(), timeZone },
-      end: { dateTime: end.toISOString(), timeZone },
-    }),
-  });
+  const eventBody = {
+    summary: params.summary,
+    description: params.description,
+    start: { dateTime: params.start.toISOString(), timeZone },
+    end: { dateTime: end.toISOString(), timeZone },
+  };
+
+  const existing = await gcalFetch(
+    accessToken,
+    `/calendars/${encodeURIComponent(calendarId)}/events?iCalUID=${encodeURIComponent(params.uid)}`
+  );
+  const found = existing?.items?.[0];
+
+  if (found?.id) {
+    await gcalFetch(accessToken, `/calendars/${encodeURIComponent(calendarId)}/events/${found.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(eventBody),
+    });
+  } else {
+    await gcalFetch(accessToken, `/calendars/${encodeURIComponent(calendarId)}/events`, {
+      method: 'POST',
+      body: JSON.stringify({ ...eventBody, iCalUID: params.uid }),
+    });
+  }
 }
 
 export interface GoogleCalendarSyncResult {
