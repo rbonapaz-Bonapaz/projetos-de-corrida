@@ -130,6 +130,8 @@ export interface AthleteProfile {
   personalRecords?: StoredPersonalRecord[];
   /** Totais acumulados de todas as importações — somados incrementalmente, não recalculados de uma lista completa. */
   activityStats?: ActivityStats;
+  /** Nomes de arquivo já processados em importações anteriores — evita duplicar totais/recordes ao reimportar o mesmo export. */
+  importedFileNames?: string[];
 }
 
 export interface ImportedActivity {

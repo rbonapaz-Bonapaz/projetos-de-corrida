@@ -97,13 +97,19 @@ export default function IntegrationsPage() {
       return;
     }
 
-    setProgress({ done: 0, total: rawFiles.length, stage: 'Processando' });
+    // Evita duplicar totais/recordes se o mesmo export (ou um export mais
+    // recente que inclui arquivos já importados antes) for enviado de novo.
+    const alreadyImported = new Set(context.activeProfile.importedFileNames || []);
+    const newRawFiles = rawFiles.filter((f) => !alreadyImported.has(f.name));
+    const duplicates = rawFiles.length - newRawFiles.length;
+
+    setProgress({ done: 0, total: newRawFiles.length, stage: 'Processando' });
 
     const batch: ImportedActivity[] = [];
     let skipped = 0;
 
-    for (let i = 0; i < rawFiles.length; i++) {
-      const { name, buffer } = rawFiles[i];
+    for (let i = 0; i < newRawFiles.length; i++) {
+      const { name, buffer } = newRawFiles[i];
       try {
         const summary = await parseFitFile(buffer);
         batch.push({
@@ -128,8 +134,8 @@ export default function IntegrationsPage() {
         skipped++;
       }
 
-      if (i % 15 === 0 || i === rawFiles.length - 1) {
-        setProgress({ done: i + 1, total: rawFiles.length, stage: 'Processando' });
+      if (i % 15 === 0 || i === newRawFiles.length - 1) {
+        setProgress({ done: i + 1, total: newRawFiles.length, stage: 'Processando' });
         await new Promise((r) => setTimeout(r, 0));
       }
     }
@@ -147,11 +153,13 @@ export default function IntegrationsPage() {
         const updatedRecords = mergePersonalRecords(profile.personalRecords, candidateEntries);
         const updatedStats = addActivityStats(profile.activityStats, batch);
         let updatedRecent = trimRecentActivities([...batch, ...recentActivities]);
+        const updatedFileNames = [...(profile.importedFileNames || []), ...batch.map(a => a.fileName)];
 
         const update = {
           personalRecords: updatedRecords,
           activityStats: updatedStats,
           importedActivities: updatedRecent,
+          importedFileNames: updatedFileNames,
           integrations: {
             ...profile.integrations,
             coros: { ...profile.integrations?.coros, connected: true, autoSync: true },
@@ -180,13 +188,19 @@ export default function IntegrationsPage() {
     setProgress({ done: 0, total: 0, stage: '' });
     if (fileInputRef.current) fileInputRef.current.value = "";
 
+    const notes: string[] = [];
+    if (duplicates) notes.push(`${duplicates} já importado(s) antes (ignorado(s) para não duplicar).`);
+    if (skipped) notes.push(`${skipped} arquivo(s) ignorado(s) (formato não reconhecido).`);
+
     if (saveError) {
       toast({ variant: "destructive", title: "Erro ao salvar", description: saveError });
     } else if (batch.length) {
       toast({
-        title: `${batch.length} atividade(s) processada(s)`,
-        description: skipped ? `${skipped} arquivo(s) ignorado(s) (formato não reconhecido).` : "Recordes e totais atualizados."
+        title: `${batch.length} atividade(s) nova(s) processada(s)`,
+        description: notes.length ? notes.join(' ') : "Recordes e totais atualizados."
       });
+    } else if (duplicates) {
+      toast({ title: "Nada novo para importar", description: `Todo(s) os ${duplicates} arquivo(s) já tinham sido importados antes.` });
     } else {
       toast({ variant: "destructive", title: "Nada importado", description: "Nenhum .fit válido foi encontrado." });
     }
@@ -195,6 +209,21 @@ export default function IntegrationsPage() {
   const handleRemoveFromRecent = (id: string) => {
     if (!context?.activeProfile) return;
     context.saveProfile({ importedActivities: recentActivities.filter(a => a.id !== id) });
+  };
+
+  const handleWipeImportedData = () => {
+    if (!context?.activeProfile) return;
+    const confirmed = window.confirm(
+      "Apagar todo o histórico importado (recordes, totais e atividades recentes)? Isso não afeta seu plano de treino nem seus dados de perfil — só o que foi importado do COROS/Strava. Você pode reimportar o export depois."
+    );
+    if (!confirmed) return;
+    context.saveProfile({
+      personalRecords: [],
+      activityStats: { totalKm: 0, totalDurationSec: 0, totalCalories: 0, activityCount: 0 },
+      importedActivities: [],
+      importedFileNames: [],
+    });
+    toast({ title: "Histórico importado apagado", description: "Pode importar o export do COROS novamente quando quiser." });
   };
 
   return (
@@ -303,7 +332,16 @@ export default function IntegrationsPage() {
 
           {!!recentActivities.length && (
             <div className="mt-5 flex flex-col gap-2.5">
-              <p className="eyebrow">Atividades recentes (mostrando as últimas {recentActivities.length})</p>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="eyebrow">Atividades recentes (mostrando as últimas {recentActivities.length})</p>
+                <button
+                  type="button"
+                  onClick={handleWipeImportedData}
+                  className="text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-1"
+                >
+                  <Trash2 size={12} /> Apagar histórico importado
+                </button>
+              </div>
               <div className="max-h-[420px] overflow-y-auto custom-scrollbar flex flex-col gap-2.5 pr-1">
                 {recentActivities.map((a) => (
                   <div key={a.id} className="flex items-center gap-3 p-3.5 rounded-xl border border-border bg-secondary/30">
