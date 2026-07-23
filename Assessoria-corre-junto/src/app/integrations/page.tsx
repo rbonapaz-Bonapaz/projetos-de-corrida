@@ -63,6 +63,7 @@ export default function IntegrationsPage() {
           sport: summary.sport,
           startTime: summary.startTime,
           distanceKm: summary.distanceKm,
+          durationSec: summary.durationSec,
           durationText: summary.durationText,
           avgPace: summary.avgPace,
           avgHr: summary.avgHr,

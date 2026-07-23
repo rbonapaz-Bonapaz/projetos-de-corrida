@@ -135,6 +135,7 @@ export interface ImportedActivity {
   sport?: string;
   startTime?: string;
   distanceKm?: number;
+  durationSec?: number;
   durationText?: string;
   avgPace?: string;
   avgHr?: number;
