@@ -5,31 +5,57 @@
 
 import type { Workout, TrainingPlan } from './types';
 
+const DAY_PREFIX_MAP: Record<string, string> = {
+  dom: 'Domingo', seg: 'Segunda', ter: 'Terça', qua: 'Quarta',
+  qui: 'Quinta', sex: 'Sexta', sab: 'Sábado',
+};
+const DAY_INDEX: Record<string, number> = {
+  Domingo: 0, Segunda: 1, Terça: 2, Quarta: 3, Quinta: 4, Sexta: 5, Sábado: 6,
+};
+
 /**
- * Calcula a data de um treino baseado no número da semana e dia, 
- * projetando para trás a partir da data da prova ou para frente a partir de hoje.
+ * Normaliza variações do nome do dia vindas da IA ("Terça-feira", "domingo",
+ * "SEX") para a forma canônica usada no app. O campo 'day' do plano é texto
+ * livre no prompt — sem isso, qualquer variação de formato não batia com o
+ * dayMap original e todos os treinos "não reconhecidos" colapsavam pro
+ * mesmo dia (o fallback era sempre Segunda).
+ */
+export function normalizeDayName(day: string): string {
+  const prefix = (day || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .slice(0, 3);
+  return DAY_PREFIX_MAP[prefix] || 'Segunda';
+}
+
+/**
+ * Calcula a data de um treino baseado no número da semana e dia.
+ *
+ * `anchorToRaceDate` só deve ser true para um plano de CICLO COMPLETO
+ * (planGenerationType 'full'), onde a última semana do plano de fato
+ * termina na semana da prova. Para um bloco curto (4 semanas, o modo
+ * padrão), a prova pode estar meses no futuro — ancorar nela empurrava o
+ * bloco inteiro pra data da prova em vez de começar a partir de hoje.
  */
 export function calculateWorkoutDate(
-  weekNumber: number, 
-  dayName: string, 
-  raceDateStr?: string, 
-  planDurationWeeks: number = 4
+  weekNumber: number,
+  dayName: string,
+  raceDateStr?: string,
+  planDurationWeeks: number = 4,
+  anchorToRaceDate: boolean = false
 ): Date {
-  const dayMap: Record<string, number> = {
-    "Domingo": 0, "Segunda": 1, "Terça": 2, "Quarta": 3, "Quinta": 4, "Sexta": 5, "Sábado": 6
-  };
-  
-  const dayIdx = dayMap[dayName] ?? 1;
-  
-  if (raceDateStr) {
+  const dayIdx = DAY_INDEX[normalizeDayName(dayName)] ?? 1;
+
+  if (raceDateStr && anchorToRaceDate) {
     const raceDate = new Date(raceDateStr);
     raceDate.setMinutes(raceDate.getMinutes() + raceDate.getTimezoneOffset());
-    
+
     // Assume que a última semana do plano termina na semana da prova.
     const weeksToSubtract = planDurationWeeks - weekNumber;
     const targetDate = new Date(raceDate);
     targetDate.setDate(targetDate.getDate() - (weeksToSubtract * 7));
-    
+
     const currentDay = targetDate.getDay();
     targetDate.setDate(targetDate.getDate() + (dayIdx - currentDay));
     return targetDate;
@@ -97,12 +123,12 @@ export function generateGoogleCalendarUrl(workout: Workout, date: Date): string 
 /**
  * Gera um arquivo .ics contendo todo o plano de treinamento.
  */
-export function downloadPlanAsICS(plan: TrainingPlan, raceDate?: string) {
+export function downloadPlanAsICS(plan: TrainingPlan, raceDate?: string, anchorToRaceDate: boolean = false) {
   let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//CorreJunto//NONSGML Training Plan//PT\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\n";
-  
+
   plan.weeklyPlans.forEach(week => {
     week.runs.forEach(run => {
-      const date = calculateWorkoutDate(week.weekNumber, run.day, raceDate, plan.durationWeeks);
+      const date = calculateWorkoutDate(week.weekNumber, run.day, raceDate, plan.durationWeeks, anchorToRaceDate);
       const start = date.toISOString().replace(/-|:|\.\d\d\d/g, "");
       const end = new Date(date.getTime() + 60 * 60 * 1000).toISOString().replace(/-|:|\.\d\d\d/g, "");
       

@@ -38,7 +38,7 @@ import { parseFitFile, fitSummaryToText, type FitSummary } from '@/lib/fit-parse
 import type { Workout } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { generateGoogleCalendarUrl, calculateWorkoutDate, downloadPlanAsICS } from "@/lib/calendar-utils";
+import { generateGoogleCalendarUrl, calculateWorkoutDate, downloadPlanAsICS, normalizeDayName } from "@/lib/calendar-utils";
 import { MonthCalendar } from "@/components/training/month-calendar";
 
 const dayOrder = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -190,15 +190,20 @@ export default function TrainingPage() {
     }, 0).toFixed(1);
   };
 
+  // Só ancora no dia da prova pra um ciclo completo — num bloco curto (padrão),
+  // a prova pode estar meses no futuro e isso empurrava o bloco inteiro pra lá
+  // em vez de começar a partir de hoje.
+  const anchorToRaceDate = profile?.planGenerationType === 'full';
+
   const handleExportICS = () => {
     if (!plan) return;
-    downloadPlanAsICS(plan, profile?.raceDate);
+    downloadPlanAsICS(plan, profile?.raceDate, anchorToRaceDate);
     toast({ title: "Calendário gerado", description: "Abra o arquivo .ics para importar todos os treinos." });
   };
 
   const handleSingleExport = () => {
     if (!selectedWorkout || !plan) return;
-    const date = calculateWorkoutDate(selectedWorkoutWeek, selectedWorkout.day, profile?.raceDate, plan.durationWeeks);
+    const date = calculateWorkoutDate(selectedWorkoutWeek, selectedWorkout.day, profile?.raceDate, plan.durationWeeks, anchorToRaceDate);
     const url = generateGoogleCalendarUrl(selectedWorkout, date);
     window.open(url, '_blank');
   };
@@ -259,6 +264,7 @@ export default function TrainingPage() {
                 <MonthCalendar
                   plan={plan}
                   raceDate={profile?.raceDate}
+                  anchorToRaceDate={anchorToRaceDate}
                   onSelectWorkout={(workout, weekNumber) => {
                     setSelectedWorkout(workout);
                     setSelectedWorkoutWeek(weekNumber);
@@ -288,7 +294,7 @@ export default function TrainingPage() {
                       <div className="bento">
                         {week.runs
                           .filter(w => !w.type.includes("DESCANSO"))
-                          .sort((a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day))
+                          .sort((a, b) => dayOrder.indexOf(normalizeDayName(a.day)) - dayOrder.indexOf(normalizeDayName(b.day)))
                           .map((w: Workout) => (
                             <div
                               key={w.id}

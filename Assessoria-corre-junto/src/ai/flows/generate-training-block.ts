@@ -85,6 +85,7 @@ REGRAS DE OURO:
 3. ESTRUTURA: Se o treino for INTERVALADO, detalhe as fases em 'phases' (Aquecimento, Tiros, Arrefecimento).
 4. SEGURANÇA: Se houver Leg Day (${input.legDay || 'nenhum'}), o dia seguinte DEVE ser Regenerativo ou OFF.
 5. TERMINOLOGIA (campo 'type'): use apenas REGENERATIVO, RODAGEM, PROGRESSIVO, FARTLEK, LIMIAR, TIROS, SUBIDAS, LONGÃO.
+5b. CAMPO 'day': use EXATAMENTE uma destas 7 strings, sem sufixo "-feira" e sem variação: Domingo, Segunda, Terça, Quarta, Quinta, Sexta, Sábado.
 6. Zonas de FC: Z1<=${input.hrZone1End}, Z2<=${input.hrZone2End}, Z3<=${input.hrZone3End}, Z4<=${input.hrZone4End}, FCmax=${input.hrMax}.
 
 REGRAS DE PROGRESSÃO (aplique SEMPRE, sem exceção):

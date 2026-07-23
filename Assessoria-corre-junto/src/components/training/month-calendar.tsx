@@ -17,6 +17,8 @@ interface DayWorkout {
 interface MonthCalendarProps {
   plan: TrainingPlan;
   raceDate?: string;
+  /** true só para ciclo completo (planGenerationType 'full') — ver calculateWorkoutDate. */
+  anchorToRaceDate?: boolean;
   onSelectWorkout: (workout: Workout, weekNumber: number) => void;
 }
 
@@ -24,7 +26,7 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-export function MonthCalendar({ plan, raceDate, onSelectWorkout }: MonthCalendarProps) {
+export function MonthCalendar({ plan, raceDate, anchorToRaceDate = false, onSelectWorkout }: MonthCalendarProps) {
   const today = React.useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -36,12 +38,12 @@ export function MonthCalendar({ plan, raceDate, onSelectWorkout }: MonthCalendar
     plan.weeklyPlans.forEach((week) => {
       week.runs.forEach((run) => {
         if (run.type.includes("DESCANSO")) return;
-        const date = calculateWorkoutDate(week.weekNumber, run.day, raceDate, plan.durationWeeks);
+        const date = calculateWorkoutDate(week.weekNumber, run.day, raceDate, plan.durationWeeks, anchorToRaceDate);
         out.push({ date, workout: run, weekNumber: week.weekNumber });
       });
     });
     return out.sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [plan, raceDate]);
+  }, [plan, raceDate, anchorToRaceDate]);
 
   const [viewDate, setViewDate] = React.useState(() => {
     const upcoming = dayWorkouts.find((d) => d.date >= today) || dayWorkouts[0];
