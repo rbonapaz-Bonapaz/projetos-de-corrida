@@ -15,7 +15,7 @@
 'use client';
 
 import { getRichDescription, calculateWorkoutDate, normalizeDayName } from '@/lib/calendar-utils';
-import type { AthleteProfile, TrainingPlan, Workout } from '@/lib/types';
+import type { AthleteProfile, TrainingPlan } from '@/lib/types';
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 const SCOPE = 'https://www.googleapis.com/auth/calendar';
@@ -187,4 +187,78 @@ export async function syncPlanToGoogleCalendar(
   }
 
   return { corridaCalendarId, forcaCalendarId, runsSynced, strengthSynced };
+}
+
+const DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+export interface GoogleCalendarChange {
+  runId: string;
+  weekNumber: number;
+  originalDay: string;
+  type: 'rescheduled' | 'missing';
+  newDay?: string;
+}
+
+/**
+ * Compara os treinos de corrida do plano com o estado atual dos eventos na
+ * Google Agenda (mão única: só corrida, só o que já foi sincronizado antes).
+ * Detecta dois casos, deliberadamente conservador no que reporta:
+ * - 'rescheduled': o evento foi movido pra outro dia DENTRO DA MESMA SEMANA
+ *   do plano — dá pra aplicar de volta (run.day) com segurança.
+ * - 'missing': o evento não existe mais na agenda (apagado) OU foi movido
+ *   pra fora da semana original — mapear de volta pra uma weekNumber
+ *   diferente é ambíguo demais pra automatizar, por isso não tentamos.
+ */
+export async function checkGoogleCalendarChanges(
+  accessToken: string,
+  plan: TrainingPlan,
+  profile: AthleteProfile
+): Promise<GoogleCalendarChange[]> {
+  const corridaCalendarId = profile.googleCalendarIds?.corrida;
+  if (!corridaCalendarId) return [];
+
+  const anchorToRaceDate = profile.planGenerationType === 'full';
+  const eventsResp = await gcalFetch(
+    accessToken,
+    `/calendars/${encodeURIComponent(corridaCalendarId)}/events?singleEvents=true&maxResults=2500`
+  );
+  const events: any[] = eventsResp?.items || [];
+  const byUid = new Map(events.map((e) => [e.iCalUID, e]));
+
+  const changes: GoogleCalendarChange[] = [];
+
+  for (const week of plan.weeklyPlans) {
+    const weekStart = calculateWorkoutDate(week.weekNumber, 'Domingo', profile.raceDate, plan.durationWeeks, anchorToRaceDate);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    for (const run of week.runs) {
+      if (run.type.includes('DESCANSO')) continue;
+      const event = byUid.get(`correjunto-run-${run.id}@correjunto`);
+      if (!event) {
+        changes.push({ runId: run.id, weekNumber: week.weekNumber, originalDay: run.day, type: 'missing' });
+        continue;
+      }
+
+      const eventStart = event.start?.dateTime ? new Date(event.start.dateTime) : null;
+      if (!eventStart) continue;
+      const expectedDate = calculateWorkoutDate(week.weekNumber, run.day, profile.raceDate, plan.durationWeeks, anchorToRaceDate);
+      if (eventStart.toDateString() === expectedDate.toDateString()) continue;
+
+      if (eventStart >= weekStart && eventStart < weekEnd) {
+        changes.push({
+          runId: run.id,
+          weekNumber: week.weekNumber,
+          originalDay: run.day,
+          type: 'rescheduled',
+          newDay: DAY_NAMES[eventStart.getDay()],
+        });
+      } else {
+        changes.push({ runId: run.id, weekNumber: week.weekNumber, originalDay: run.day, type: 'missing' });
+      }
+    }
+  }
+
+  return changes;
 }

@@ -41,7 +41,7 @@ import Link from "next/link";
 import { generateGoogleCalendarUrl, calculateWorkoutDate, downloadPlanAsICS, normalizeDayName } from "@/lib/calendar-utils";
 import { MonthCalendar } from "@/components/training/month-calendar";
 import { ActivityDetailDialog } from "@/components/shared/activity-detail-dialog";
-import { requestGoogleAccessToken, syncPlanToGoogleCalendar, isGoogleCalendarConfigured } from "@/lib/google-calendar-sync";
+import { requestGoogleAccessToken, syncPlanToGoogleCalendar, checkGoogleCalendarChanges, isGoogleCalendarConfigured } from "@/lib/google-calendar-sync";
 
 const dayOrder = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -59,6 +59,7 @@ export default function TrainingPage() {
   const [selectedWorkoutWeek, setSelectedWorkoutWeek] = React.useState<number>(1);
   const [selectedActivity, setSelectedActivity] = React.useState<ImportedActivity | null>(null);
   const [syncingGoogle, setSyncingGoogle] = React.useState(false);
+  const [checkingGoogle, setCheckingGoogle] = React.useState(false);
   const [athleteFeedback, setAthleteFeedback] = React.useState("");
   const [uploadedFileUri, setUploadedFileUri] = React.useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = React.useState<string | null>(null);
@@ -232,6 +233,40 @@ export default function TrainingPage() {
     }
   };
 
+  const handleCheckGoogleCalendarChanges = async () => {
+    if (!plan || !profile || !context) return;
+    setCheckingGoogle(true);
+    try {
+      const accessToken = await requestGoogleAccessToken();
+      const changes = await checkGoogleCalendarChanges(accessToken, plan, profile);
+      const rescheduled = changes.filter((c) => c.type === 'rescheduled');
+      const missing = changes.filter((c) => c.type === 'missing');
+
+      if (!changes.length) {
+        toast({ title: "Nenhuma mudança encontrada", description: "A agenda está batendo com o plano." });
+        return;
+      }
+
+      const lines = [
+        ...rescheduled.map((c) => `• Semana ${c.weekNumber}: ${c.originalDay} → ${c.newDay}`),
+        ...missing.map((c) => `• Semana ${c.weekNumber}: ${c.originalDay} não está mais na agenda (apagado ou movido pra outra semana — ajuste manual)`),
+      ];
+      const applyMsg = rescheduled.length
+        ? `\n\nAplicar os ${rescheduled.length} reagendamento(s) ao plano?`
+        : '\n\nOs itens "não está mais na agenda" precisam de ajuste manual — nada será alterado automaticamente.';
+
+      const confirmed = window.confirm(`Mudanças encontradas na Google Agenda:\n\n${lines.join('\n')}${applyMsg}`);
+      if (confirmed && rescheduled.length) {
+        rescheduled.forEach((c) => context.updateWorkout(c.runId, { day: c.newDay }));
+        toast({ title: "Plano atualizado", description: `${rescheduled.length} treino(s) reagendado(s) conforme a Google Agenda.` });
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erro ao verificar a Google Agenda", description: err?.message });
+    } finally {
+      setCheckingGoogle(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <TooltipProvider>
@@ -244,6 +279,12 @@ export default function TrainingPage() {
               <p className="text-[13px] text-muted-foreground mt-1">Planilha sincronizada na nuvem.</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto">
+              {plan && isGoogleCalendarConfigured() && profile?.googleCalendarIds?.corrida && (
+                <Button variant="outline" onClick={handleCheckGoogleCalendarChanges} disabled={checkingGoogle} className="rounded-xl gap-2">
+                  {checkingGoogle ? <Loader2 size={14} className="animate-spin" /> : <RefreshCcw size={14} />}
+                  {checkingGoogle ? "Verificando…" : "Verificar mudanças"}
+                </Button>
+              )}
               {plan && isGoogleCalendarConfigured() && (
                 <Button variant="outline" onClick={handleGoogleCalendarSync} disabled={syncingGoogle} className="rounded-xl gap-2">
                   {syncingGoogle ? <Loader2 size={14} className="animate-spin" /> : <CalendarPlus size={14} />}
