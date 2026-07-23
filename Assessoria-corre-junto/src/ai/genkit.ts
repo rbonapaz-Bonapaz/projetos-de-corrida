@@ -11,7 +11,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { ZodType } from 'zod';
 
 const ENV_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
-const MODEL_ID = 'gemini-2.5-flash';
+// gemini-2.5-flash foi desativado pela Google em jul/2026 (antes do prazo
+// anunciado). gemini-3.5-flash é o modelo GA/estável atual.
+const MODEL_ID = 'gemini-3.5-flash';
 const USER_KEY_STORAGE = 'corre_junto_gemini_api_key';
 
 /**
@@ -92,6 +94,9 @@ function translateAiError(error: unknown): string {
   }
   if (/PERMISSION_DENIED|\[403/.test(raw)) {
     return 'A chave de IA não tem permissão para este modelo. Confira as restrições da chave em aistudio.google.com.';
+  }
+  if (/no longer available|\[404/.test(raw)) {
+    return `O modelo de IA usado pelo app (${MODEL_ID}) foi desativado pelo Google. Isso é um bug do código, não da sua chave — avise para atualizarem o modelo no app.`;
   }
   if (/Failed to fetch|NetworkError|ENOTFOUND|ECONNREFUSED/i.test(raw)) {
     return 'Não foi possível conectar ao servidor de IA. Verifique sua internet e tente novamente.';
