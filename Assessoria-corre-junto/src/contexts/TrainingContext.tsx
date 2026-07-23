@@ -16,6 +16,7 @@ import type { AthleteProfile, TrainingPlan, Workout, WeeklyPlan, DietPlan } from
 import { useToast } from '@/hooks/use-toast';
 import { generateTrainingAction, generateDietAction } from '@/ai/actions';
 import { validateTrainingPlanInputs, validateDietPlanInputs, buildSafetyDirectives, calcAge } from '@/ai/plan-rules';
+import { deriveFitnessSnapshot, formatFitnessSnapshotForPrompt } from '@/lib/records';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -348,6 +349,7 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         referenceHandling: profile.referenceHandling || 'optimized',
         anamnesisContext: getAnamnesisSummary(),
         safetyDirectives: buildSafetyDirectives(profile),
+        fitnessSnapshotContext: formatFitnessSnapshotForPrompt(deriveFitnessSnapshot(profile)),
       });
 
       const finalPlan: TrainingPlan = {

@@ -37,6 +37,7 @@ const GenerateTrainingBlockInputSchema = z.object({
   referenceHandling: z.enum(['faithful', 'optimized']).optional().default('optimized'),
   anamnesisContext: z.string().optional().describe('Contexto biométrico completo (texto livre).'),
   safetyDirectives: z.string().optional().describe('Regras de segurança já derivadas da anamnese (imperativas).'),
+  fitnessSnapshotContext: z.string().optional().describe('Condicionamento atual real, calculado a partir do histórico de atividades importado (COROS).'),
 });
 
 export type GenerateTrainingBlockInput = z.infer<typeof GenerateTrainingBlockInputSchema>;
@@ -91,6 +92,10 @@ ${TRAINING_PROGRESSION_RULES}
 
 REGRAS DE SEGURANÇA DESTE ATLETA (derivadas da anamnese — trate como restrições obrigatórias):
 ${input.safetyDirectives || '- Nenhuma restrição adicional informada.'}
+
+CONDICIONAMENTO ATUAL REAL (calculado a partir do histórico de treinos importado, não do que o atleta digitou no formulário):
+${input.fitnessSnapshotContext || 'Sem histórico de atividades importado — use apenas os campos do perfil abaixo.'}
+Se houver conflito entre este condicionamento real e a "meta de volume semanal" declarada pelo atleta, a semana 1 do plano DEVE partir do volume/frequência REAL recente (não do desejado), respeitando a regra dos 10% a partir dali.
 
 Responda SEMPRE em PORTUGUÊS (Brasil).`;
 

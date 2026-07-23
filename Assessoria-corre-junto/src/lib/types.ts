@@ -124,7 +124,12 @@ export interface AthleteProfile {
     coros: IntegrationData;
   };
   anamnesis?: AnamnesisData;
+  /** Log limitado (mais recentes) — histórico completo não cabe num doc Firestore. */
   importedActivities?: ImportedActivity[];
+  /** Melhor tempo por distância-padrão, calculado sobre TODO o histórico já importado. */
+  personalRecords?: StoredPersonalRecord[];
+  /** Totais acumulados de todas as importações — somados incrementalmente, não recalculados de uma lista completa. */
+  activityStats?: ActivityStats;
 }
 
 export interface ImportedActivity {
@@ -144,6 +149,28 @@ export interface ImportedActivity {
   avgVerticalOscillationCm?: number;
   totalAscentM?: number;
   calories?: number;
+}
+
+export interface PersonalRecordEntry {
+  distanceKm: number;
+  timeSeconds: number;
+  paceSecPerKm: number;
+  date?: string;
+  label: string;
+  source: 'coros' | 'strava' | 'manual' | 'plano';
+}
+
+export interface StoredPersonalRecord {
+  key: string;
+  label: string;
+  best: PersonalRecordEntry;
+}
+
+export interface ActivityStats {
+  totalKm: number;
+  totalDurationSec: number;
+  totalCalories: number;
+  activityCount: number;
 }
 
 export interface AiAnalysis {
