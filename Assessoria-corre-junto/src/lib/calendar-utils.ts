@@ -93,7 +93,7 @@ export function getWorkoutTypeColor(type: string): string {
 /**
  * Gera uma descrição detalhada em texto para o calendário.
  */
-function getRichDescription(workout: Workout): string {
+export function getRichDescription(workout: Workout): string {
   const techDetails = workout.technicalDetails?.map(d => `${d.label.toUpperCase()}: ${d.value}`).join('\n') || '';
   const phases = workout.phases?.map(p => `- ${p.name}: ${p.distance} (${p.description})`).join('\n') || '';
   

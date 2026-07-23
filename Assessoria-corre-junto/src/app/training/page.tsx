@@ -25,7 +25,7 @@ import {
   Calendar as CalendarIcon,
   CalendarPlus,
   Download,
-  Info
+  Info,
 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +41,7 @@ import Link from "next/link";
 import { generateGoogleCalendarUrl, calculateWorkoutDate, downloadPlanAsICS, normalizeDayName } from "@/lib/calendar-utils";
 import { MonthCalendar } from "@/components/training/month-calendar";
 import { ActivityDetailDialog } from "@/components/shared/activity-detail-dialog";
+import { requestGoogleAccessToken, syncPlanToGoogleCalendar, isGoogleCalendarConfigured } from "@/lib/google-calendar-sync";
 
 const dayOrder = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -57,6 +58,7 @@ export default function TrainingPage() {
   const [selectedWorkout, setSelectedWorkout] = React.useState<Workout | null>(null);
   const [selectedWorkoutWeek, setSelectedWorkoutWeek] = React.useState<number>(1);
   const [selectedActivity, setSelectedActivity] = React.useState<ImportedActivity | null>(null);
+  const [syncingGoogle, setSyncingGoogle] = React.useState(false);
   const [athleteFeedback, setAthleteFeedback] = React.useState("");
   const [uploadedFileUri, setUploadedFileUri] = React.useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = React.useState<string | null>(null);
@@ -210,6 +212,26 @@ export default function TrainingPage() {
     window.open(url, '_blank');
   };
 
+  const handleGoogleCalendarSync = async () => {
+    if (!plan || !profile || !context) return;
+    setSyncingGoogle(true);
+    try {
+      const accessToken = await requestGoogleAccessToken();
+      const result = await syncPlanToGoogleCalendar(accessToken, plan, profile);
+      context.saveProfile({
+        googleCalendarIds: { corrida: result.corridaCalendarId, forca: result.forcaCalendarId },
+      });
+      toast({
+        title: "Sincronizado com a Google Agenda",
+        description: `${result.runsSynced} treino(s) de corrida e ${result.strengthSynced} de força enviados, em calendários próprios ("CorreJunto — Corrida" / "CorreJunto — Força").`,
+      });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erro ao sincronizar com a Google Agenda", description: err?.message });
+    } finally {
+      setSyncingGoogle(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <TooltipProvider>
@@ -222,6 +244,12 @@ export default function TrainingPage() {
               <p className="text-[13px] text-muted-foreground mt-1">Planilha sincronizada na nuvem.</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto">
+              {plan && isGoogleCalendarConfigured() && (
+                <Button variant="outline" onClick={handleGoogleCalendarSync} disabled={syncingGoogle} className="rounded-xl gap-2">
+                  {syncingGoogle ? <Loader2 size={14} className="animate-spin" /> : <CalendarPlus size={14} />}
+                  {syncingGoogle ? "Sincronizando…" : "Sincronizar c/ Google Agenda"}
+                </Button>
+              )}
               {plan && (
                 <Button variant="outline" onClick={handleExportICS} className="rounded-xl gap-2">
                   <Download size={14} /> Exportar .ics

@@ -131,6 +131,11 @@ export interface AthleteProfile {
   activityStats?: ActivityStats;
   /** Nomes de arquivo já processados em importações anteriores — evita duplicar totais/recordes ao reimportar o mesmo export. */
   importedFileNames?: string[];
+  /** IDs dos calendários próprios criados na Google Agenda do atleta (evita recriar a cada sincronização). */
+  googleCalendarIds?: {
+    corrida?: string;
+    forca?: string;
+  };
 }
 
 /**
