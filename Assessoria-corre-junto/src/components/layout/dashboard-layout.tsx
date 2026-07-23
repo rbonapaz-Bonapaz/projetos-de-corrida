@@ -150,8 +150,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* RAIL — navegação fixa em telas largas */}
       <aside className="hidden lg:flex lg:flex-col lg:sticky lg:top-0 lg:h-svh border-r border-border bg-card/60 backdrop-blur-xl px-3.5 py-5 gap-1.5">
         <Link href="/" className="flex items-center gap-2.5 px-2.5 pb-4">
-          <div className="size-8 rounded-[10px] bg-primary text-primary-foreground grid place-items-center text-lg font-bold shrink-0">
-            🐢
+          <div className="size-8 rounded-[10px] bg-white grid place-items-center shrink-0 overflow-hidden p-0.5">
+            <img src={MASCOT_IMAGE_URL} alt="Mascote CorreJunto" className="w-full h-full object-contain" />
           </div>
           <span className="text-[15px] font-bold tracking-tight leading-none">
             Corre<span className="text-primary">Junto</span>
@@ -314,8 +314,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <SheetContent side="left" className="w-[280px] p-0 flex flex-col">
           <SheetHeader className="p-4 border-b border-border">
             <SheetTitle className="flex items-center gap-2.5 text-left">
-              <div className="size-8 rounded-[10px] bg-primary text-primary-foreground grid place-items-center text-lg font-bold shrink-0">
-                🐢
+              <div className="size-8 rounded-[10px] bg-white grid place-items-center shrink-0 overflow-hidden p-0.5">
+                <img src={MASCOT_IMAGE_URL} alt="Mascote CorreJunto" className="w-full h-full object-contain" />
               </div>
               <span className="text-[15px] font-bold tracking-tight">
                 Corre<span className="text-primary">Junto</span>

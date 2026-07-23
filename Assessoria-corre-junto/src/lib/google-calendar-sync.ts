@@ -56,6 +56,34 @@ let cachedToken: { token: string; expiresAt: number } | null = null;
 let pendingResolve: ((token: string) => void) | null = null;
 let pendingReject: ((err: Error) => void) | null = null;
 
+const TOKEN_STORAGE_KEY = 'corre_junto_gcal_token';
+
+/** Persiste o token na sessionStorage — sobrevive a reloads/navegação entre páginas (mas não a fechar o navegador), evitando pedir login de novo a cada ação. */
+function persistToken(token: string, expiresAt: number) {
+  cachedToken = { token, expiresAt };
+  try {
+    sessionStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({ token, expiresAt }));
+  } catch {
+    // sessionStorage indisponível (modo privado etc.) — segue só com o cache em memória.
+  }
+}
+
+function readPersistedToken(): { token: string; expiresAt: number } | null {
+  if (cachedToken) return cachedToken;
+  try {
+    const raw = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.token && parsed?.expiresAt) {
+      cachedToken = parsed;
+      return parsed;
+    }
+  } catch {
+    // ignora
+  }
+  return null;
+}
+
 function getTokenClient() {
   if (!tokenClient) {
     tokenClient = window.google!.accounts.oauth2.initTokenClient({
@@ -63,10 +91,10 @@ function getTokenClient() {
       scope: SCOPE,
       callback: (resp: any) => {
         if (resp?.access_token) {
-          cachedToken = {
-            token: resp.access_token,
-            expiresAt: Date.now() + (resp.expires_in ? Number(resp.expires_in) * 1000 : 55 * 60 * 1000),
-          };
+          persistToken(
+            resp.access_token,
+            Date.now() + (resp.expires_in ? Number(resp.expires_in) * 1000 : 55 * 60 * 1000)
+          );
           pendingResolve?.(resp.access_token);
         } else {
           pendingReject?.(new Error('Permissão da Google Agenda negada ou não concedida.'));
@@ -87,8 +115,9 @@ export async function requestGoogleAccessToken(): Promise<string> {
   if (!CLIENT_ID) {
     throw new Error('Sincronização com Google Agenda não configurada neste app (falta NEXT_PUBLIC_GOOGLE_CLIENT_ID).');
   }
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 30_000) {
-    return cachedToken.token;
+  const stored = readPersistedToken();
+  if (stored && stored.expiresAt > Date.now() + 30_000) {
+    return stored.token;
   }
   await loadGoogleIdentityServices();
   const client = getTokenClient();

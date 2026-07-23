@@ -7,28 +7,21 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { TrainingContext } from "@/contexts/TrainingContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { calculateWorkoutDate, normalizeDayName } from "@/lib/calendar-utils";
+import { parseWorkoutDistanceKm } from "@/lib/records";
 import type { Workout } from "@/lib/types";
 import { ArrowRight, CheckCircle2, Plus } from "lucide-react";
 
 const WEEKDAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const WEEKDAY_LETTERS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
-const chartData = [
-  { day: "D", previsto: 0, real: 0 },
-  { day: "S", previsto: 5, real: 4.8 },
-  { day: "T", previsto: 8, real: 8.2 },
-  { day: "Q", previsto: 0, real: 0 },
-  { day: "Q", previsto: 12, real: 11.5 },
-  { day: "S", previsto: 6, real: 7.0 },
-  { day: "S", previsto: 22, real: 22.4 },
-];
-
-function buildChartPath(values: number[], w: number, h: number, pad = 6) {
+function buildChartPath(values: number[], w: number, h: number, padTop = 20, padBottom = 6, padX = 16) {
   const max = Math.max(...values, 1);
-  const step = w / (values.length - 1);
+  const step = (w - padX * 2) / (values.length - 1);
   return values
     .map((v, i) => {
-      const x = i * step;
-      const y = h - pad - (v / max) * (h - pad * 2);
+      const x = padX + i * step;
+      const y = h - padBottom - (v / max) * (h - padTop - padBottom);
       return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
@@ -64,10 +57,29 @@ export default function Home() {
 
   const recoveryStatus = getRecoveryStatus(recoveryPercent);
 
-  const week = plan?.weeklyPlans?.[0];
+  // Semana ATUAL do plano — antes sempre mostrava weeklyPlans[0], mesmo depois
+  // de semanas terem passado (o painel congelava na semana 1 pra sempre).
+  const anchorToRaceDate = profile?.planGenerationType === 'full';
+  const week = React.useMemo(() => {
+    if (!plan?.weeklyPlans?.length) return undefined;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (const w of plan.weeklyPlans) {
+      const weekStart = calculateWorkoutDate(w.weekNumber, 'Domingo', profile?.raceDate, plan.durationWeeks, anchorToRaceDate);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      if (today >= weekStart && today < weekEnd) return w;
+    }
+    // Antes da primeira semana ou depois da última: mostra a mais próxima.
+    return today < calculateWorkoutDate(plan.weeklyPlans[0].weekNumber, 'Domingo', profile?.raceDate, plan.durationWeeks, anchorToRaceDate)
+      ? plan.weeklyPlans[0]
+      : plan.weeklyPlans[plan.weeklyPlans.length - 1];
+  }, [plan, profile?.raceDate, anchorToRaceDate]);
+
   const todayName = WEEKDAYS[new Date().getDay()];
   const todayWorkout: Workout | undefined =
-    week?.runs?.find((r) => r.day === todayName) || week?.runs?.[0];
+    week?.runs?.find((r) => normalizeDayName(r.day) === todayName) || week?.runs?.[0];
 
   const lastAnalyzed = React.useMemo(() => {
     if (!plan) return null;
@@ -80,7 +92,19 @@ export default function Home() {
     return null;
   }, [plan]);
 
-  const weeklyVolume = week?.runs?.reduce((sum, r) => sum + (parseFloat(r.distance) || 0), 0) || 0;
+  const weeklyVolume = week?.runs?.reduce((sum, r) => sum + (parseWorkoutDistanceKm(r.distance) || 0), 0) || 0;
+
+  // Distância planejada por dia da semana (D..S) — antes o gráfico usava
+  // valores fixos, sem nenhuma relação com o plano real do atleta.
+  const chartData = React.useMemo(
+    () =>
+      WEEKDAYS.map((dayName, i) => {
+        const runsThatDay = week?.runs?.filter((r) => normalizeDayName(r.day) === dayName) || [];
+        const km = runsThatDay.reduce((sum, r) => sum + (parseWorkoutDistanceKm(r.distance) || 0), 0);
+        return { day: WEEKDAY_LETTERS[i], km: Math.round(km * 10) / 10 };
+      }),
+    [week]
+  );
 
   const ringR = 64;
   const ringCirc = 2 * Math.PI * ringR;
@@ -88,7 +112,12 @@ export default function Home() {
 
   const chartW = 380;
   const chartH = 150;
-  const realPath = buildChartPath(chartData.map((d) => d.real), chartW, chartH);
+  const chartPadTop = 20; // espaço reservado pro número do ponto mais alto não cortar no topo
+  const chartPadBottom = 6;
+  const chartPadX = 16;
+  const plannedPath = buildChartPath(chartData.map((d) => d.km), chartW, chartH, chartPadTop, chartPadBottom, chartPadX);
+  const chartMax = Math.max(...chartData.map((d) => d.km), 1);
+  const chartStep = chartData.length > 1 ? (chartW - chartPadX * 2) / (chartData.length - 1) : chartW - chartPadX * 2;
 
   return (
     <DashboardLayout>
@@ -193,26 +222,32 @@ export default function Home() {
         {/* Volume semanal */}
         <section className="card-plain span-4">
           <div className="flex justify-between items-start">
-            <h3 className="eyebrow">Volume da semana</h3>
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-                <i className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: "hsl(var(--border))" }} />
-                Previsto
-              </span>
-              <span className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-                <i className="inline-block w-2.5 h-2.5 rounded-sm bg-primary" />
-                Real
-              </span>
-            </div>
+            <h3 className="eyebrow">Volume da semana · planejado</h3>
+            <span className="num text-[13px] font-bold text-primary">{weeklyVolume.toFixed(1)} km</span>
           </div>
-          <div className="mt-2 overflow-x-auto">
+          <div className="mt-4 overflow-x-auto">
             <svg width="100%" height={chartH} viewBox={`0 0 ${chartW} ${chartH}`} preserveAspectRatio="none">
               <g stroke="hsl(var(--border))" strokeWidth="1">
                 <line x1="0" y1="30" x2={chartW} y2="30" />
                 <line x1="0" y1="70" x2={chartW} y2="70" />
                 <line x1="0" y1="110" x2={chartW} y2="110" />
               </g>
-              <path d={realPath} fill="none" stroke="hsl(var(--primary))" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+              <path d={plannedPath} fill="none" stroke="hsl(var(--primary))" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+              {chartData.map((d, i) => {
+                const x = chartPadX + i * chartStep;
+                const y = chartH - chartPadBottom - (d.km / chartMax) * (chartH - chartPadTop - chartPadBottom);
+                const anchor = i === 0 ? "start" : i === chartData.length - 1 ? "end" : "middle";
+                return (
+                  <g key={i}>
+                    <circle cx={x} cy={y} r={3.5} fill="hsl(var(--primary))" />
+                    {d.km > 0 && (
+                      <text x={x} y={y - 10} textAnchor={anchor} fontSize="11" className="num" fill="hsl(var(--foreground))">
+                        {d.km}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
             </svg>
           </div>
           <div className="flex justify-between font-mono text-[10px] text-muted-foreground mt-0.5">
