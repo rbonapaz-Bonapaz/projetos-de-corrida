@@ -8,7 +8,7 @@ import { TrainingContext } from "@/contexts/TrainingContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { calculateWorkoutDate, normalizeDayName } from "@/lib/calendar-utils";
-import { parseWorkoutDistanceKm } from "@/lib/records";
+import { parseWorkoutDistanceKm, estimateReadiness } from "@/lib/records";
 import type { Workout } from "@/lib/types";
 import { ArrowRight, CheckCircle2, Plus } from "lucide-react";
 
@@ -43,7 +43,7 @@ export default function Home() {
   const plan = context?.trainingPlan;
 
   const [daysToRace, setDaysToRace] = React.useState<number | null>(null);
-  const [recoveryPercent] = React.useState(82);
+  const readiness = React.useMemo(() => estimateReadiness(profile), [profile]);
 
   React.useEffect(() => {
     if (profile?.raceDate) {
@@ -55,7 +55,7 @@ export default function Home() {
     }
   }, [profile?.raceDate]);
 
-  const recoveryStatus = getRecoveryStatus(recoveryPercent);
+  const recoveryStatus = readiness ? getRecoveryStatus(readiness.percent) : null;
 
   // Semana ATUAL do plano — antes sempre mostrava weeklyPlans[0], mesmo depois
   // de semanas terem passado (o painel congelava na semana 1 pra sempre).
@@ -108,7 +108,7 @@ export default function Home() {
 
   const ringR = 64;
   const ringCirc = 2 * Math.PI * ringR;
-  const ringOffset = ringCirc * (1 - recoveryPercent / 100);
+  const ringOffset = ringCirc * (1 - (readiness?.percent ?? 0) / 100);
 
   const chartW = 380;
   const chartH = 150;
@@ -136,6 +136,7 @@ export default function Home() {
         {/* Prontidão */}
         <section className="card-plain span-5">
           <h3 className="eyebrow">Prontidão de hoje</h3>
+          {readiness && recoveryStatus ? (
           <div className="flex gap-6 items-center flex-wrap mt-3.5">
             <div className="ring-wrap" style={{ width: 150, height: 150 }}>
               <svg width={150} height={150} viewBox="0 0 150 150">
@@ -154,7 +155,7 @@ export default function Home() {
                 />
               </svg>
               <div className="rv">
-                <b className="num text-[38px] font-bold tracking-tight leading-none">{recoveryPercent}</b>
+                <b className="num text-[38px] font-bold tracking-tight leading-none">{readiness.percent}</b>
                 <small className="block text-[10px] tracking-[0.14em] uppercase text-muted-foreground mt-0.5">
                   {recoveryStatus.label.split(" ")[0]}
                 </small>
@@ -167,7 +168,9 @@ export default function Home() {
               >
                 ● {recoveryStatus.label}
               </span>
-              <p className="text-muted-foreground text-[13.5px] max-w-[42ch]">{recoveryStatus.desc}</p>
+              <p className="text-muted-foreground text-[13.5px] max-w-[42ch]">
+                {recoveryStatus.desc} <span className="opacity-70">({readiness.basis} — estimativa, não é dado de HRV.)</span>
+              </p>
               <div className="flex gap-5 mt-4 flex-wrap">
                 <div>
                   <small className="block text-[10px] uppercase tracking-wide text-muted-foreground">FC repouso</small>
@@ -184,6 +187,18 @@ export default function Home() {
               </div>
             </div>
           </div>
+          ) : (
+            <div className="text-center py-8 mt-1">
+              <p className="text-[12px] text-muted-foreground font-medium mb-3 max-w-[32ch] mx-auto">
+                Sem atividades importadas ainda pra estimar prontidão — precisa de pelo menos um treino sincronizado do COROS.
+              </p>
+              <Button asChild size="sm" variant="outline" className="rounded-lg">
+                <Link href="/integrations" className="flex items-center gap-1.5">
+                  Ir para Integrações <ArrowRight className="size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          )}
         </section>
 
         {/* Countdown */}

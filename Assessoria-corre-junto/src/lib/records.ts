@@ -284,6 +284,39 @@ function estimateVdotFromEntries(entries: PersonalRecordEntry[]): number | undef
   return Math.round(vdot * 10) / 10;
 }
 
+export interface ReadinessEstimate {
+  percent: number;
+  basis: string;
+}
+
+/**
+ * Estimativa APROXIMADA de prontidão a partir de dias desde o último treino
+ * importado — não é HRV nem nenhum dado fisiológico real (o app não coleta
+ * isso). Deliberadamente rotulado como estimativa na UI, pra não passar a
+ * impressão de precisão que não existe.
+ */
+export function estimateReadiness(profile: AthleteProfile | null | undefined): ReadinessEstimate | null {
+  const snapshot = deriveFitnessSnapshot(profile);
+  if (!snapshot || snapshot.daysSinceLastActivity === undefined) return null;
+
+  const days = snapshot.daysSinceLastActivity;
+  let percent: number;
+  if (days <= 0) percent = 55;
+  else if (days === 1) percent = 72;
+  else if (days === 2) percent = 88;
+  else if (days <= 4) percent = 95;
+  else percent = 80; // muito tempo parado não é "pico" — é destreino
+
+  const basis =
+    days <= 0
+      ? 'Treinou hoje'
+      : days === 1
+        ? 'Treinou ontem'
+        : `${days} dias desde o último treino importado`;
+
+  return { percent, basis };
+}
+
 export function formatFitnessSnapshotForPrompt(snap: FitnessSnapshot | null): string {
   if (!snap) return 'Sem histórico de atividades importado ainda — considere apenas os dados do perfil.';
   const lines: string[] = [];
