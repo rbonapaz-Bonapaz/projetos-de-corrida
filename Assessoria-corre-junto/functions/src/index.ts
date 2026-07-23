@@ -181,3 +181,5 @@ export const corosSync = onCall(
     return { activities, totalFoundOnCoros, skippedAlreadyKnown, skippedNoFitAvailable };
   }
 );
+
+export { stravaExchangeToken, stravaSync } from "./strava";

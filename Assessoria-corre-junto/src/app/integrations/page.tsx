@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { parseFitFile } from "@/lib/fit-parser";
 import { mergePersonalRecords, addActivityStats, trimRecentActivities, fitSummaryToEntry, fitSummaryToImportedActivity, isDuplicateActivity, dedupeActivities } from "@/lib/records";
 import { syncCorosActivities } from "@/lib/coros-sync";
+import { isStravaConfigured, stravaAuthorizeUrl, exchangeStravaCode, syncStravaActivities } from "@/lib/strava-sync";
 import type { ImportedActivity } from "@/lib/types";
 import { ActivityDetailDialog } from "@/components/shared/activity-detail-dialog";
 import { CheckCircle2, Link2, Upload, Loader2, Trash2, Activity as ActivityIcon, RefreshCw, Eye, EyeOff, ShieldAlert } from "lucide-react";
@@ -76,10 +77,66 @@ export default function IntegrationsPage() {
   const [syncing, setSyncing] = React.useState(false);
   const lastSync = context?.activeProfile?.integrations?.coros?.lastSync;
   const [selectedActivity, setSelectedActivity] = React.useState<ImportedActivity | null>(null);
+  const [syncingStrava, setSyncingStrava] = React.useState(false);
+  const [connectingStrava, setConnectingStrava] = React.useState(false);
+  const stravaLastSync = context?.activeProfile?.integrations?.strava?.lastSync;
 
-  const handleToggle = (service: 'strava' | 'coros') => {
-    const isConnected = service === 'strava' ? stravaConnected : corosConnected;
+  const handleToggle = (service: 'coros') => {
+    const isConnected = service === 'coros' ? corosConnected : false;
     context?.toggleIntegration(service, !isConnected);
+  };
+
+  const handleConnectStrava = () => {
+    window.location.href = stravaAuthorizeUrl(`${window.location.origin}/integrations`);
+  };
+
+  // Captura o ?code= que o Strava devolve depois do usuário autorizar.
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (!code || !context?.activeProfile) return;
+
+    // Limpa a URL na hora, pra não reprocessar o mesmo code se o usuário recarregar a página.
+    window.history.replaceState({}, '', window.location.pathname);
+
+    setConnectingStrava(true);
+    exchangeStravaCode(code)
+      .then((res) => {
+        context.saveProfile({
+          integrations: {
+            coros: context.activeProfile!.integrations?.coros as any,
+            strava: {
+              connected: true,
+              autoSync: true,
+              accessToken: res.accessToken,
+              refreshToken: res.refreshToken,
+              username: res.athleteName,
+            } as any,
+          },
+        });
+        toast({ title: "Strava conectado", description: res.athleteName ? `Conta: ${res.athleteName}` : "Pode sincronizar suas atividades agora." });
+      })
+      .catch((err: any) => {
+        toast({ variant: "destructive", title: "Erro ao conectar o Strava", description: err?.message });
+      })
+      .finally(() => setConnectingStrava(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [context?.activeProfile?.id]);
+
+  const handleStravaSync = async () => {
+    if (!context?.activeProfile) return;
+    setSyncingStrava(true);
+    try {
+      const result = await syncStravaActivities(context.activeProfile);
+      context.saveProfile(result.update as any);
+      const parts = [`${result.imported} nova(s) atividade(s) importada(s)`];
+      if (result.skippedDuplicateContent) parts.push(`${result.skippedDuplicateContent} já existia(m)`);
+      toast({ title: "Sincronização Strava concluída", description: parts.join(' · ') });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Erro ao sincronizar Strava", description: err?.message });
+    } finally {
+      setSyncingStrava(false);
+    }
   };
 
   const handleAutoSync = async () => {
@@ -285,23 +342,27 @@ export default function IntegrationsPage() {
         <section className="card-plain">
           <h3 className="eyebrow mb-1">Conexões</h3>
           <p className="text-[12px] text-muted-foreground mb-5">
-            Marca a plataforma como conectada. Para o COROS, use a sincronização automática ou a importação manual abaixo — o Strava ainda não
-            tem integração (precisa de OAuth oficial).
+            Escolha o(s) relógio(s)/app(s) que você usa — dá pra conectar os dois ao mesmo tempo, sem duplicar atividades. Strava usa login
+            oficial (OAuth); COROS usa sincronização automática ou importação manual abaixo.
           </p>
 
           <div className="flex flex-wrap gap-5">
             <button
-              onClick={() => handleToggle('strava')}
+              onClick={() => {
+                if (!stravaConnected && isStravaConfigured()) handleConnectStrava();
+              }}
+              disabled={connectingStrava || (!isStravaConfigured() && !stravaConnected)}
+              title={!isStravaConfigured() ? "Integração com Strava ainda não configurada neste app" : undefined}
               className={cn(
-                "group relative flex flex-col items-center justify-center w-36 h-36 rounded-2xl transition-all duration-300 border",
+                "group relative flex flex-col items-center justify-center w-36 h-36 rounded-2xl transition-all duration-300 border disabled:opacity-50 disabled:cursor-not-allowed",
                 stravaConnected
                   ? "bg-[#FC6100] text-white border-[#FC6100]"
                   : "bg-secondary/40 text-[#FC6100] border-border hover:border-[#FC6100]/40"
               )}
             >
-              <StravaLogo />
+              {connectingStrava ? <Loader2 className="size-7 animate-spin" /> : <StravaLogo />}
               <span className={cn("mt-2.5 text-[11px] font-semibold", stravaConnected ? "text-white" : "text-muted-foreground")}>
-                Strava
+                {connectingStrava ? "Conectando…" : "Strava"}
               </span>
               {stravaConnected && (
                 <div className="absolute top-3 right-3 p-0.5 bg-white rounded-full">
@@ -331,6 +392,33 @@ export default function IntegrationsPage() {
             </button>
           </div>
         </section>
+
+        {stravaConnected && (
+          <section className="card-plain">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="size-10 rounded-xl bg-[#FC6100]/10 flex items-center justify-center text-[#FC6100] shrink-0">
+                <RefreshCw size={18} className={cn(syncingStrava && "animate-spin")} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-[15px]">Sincronização Strava</h3>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                  Busca até 15 atividades recentes da sua conta Strava, sem duplicar o que já foi importado (de qualquer fonte).
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <Button onClick={handleStravaSync} disabled={syncingStrava} className="rounded-xl gap-2 bg-[#FC6100] hover:bg-[#FC6100]/90">
+                {syncingStrava ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                {syncingStrava ? "Sincronizando…" : "Sincronizar Strava agora"}
+              </Button>
+              {stravaLastSync && (
+                <span className="text-[11px] text-muted-foreground">
+                  Última sincronização: {new Date(stravaLastSync).toLocaleString('pt-BR')}
+                </span>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="card-plain">
           <div className="flex items-start gap-3 mb-4">
