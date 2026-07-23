@@ -39,6 +39,7 @@ import type { Workout } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { generateGoogleCalendarUrl, calculateWorkoutDate, downloadPlanAsICS } from "@/lib/calendar-utils";
+import { MonthCalendar } from "@/components/training/month-calendar";
 
 const dayOrder = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -248,61 +249,81 @@ export default function TrainingPage() {
           )}
 
           {plan && (
-            <div className="flex flex-col gap-10">
-              {plan.weeklyPlans.map((week, weekIdx) => (
-                <div key={weekIdx} className="flex flex-col gap-4">
-                  <div className="flex items-end justify-between border-b border-border pb-3">
-                    <div>
-                      <h2 className="text-lg font-bold text-primary tracking-tight">
-                        Semana {String(week.weekNumber).padStart(2, '0')}
-                      </h2>
-                      <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mt-0.5">
-                        {week.focus}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Volume</p>
-                      <span className="num text-sm font-bold text-primary">{calculateWeekVolume(week.runs)} km</span>
-                    </div>
-                  </div>
+            <Tabs defaultValue="lista" className="w-full">
+              <TabsList className="grid w-full max-w-[280px] grid-cols-2 h-10 rounded-xl print:hidden">
+                <TabsTrigger value="lista" className="text-xs font-semibold rounded-lg">Lista</TabsTrigger>
+                <TabsTrigger value="calendario" className="text-xs font-semibold rounded-lg">Calendário</TabsTrigger>
+              </TabsList>
 
-                  <div className="bento">
-                    {week.runs
-                      .filter(w => !w.type.includes("DESCANSO"))
-                      .sort((a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day))
-                      .map((w: Workout) => (
-                        <div
-                          key={w.id}
-                          className={cn(
-                            "card-plain span-4 cursor-pointer transition-all relative flex flex-col gap-3 hover:border-primary/40",
-                            w.completed && "opacity-60"
-                          )}
-                          onClick={() => setSelectedWorkout(w)}
-                        >
-                          {w.completed && (
-                            <div className="absolute top-4 right-4 p-0.5 bg-primary rounded-full">
-                              <CheckCircle2 className="size-3.5 text-primary-foreground" />
-                            </div>
-                          )}
-                          <div>
-                            <p className="eyebrow text-primary">{w.day}</p>
-                            <h3 className="font-bold text-lg tracking-tight mt-0.5">{w.type}</h3>
-                          </div>
-                          <p className="text-[13px] text-muted-foreground leading-relaxed line-clamp-2">{w.description}</p>
-                          <div className="flex flex-wrap gap-1.5 mt-auto">
-                            <span className="tag acc num">{w.distance}</span>
-                            <span className="tag num">{w.paceZone}</span>
-                          </div>
-                          <div className="flex justify-between items-center pt-3 border-t border-border">
-                            <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Detalhes</span>
-                            <ChevronRight className="size-4 text-primary" />
-                          </div>
+              <TabsContent value="calendario" className="pt-5">
+                <MonthCalendar
+                  plan={plan}
+                  raceDate={profile?.raceDate}
+                  onSelectWorkout={(workout, weekNumber) => {
+                    setSelectedWorkout(workout);
+                    setSelectedWorkoutWeek(weekNumber);
+                  }}
+                />
+              </TabsContent>
+
+              <TabsContent value="lista" className="pt-5">
+                <div className="flex flex-col gap-10">
+                  {plan.weeklyPlans.map((week, weekIdx) => (
+                    <div key={weekIdx} className="flex flex-col gap-4">
+                      <div className="flex items-end justify-between border-b border-border pb-3">
+                        <div>
+                          <h2 className="text-lg font-bold text-primary tracking-tight">
+                            Semana {String(week.weekNumber).padStart(2, '0')}
+                          </h2>
+                          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mt-0.5">
+                            {week.focus}
+                          </p>
                         </div>
-                      ))}
-                  </div>
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Volume</p>
+                          <span className="num text-sm font-bold text-primary">{calculateWeekVolume(week.runs)} km</span>
+                        </div>
+                      </div>
+
+                      <div className="bento">
+                        {week.runs
+                          .filter(w => !w.type.includes("DESCANSO"))
+                          .sort((a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day))
+                          .map((w: Workout) => (
+                            <div
+                              key={w.id}
+                              className={cn(
+                                "card-plain span-4 cursor-pointer transition-all relative flex flex-col gap-3 hover:border-primary/40",
+                                w.completed && "opacity-60"
+                              )}
+                              onClick={() => setSelectedWorkout(w)}
+                            >
+                              {w.completed && (
+                                <div className="absolute top-4 right-4 p-0.5 bg-primary rounded-full">
+                                  <CheckCircle2 className="size-3.5 text-primary-foreground" />
+                                </div>
+                              )}
+                              <div>
+                                <p className="eyebrow text-primary">{w.day}</p>
+                                <h3 className="font-bold text-lg tracking-tight mt-0.5">{w.type}</h3>
+                              </div>
+                              <p className="text-[13px] text-muted-foreground leading-relaxed line-clamp-2">{w.description}</p>
+                              <div className="flex flex-wrap gap-1.5 mt-auto">
+                                <span className="tag acc num">{w.distance}</span>
+                                <span className="tag num">{w.paceZone}</span>
+                              </div>
+                              <div className="flex justify-between items-center pt-3 border-t border-border">
+                                <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Detalhes</span>
+                                <ChevronRight className="size-4 text-primary" />
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </TabsContent>
+            </Tabs>
           )}
 
           <Dialog open={!!selectedWorkout} onOpenChange={(open) => !open && setSelectedWorkout(null)}>

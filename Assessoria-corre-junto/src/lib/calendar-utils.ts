@@ -42,6 +42,29 @@ export function calculateWorkoutDate(
 }
 
 /**
+ * Cor semântica (token CSS, ex. "var(--good)") por tipo de treino — usada
+ * na visão de calendário mensal para dar contexto visual rápido sem abrir
+ * cada treino. Agrupa os 8 tipos que a IA usa (ver generate-training-block)
+ * por intensidade: fácil/regenerativo, longo, qualidade moderada, alta intensidade.
+ */
+const WORKOUT_TYPE_COLORS: Record<string, string> = {
+  LONGÃO: 'var(--info)',
+  LIMIAR: 'var(--crit)',
+  TIROS: 'var(--crit)',
+  SUBIDAS: 'var(--warn)',
+  PROGRESSIVO: 'var(--warn)',
+  FARTLEK: 'var(--warn)',
+  RODAGEM: 'var(--good)',
+  REGENERATIVO: 'var(--good)',
+};
+
+export function getWorkoutTypeColor(type: string): string {
+  const upper = (type || '').toUpperCase();
+  const key = Object.keys(WORKOUT_TYPE_COLORS).find((k) => upper.includes(k));
+  return key ? WORKOUT_TYPE_COLORS[key] : 'var(--primary)';
+}
+
+/**
  * Gera uma descrição detalhada em texto para o calendário.
  */
 function getRichDescription(workout: Workout): string {
