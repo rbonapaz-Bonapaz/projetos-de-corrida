@@ -183,6 +183,36 @@ export function trimRecentActivities(activities: ImportedActivity[], cap = 60): 
     .slice(0, cap);
 }
 
+const DUPLICATE_WINDOW_MS = 90_000;
+
+/**
+ * Detecta se uma atividade já existe na lista, pelo horário real de início
+ * (tolerância de 90s) — não pelo nome do arquivo. Necessário porque a
+ * importação manual (.fit/.zip) e a sincronização automática (API) geram
+ * nomes de arquivo diferentes pra uma mesma atividade real, então a dedupe
+ * por nome (importedFileNames) não pega o cruzamento entre os dois
+ * caminhos.
+ */
+export function isDuplicateActivity(existing: { startTime?: string }[], candidateStartTime?: string): boolean {
+  if (!candidateStartTime) return false;
+  const candidateMs = new Date(candidateStartTime).getTime();
+  if (isNaN(candidateMs)) return false;
+  return existing.some((e) => {
+    if (!e.startTime) return false;
+    const existingMs = new Date(e.startTime).getTime();
+    return !isNaN(existingMs) && Math.abs(existingMs - candidateMs) < DUPLICATE_WINDOW_MS;
+  });
+}
+
+/** Remove duplicatas de uma lista de atividades (mesmo critério de isDuplicateActivity), mantendo a primeira ocorrência de cada uma. */
+export function dedupeActivities(activities: ImportedActivity[]): ImportedActivity[] {
+  const kept: ImportedActivity[] = [];
+  for (const a of activities) {
+    if (!isDuplicateActivity(kept, a.startTime)) kept.push(a);
+  }
+  return kept;
+}
+
 /** Vista combinada para a tela do Cofre: recordes salvos + candidatos ao vivo do plano de treino. */
 export function getDisplayRecords(profile: AthleteProfile | null | undefined): StoredPersonalRecord[] {
   const planEntries = derivePlanEntries(profile);

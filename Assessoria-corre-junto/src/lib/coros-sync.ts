@@ -13,7 +13,7 @@
 import { getApps, getApp } from 'firebase/app';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { parseFitFile } from '@/lib/fit-parser';
-import { fitSummaryToEntry, fitSummaryToImportedActivity, mergePersonalRecords, addActivityStats, trimRecentActivities } from '@/lib/records';
+import { fitSummaryToEntry, fitSummaryToImportedActivity, mergePersonalRecords, addActivityStats, trimRecentActivities, isDuplicateActivity } from '@/lib/records';
 import type { AthleteProfile, ImportedActivity, IntegrationData } from '@/lib/types';
 
 const FUNCTIONS_REGION = 'southamerica-east1';
@@ -50,6 +50,7 @@ export interface CorosSyncResult {
   imported: number;
   skippedAlreadyKnown: number;
   skippedUnparseable: number;
+  skippedDuplicateContent: number;
   totalFoundOnCoros: number;
 }
 
@@ -72,20 +73,27 @@ export async function syncCorosActivities(
   const res = await call({ email, password, knownLabelIds, maxActivities: 15 });
   const { activities, totalFoundOnCoros, skippedAlreadyKnown } = res.data;
 
+  const recentActivities = profile.importedActivities || [];
   const batch: ImportedActivity[] = [];
   let skippedUnparseable = 0;
+  let skippedDuplicateContent = 0;
 
   for (const a of activities) {
     try {
       const buffer = base64ToArrayBuffer(a.fitBase64);
       const summary = await parseFitFile(buffer);
+      // Checa contra o que já existe E contra o que este mesmo sync já adicionou —
+      // a importação manual usa um nome de arquivo diferente, então a dedupe por
+      // nome (knownLabelIds, acima) não pega esse cruzamento.
+      if (isDuplicateActivity([...recentActivities, ...batch], summary.startTime)) {
+        skippedDuplicateContent++;
+        continue;
+      }
       batch.push(fitSummaryToImportedActivity(summary, { fileName: corosApiFileName(a.labelId), source: 'coros' }));
     } catch {
       skippedUnparseable++;
     }
   }
-
-  const recentActivities = profile.importedActivities || [];
   const candidateEntries = batch.map(fitSummaryToEntry).filter((e): e is NonNullable<typeof e> => !!e);
   const updatedRecords = mergePersonalRecords(profile.personalRecords, candidateEntries);
   const updatedStats = addActivityStats(profile.activityStats, batch);
@@ -120,6 +128,7 @@ export async function syncCorosActivities(
     imported: batch.length,
     skippedAlreadyKnown,
     skippedUnparseable,
+    skippedDuplicateContent,
     totalFoundOnCoros,
   };
 }

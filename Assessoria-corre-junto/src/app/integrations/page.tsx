@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { parseFitFile } from "@/lib/fit-parser";
-import { mergePersonalRecords, addActivityStats, trimRecentActivities, fitSummaryToEntry, fitSummaryToImportedActivity } from "@/lib/records";
+import { mergePersonalRecords, addActivityStats, trimRecentActivities, fitSummaryToEntry, fitSummaryToImportedActivity, isDuplicateActivity, dedupeActivities } from "@/lib/records";
 import { syncCorosActivities } from "@/lib/coros-sync";
 import type { ImportedActivity } from "@/lib/types";
 import { ActivityDetailDialog } from "@/components/shared/activity-detail-dialog";
@@ -94,6 +94,7 @@ export default function IntegrationsPage() {
       context.saveProfile(result.update as any);
       const parts = [`${result.imported} nova(s) atividade(s) importada(s)`];
       if (result.skippedAlreadyKnown) parts.push(`${result.skippedAlreadyKnown} já sincronizada(s) antes`);
+      if (result.skippedDuplicateContent) parts.push(`${result.skippedDuplicateContent} já importada(s) manualmente antes`);
       if (result.skippedUnparseable) parts.push(`${result.skippedUnparseable} não reconhecida(s)`);
       toast({ title: "Sincronização concluída", description: parts.join(' · ') });
     } catch (err: any) {
@@ -136,13 +137,21 @@ export default function IntegrationsPage() {
 
     setProgress({ done: 0, total: newRawFiles.length, stage: 'Processando' });
 
+    const existingActivities = context.activeProfile.importedActivities || [];
     const batch: ImportedActivity[] = [];
     let skipped = 0;
+    let skippedDuplicateContent = 0;
 
     for (let i = 0; i < newRawFiles.length; i++) {
       const { name, buffer } = newRawFiles[i];
       try {
         const summary = await parseFitFile(buffer);
+        // Mesmo horário de início já importado antes (ex: via sincronização
+        // automática, que usa um nome de arquivo diferente) — evita duplicar.
+        if (isDuplicateActivity([...existingActivities, ...batch], summary.startTime)) {
+          skippedDuplicateContent++;
+          continue;
+        }
         batch.push(fitSummaryToImportedActivity(summary, { fileName: name, source: 'coros' }));
       } catch {
         skipped++;
@@ -204,6 +213,7 @@ export default function IntegrationsPage() {
 
     const notes: string[] = [];
     if (duplicates) notes.push(`${duplicates} já importado(s) antes (ignorado(s) para não duplicar).`);
+    if (skippedDuplicateContent) notes.push(`${skippedDuplicateContent} já existia(m) com outro nome de arquivo (ignorado(s)).`);
     if (skipped) notes.push(`${skipped} arquivo(s) ignorado(s) (formato não reconhecido).`);
 
     if (saveError) {
@@ -238,6 +248,26 @@ export default function IntegrationsPage() {
       importedFileNames: [],
     });
     toast({ title: "Histórico importado apagado", description: "Pode importar o export do COROS novamente quando quiser." });
+  };
+
+  const handleDedupeActivities = () => {
+    if (!context?.activeProfile) return;
+    const current = context.activeProfile.importedActivities || [];
+    const deduped = dedupeActivities(current);
+    const removed = current.length - deduped.length;
+    if (!removed) {
+      toast({ title: "Nenhuma duplicata encontrada" });
+      return;
+    }
+    const confirmed = window.confirm(
+      `${removed} atividade(s) duplicada(s) encontrada(s) (mesmo horário de início, importadas por caminhos diferentes). Remover? Os totais acumulados (km, horas, calorias) serão recalculados a partir do que sobrar na lista recente — se alguma duplicata já tinha saído dessa lista, o total pode ficar levemente menor que o real.`
+    );
+    if (!confirmed) return;
+    context.saveProfile({
+      importedActivities: deduped,
+      activityStats: addActivityStats(undefined, deduped),
+    });
+    toast({ title: "Duplicatas removidas", description: `${removed} atividade(s) removida(s). Totais recalculados.` });
   };
 
   return (
@@ -414,13 +444,22 @@ export default function IntegrationsPage() {
             <div className="mt-5 flex flex-col gap-2.5">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <p className="eyebrow">Atividades recentes (mostrando as últimas {recentActivities.length})</p>
-                <button
-                  type="button"
-                  onClick={handleWipeImportedData}
-                  className="text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-1"
-                >
-                  <Trash2 size={12} /> Apagar histórico importado
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleDedupeActivities}
+                    className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1"
+                  >
+                    <RefreshCw size={12} /> Remover duplicatas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleWipeImportedData}
+                    className="text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-1"
+                  >
+                    <Trash2 size={12} /> Apagar histórico importado
+                  </button>
+                </div>
               </div>
               <div className="max-h-[420px] overflow-y-auto custom-scrollbar flex flex-col gap-2.5 pr-1">
                 {recentActivities.map((a) => (
