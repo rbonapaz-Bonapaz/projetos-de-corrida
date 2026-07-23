@@ -134,34 +134,55 @@ export default function IntegrationsPage() {
       }
     }
 
+    let saveError: string | null = null;
+
     if (batch.length) {
       setProgress({ done: rawFiles.length, total: rawFiles.length, stage: 'Salvando…' });
 
-      const profile = context.activeProfile;
-      const candidateEntries = batch.map(fitSummaryToEntry).filter((e): e is NonNullable<typeof e> => !!e);
-      const updatedRecords = mergePersonalRecords(profile.personalRecords, candidateEntries);
-      const updatedStats = addActivityStats(profile.activityStats, batch);
-      const updatedRecent = trimRecentActivities([...batch, ...recentActivities]);
+      try {
+        const profile = context.activeProfile;
+        if (!profile) throw new Error('Perfil não encontrado — recarregue a página e tente de novo.');
 
-      // Um único saveProfile: chamadas separadas (ex. depois um toggleIntegration)
-      // se baseiam no `activeProfile` do contexto, que só atualiza no próximo
-      // render — uma segunda chamada síncrona sobrescreveria estes campos.
-      await context.saveProfile({
-        personalRecords: updatedRecords,
-        activityStats: updatedStats,
-        importedActivities: updatedRecent,
-        integrations: {
-          ...profile.integrations,
-          coros: { ...profile.integrations?.coros, connected: true, autoSync: true },
-        },
-      } as any);
+        const candidateEntries = batch.map(fitSummaryToEntry).filter((e): e is NonNullable<typeof e> => !!e);
+        const updatedRecords = mergePersonalRecords(profile.personalRecords, candidateEntries);
+        const updatedStats = addActivityStats(profile.activityStats, batch);
+        let updatedRecent = trimRecentActivities([...batch, ...recentActivities]);
+
+        const update = {
+          personalRecords: updatedRecords,
+          activityStats: updatedStats,
+          importedActivities: updatedRecent,
+          integrations: {
+            ...profile.integrations,
+            coros: { ...profile.integrations?.coros, connected: true, autoSync: true },
+          },
+        };
+
+        // Firestore recusa documentos acima de ~1MB. Se o perfil já é grande
+        // (planos/histórico antigos), reduz o log de atividades recentes em
+        // vez de tentar salvar um documento fadado a falhar silenciosamente.
+        const estimatedBytes = new Blob([JSON.stringify({ ...profile, ...update })]).size;
+        if (estimatedBytes > 850_000) {
+          updatedRecent = trimRecentActivities([...batch, ...recentActivities], 15);
+          update.importedActivities = updatedRecent;
+        }
+
+        // Um único saveProfile: chamadas separadas (ex. depois um toggleIntegration)
+        // se baseiam no `activeProfile` do contexto, que só atualiza no próximo
+        // render — uma segunda chamada síncrona sobrescreveria estes campos.
+        context.saveProfile(update as any);
+      } catch (err: any) {
+        saveError = err?.message || 'Falha ao salvar os dados importados.';
+      }
     }
 
     setImporting(false);
     setProgress({ done: 0, total: 0, stage: '' });
     if (fileInputRef.current) fileInputRef.current.value = "";
 
-    if (batch.length) {
+    if (saveError) {
+      toast({ variant: "destructive", title: "Erro ao salvar", description: saveError });
+    } else if (batch.length) {
       toast({
         title: `${batch.length} atividade(s) processada(s)`,
         description: skipped ? `${skipped} arquivo(s) ignorado(s) (formato não reconhecido).` : "Recordes e totais atualizados."
