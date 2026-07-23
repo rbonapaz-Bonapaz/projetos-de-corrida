@@ -51,24 +51,53 @@ export function isGoogleCalendarConfigured(): boolean {
   return !!CLIENT_ID;
 }
 
-/** Abre o popup de login/permissão do Google e devolve um access token válido por ~1h. */
+let tokenClient: any = null;
+let cachedToken: { token: string; expiresAt: number } | null = null;
+let pendingResolve: ((token: string) => void) | null = null;
+let pendingReject: ((err: Error) => void) | null = null;
+
+function getTokenClient() {
+  if (!tokenClient) {
+    tokenClient = window.google!.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPE,
+      callback: (resp: any) => {
+        if (resp?.access_token) {
+          cachedToken = {
+            token: resp.access_token,
+            expiresAt: Date.now() + (resp.expires_in ? Number(resp.expires_in) * 1000 : 55 * 60 * 1000),
+          };
+          pendingResolve?.(resp.access_token);
+        } else {
+          pendingReject?.(new Error('Permissão da Google Agenda negada ou não concedida.'));
+        }
+      },
+      error_callback: () => pendingReject?.(new Error('Permissão da Google Agenda negada ou não concedida.')),
+    });
+  }
+  return tokenClient;
+}
+
+/**
+ * Devolve um access token válido, reaproveitando o já emitido nesta sessão
+ * (~55min) sempre que possível — sem isso, cada sincronização abria um novo
+ * popup de login, mesmo logo em seguida da anterior.
+ */
 export async function requestGoogleAccessToken(): Promise<string> {
   if (!CLIENT_ID) {
     throw new Error('Sincronização com Google Agenda não configurada neste app (falta NEXT_PUBLIC_GOOGLE_CLIENT_ID).');
   }
+  if (cachedToken && cachedToken.expiresAt > Date.now() + 30_000) {
+    return cachedToken.token;
+  }
   await loadGoogleIdentityServices();
-
+  const client = getTokenClient();
   return new Promise((resolve, reject) => {
-    const client = window.google!.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPE,
-      callback: (resp: any) => {
-        if (resp?.access_token) resolve(resp.access_token);
-        else reject(new Error('Permissão da Google Agenda negada ou não concedida.'));
-      },
-      error_callback: () => reject(new Error('Permissão da Google Agenda negada ou não concedida.')),
-    });
-    client.requestAccessToken();
+    pendingResolve = resolve;
+    pendingReject = reject;
+    // prompt: '' pede o token silenciosamente quando possível (sessão do Google
+    // ainda ativa) — só mostra popup de fato se for necessário.
+    client.requestAccessToken({ prompt: '' });
   });
 }
 
