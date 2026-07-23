@@ -12,8 +12,11 @@ import type { ZodType } from 'zod';
 
 const ENV_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
 // gemini-2.5-flash foi desativado pela Google em jul/2026 (antes do prazo
-// anunciado). gemini-3.5-flash é o modelo GA/estável atual.
-const MODEL_ID = 'gemini-3.5-flash';
+// anunciado) — já tínhamos trocado uma vez pra gemini-3.5-flash "fixo" e
+// isso ia acontecer de novo a cada nova versão. Usa o alias oficial
+// "-latest", que a própria Google atualiza automaticamente pro Flash
+// estável mais recente — nunca mais precisa trocar esse nome manualmente.
+const MODEL_ID = 'gemini-flash-latest';
 const USER_KEY_STORAGE = 'corre_junto_gemini_api_key';
 
 /**
