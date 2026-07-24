@@ -43,6 +43,7 @@ import { generateGoogleCalendarUrl, calculateWorkoutDate, downloadPlanAsICS, nor
 import { MonthCalendar } from "@/components/training/month-calendar";
 import { ActivityDetailDialog } from "@/components/shared/activity-detail-dialog";
 import { requestGoogleAccessToken, syncPlanToGoogleCalendar, checkGoogleCalendarChanges, isGoogleCalendarConfigured } from "@/lib/google-calendar-sync";
+import { StravaLogo, CorosLogo } from "@/components/shared/brand-logos";
 
 const dayOrder = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -53,6 +54,10 @@ export default function TrainingPage() {
 
   const profile = context?.activeProfile;
   const plan = context?.trainingPlan;
+  // Mostra só a plataforma que o atleta realmente usa — se as duas estiverem
+  // conectadas, COROS tem prioridade visual aqui (era a integração original).
+  const corosConnected = !!profile?.integrations?.coros?.connected;
+  const stravaConnected = !corosConnected && !!profile?.integrations?.strava?.connected;
 
   const [localLoading, setLocalLoading] = React.useState(false);
   const [analyzing, setAnalyzing] = React.useState(false);
@@ -280,6 +285,18 @@ export default function TrainingPage() {
               <p className="text-[13px] text-muted-foreground mt-1">Planilha sincronizada na nuvem.</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto">
+              {(corosConnected || stravaConnected) && (
+                <Link
+                  href="/integrations"
+                  title={corosConnected ? "Sincronizado via COROS — toque para gerenciar" : "Sincronizado via Strava — toque para gerenciar"}
+                  className={cn(
+                    "size-10 rounded-xl flex items-center justify-center shrink-0 self-center sm:self-auto",
+                    corosConnected ? "bg-foreground text-background" : "bg-[#FC6100]/10 text-[#FC6100]"
+                  )}
+                >
+                  {corosConnected ? <CorosLogo className="size-5" /> : <StravaLogo className="size-5" />}
+                </Link>
+              )}
               {plan && isGoogleCalendarConfigured() && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
