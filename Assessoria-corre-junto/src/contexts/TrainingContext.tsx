@@ -2,16 +2,26 @@
 
 import { createContext, useState, useEffect, type ReactNode, useCallback, useMemo } from 'react';
 import { doc, onSnapshot, setDoc, collection, query, where, updateDoc, getDoc } from 'firebase/firestore';
-import { 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  signOut, 
+import {
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
   type User
 } from 'firebase/auth';
 import { useAuth, useFirestore } from '@/firebase';
+import {
+  isBiometricSupported,
+  hasBiometricRegistered,
+  registerBiometricUnlock,
+  unlockWithBiometric,
+  removeBiometricUnlock,
+} from '@/lib/biometric-auth';
 import type { AthleteProfile, TrainingPlan, Workout, WeeklyPlan, DietPlan } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateTrainingAction, generateDietAction } from '@/ai/actions';
@@ -44,13 +54,20 @@ interface TrainingContextType {
   toggleIntegration: (service: 'strava' | 'coros', connected: boolean) => void;
   user: User | null;
   getAnamnesisSummary: () => string;
+  biometricSupported: boolean;
+  biometricRegistered: boolean;
+  registerBiometric: (email: string, pass: string) => Promise<void>;
+  unregisterBiometric: () => void;
+  askPasswordEveryTime: boolean;
+  setAskPasswordEveryTime: (value: boolean) => void;
 }
 
 export const TrainingContext = createContext<TrainingContextType | null>(null);
 
 const STORAGE_KEYS = {
   LAST_PROFILE_ID: 'corre_junto_last_profile_id',
-  LOCAL_PROFILES: 'corre_junto_local_profiles'
+  LOCAL_PROFILES: 'corre_junto_local_profiles',
+  ASK_PASSWORD_EVERY_TIME: 'corre_junto_ask_password_every_time'
 };
 
 const dayOrder = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -69,6 +86,22 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   const [remoteConfig, setRemoteConfig] = useState<any>(null);
   const [cloudProfiles, setRemoteProfiles] = useState<AthleteProfile[]>([]);
   const [localProfiles, setLocalProfiles] = useState<AthleteProfile[]>([]);
+
+  const [biometricRegistered, setBiometricRegistered] = useState(false);
+  const [askPasswordEveryTime, setAskPasswordEveryTimeState] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setBiometricRegistered(hasBiometricRegistered());
+    setAskPasswordEveryTimeState(localStorage.getItem(STORAGE_KEYS.ASK_PASSWORD_EVERY_TIME) === 'true');
+  }, []);
+
+  const setAskPasswordEveryTime = useCallback((value: boolean) => {
+    setAskPasswordEveryTimeState(value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.ASK_PASSWORD_EVERY_TIME, String(value));
+    }
+  }, []);
 
   // Garantia de abertura do sistema: Força a hidratação se demorar demais
   useEffect(() => {
@@ -214,11 +247,19 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
     } as any);
   }, [activeProfile, saveProfile]);
 
+  const applyChosenPersistence = async () => {
+    if (!auth) return;
+    // "Pedir senha toda vez" ativado -> sessão não sobrevive ao fechar o navegador.
+    // Desativado (padrão) -> permanece logado entre visitas, como a maioria dos apps.
+    await setPersistence(auth, askPasswordEveryTime ? browserSessionPersistence : browserLocalPersistence);
+  };
+
   const loginGoogle = async (): Promise<void> => {
     if (!auth) return;
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     try {
+      await applyChosenPersistence();
       const result = await signInWithPopup(auth, provider);
       if (db && result.user) {
         const userRef = doc(db, 'user_data', result.user.uid);
@@ -234,23 +275,44 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
   };
 
   const loginBiometric = async () => {
-    toast({ title: "Validando Biometria...", description: "Use sua digital ou face para acessar o Lab." });
+    if (!auth) return;
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      toast({ title: "Validando Biometria...", description: "Use sua digital ou face para acessar." });
+      const { email, password } = await unlockWithBiometric();
+      await applyChosenPersistence();
+      await signInWithEmailAndPassword(auth, email, password);
       toast({ title: "Acesso Biométrico Liberado" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Erro Biométrico" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro Biométrico", description: e?.message || 'Não foi possível autenticar.' });
     }
   };
 
   const loginEmail = async (email: string, pass: string) => {
     if (!auth) return;
     try {
+      await applyChosenPersistence();
       await signInWithEmailAndPassword(auth, email, pass);
       toast({ title: "Acesso Liberado" });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Falha no Acesso' });
     }
+  };
+
+  const registerBiometric = async (email: string, pass: string) => {
+    try {
+      await registerBiometricUnlock(email, pass);
+      setBiometricRegistered(true);
+      toast({ title: "Biometria Ativada", description: "Agora você pode entrar com digital ou rosto neste aparelho." });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro ao Ativar Biometria', description: e?.message });
+      throw e;
+    }
+  };
+
+  const unregisterBiometric = () => {
+    removeBiometricUnlock();
+    setBiometricRegistered(false);
+    toast({ title: "Biometria Desativada" });
   };
 
   const registerEmail = async (email: string, pass: string) => {
@@ -434,7 +496,10 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
       dietGenerationStatus, generateDietPlanAsync,
       loginGoogle,
       loginBiometric, toggleIntegration,
-      loginEmail, registerEmail, logout, user, getAnamnesisSummary
+      loginEmail, registerEmail, logout, user, getAnamnesisSummary,
+      biometricSupported: isBiometricSupported(),
+      biometricRegistered, registerBiometric, unregisterBiometric,
+      askPasswordEveryTime, setAskPasswordEveryTime
     }}>
       {children}
     </TrainingContext.Provider>

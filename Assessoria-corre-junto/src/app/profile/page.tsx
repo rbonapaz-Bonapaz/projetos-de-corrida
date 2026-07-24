@@ -58,7 +58,8 @@ import {
     Eye,
     EyeOff,
     Info,
-    Lock
+    Lock,
+    Fingerprint
 } from 'lucide-react';
 
 /** Ícone de "?" com tooltip — explica campos técnicos ou ambíguos ao passar o mouse. */
@@ -140,6 +141,20 @@ export default function ProfilePage() {
   const [apiKeySaved, setApiKeySaved] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [aiReady, setAiReady] = useState(false);
+
+  const [biometricPassword, setBiometricPassword] = useState('');
+  const biometricSupported = !!context?.biometricSupported;
+  const biometricRegistered = !!context?.biometricRegistered;
+
+  const handleActivateBiometric = async () => {
+    if (!context?.user?.email || !biometricPassword.trim()) return;
+    try {
+      await context.registerBiometric(context.user.email, biometricPassword.trim());
+      setBiometricPassword('');
+    } catch {
+      // erro já mostrado via toast dentro do context
+    }
+  };
 
   useEffect(() => {
     const current = getUserApiKey();
@@ -418,6 +433,51 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
+      </section>
+
+      <section className="card-plain mb-6">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <Fingerprint size={18} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-bold text-[15px]">Login com Biometria</h3>
+              <span className={cn("tag num", biometricRegistered ? "acc" : "")}>
+                {biometricRegistered ? "Ativada neste aparelho" : "Não ativada"}
+              </span>
+            </div>
+            <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+              Ative para entrar com sua digital ou reconhecimento facial neste aparelho, sem digitar a senha
+              toda vez. A senha fica guardada só neste navegador, protegida pelo sensor biométrico do
+              dispositivo — nunca é enviada para nossos servidores.
+            </p>
+          </div>
+        </div>
+
+        {!biometricSupported ? (
+          <p className="text-[12px] text-muted-foreground">Este navegador ou dispositivo não suporta biometria.</p>
+        ) : !context?.user ? (
+          <p className="text-[12px] text-muted-foreground">Entre com e-mail e senha primeiro para poder ativar a biometria.</p>
+        ) : biometricRegistered ? (
+          <Button type="button" variant="outline" className="rounded-xl h-11" onClick={() => context?.unregisterBiometric()}>
+            Desativar biometria neste aparelho
+          </Button>
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            <Input
+              type="password"
+              placeholder="Confirme sua senha para ativar"
+              value={biometricPassword}
+              onChange={(e) => setBiometricPassword(e.target.value)}
+              className="h-11 rounded-xl text-sm flex-1"
+              autoComplete="off"
+            />
+            <Button type="button" onClick={handleActivateBiometric} className="rounded-xl h-11 px-5" disabled={!biometricPassword.trim()}>
+              Ativar biometria
+            </Button>
+          </div>
+        )}
       </section>
 
       <Form {...form}>

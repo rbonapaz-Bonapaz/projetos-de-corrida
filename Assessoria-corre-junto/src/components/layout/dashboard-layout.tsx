@@ -47,6 +47,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
@@ -395,17 +397,36 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 Acessar com Google
               </Button>
 
-              <Button
-                onClick={() => {
-                  context?.loginBiometric();
-                  setShowAuthModal(false);
-                }}
-                variant="outline"
-                className="w-full h-11 rounded-xl text-sm font-semibold gap-2"
-              >
-                <Fingerprint className="size-4" />
-                Biometria
-              </Button>
+              {context?.biometricSupported && context?.biometricRegistered && (
+                <Button
+                  onClick={() => {
+                    context?.loginBiometric();
+                    setShowAuthModal(false);
+                  }}
+                  variant="outline"
+                  className="w-full h-11 rounded-xl text-sm font-semibold gap-2"
+                >
+                  <Fingerprint className="size-4" />
+                  Entrar com Biometria
+                </Button>
+              )}
+            </div>
+
+            {context?.biometricSupported && !context?.biometricRegistered && (
+              <p className="text-[11px] text-muted-foreground text-center -mt-2">
+                Faça login com e-mail e senha uma vez para poder ativar a biometria em Meus Dados.
+              </p>
+            )}
+
+            <div className="flex items-center justify-between rounded-xl border border-border px-3.5 py-2.5">
+              <Label htmlFor="ask-password-toggle" className="text-xs font-medium cursor-pointer">
+                Pedir senha toda vez
+              </Label>
+              <Switch
+                id="ask-password-toggle"
+                checked={!!context?.askPasswordEveryTime}
+                onCheckedChange={(v) => context?.setAskPasswordEveryTime(v)}
+              />
             </div>
 
             <div className="relative">
