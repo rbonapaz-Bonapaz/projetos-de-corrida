@@ -342,146 +342,146 @@ export default function IntegrationsPage() {
         <section className="card-plain">
           <h3 className="eyebrow mb-1">Conexões</h3>
           <p className="text-[12px] text-muted-foreground mb-5">
-            Escolha o(s) relógio(s)/app(s) que você usa — dá pra conectar os dois ao mesmo tempo, sem duplicar atividades. Strava usa login
-            oficial (OAuth); COROS usa sincronização automática ou importação manual abaixo.
+            Escolha o(s) relógio(s)/app(s) que você usa — dá pra conectar os dois ao mesmo tempo, sem duplicar atividades. Toque no ícone de{" "}
+            <RefreshCw size={11} className="inline -mt-0.5" /> para sincronizar a qualquer momento.
           </p>
 
-          <div className="flex flex-wrap gap-5">
-            <button
-              onClick={() => {
-                if (!stravaConnected && isStravaConfigured()) handleConnectStrava();
-              }}
-              disabled={connectingStrava || (!isStravaConfigured() && !stravaConnected)}
-              title={!isStravaConfigured() ? "Integração com Strava ainda não configurada neste app" : undefined}
-              className={cn(
-                "group relative flex flex-col items-center justify-center w-36 h-36 rounded-2xl transition-all duration-300 border disabled:opacity-50 disabled:cursor-not-allowed",
-                stravaConnected
-                  ? "bg-[#FC6100] text-white border-[#FC6100]"
-                  : "bg-secondary/40 text-[#FC6100] border-border hover:border-[#FC6100]/40"
-              )}
-            >
-              {connectingStrava ? <Loader2 className="size-7 animate-spin" /> : <StravaLogo />}
-              <span className={cn("mt-2.5 text-[11px] font-semibold", stravaConnected ? "text-white" : "text-muted-foreground")}>
-                {connectingStrava ? "Conectando…" : "Strava"}
-              </span>
-              {stravaConnected && (
-                <div className="absolute top-3 right-3 p-0.5 bg-white rounded-full">
-                  <CheckCircle2 className="size-4 text-[#FC6100]" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Strava */}
+            <div className="rounded-2xl border border-border p-4">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    if (!stravaConnected && isStravaConfigured()) handleConnectStrava();
+                  }}
+                  disabled={connectingStrava || (!isStravaConfigured() && !stravaConnected)}
+                  title={!isStravaConfigured() ? "Integração com Strava ainda não configurada neste app" : undefined}
+                  className={cn(
+                    "size-12 rounded-xl flex items-center justify-center shrink-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+                    stravaConnected ? "bg-[#FC6100] text-white" : "bg-[#FC6100]/10 text-[#FC6100]"
+                  )}
+                >
+                  {connectingStrava ? <Loader2 className="size-5 animate-spin" /> : <StravaLogo />}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-[14px] flex items-center gap-1.5">
+                    Strava
+                    {stravaConnected && <CheckCircle2 size={13} className="text-[#FC6100]" />}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {connectingStrava ? "Conectando…" : stravaConnected ? "Conectado via OAuth" : "Login oficial (OAuth)"}
+                  </p>
                 </div>
-              )}
-            </button>
-
-            <button
-              onClick={() => handleToggle('coros')}
-              className={cn(
-                "group relative flex flex-col items-center justify-center w-36 h-36 rounded-2xl transition-all duration-300 border",
-                corosConnected
-                  ? "bg-foreground text-background border-foreground"
-                  : "bg-secondary/40 text-foreground border-border hover:border-foreground/30"
-              )}
-            >
-              <CorosLogo />
-              <span className={cn("mt-2.5 text-[11px] font-semibold", corosConnected ? "text-background" : "text-muted-foreground")}>
-                Coros
-              </span>
-              {corosConnected && (
-                <div className="absolute top-3 right-3 p-0.5 bg-background rounded-full">
-                  <CheckCircle2 className="size-4 text-foreground" />
-                </div>
-              )}
-            </button>
-          </div>
-        </section>
-
-        {stravaConnected && (
-          <section className="card-plain">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="size-10 rounded-xl bg-[#FC6100]/10 flex items-center justify-center text-[#FC6100] shrink-0">
-                <RefreshCw size={18} className={cn(syncingStrava && "animate-spin")} />
+                {stravaConnected && (
+                  <button
+                    type="button"
+                    onClick={handleStravaSync}
+                    disabled={syncingStrava}
+                    title="Sincronizar Strava agora"
+                    aria-label="Sincronizar Strava agora"
+                    className="size-9 rounded-lg bg-secondary/60 hover:bg-[#FC6100]/15 hover:text-[#FC6100] flex items-center justify-center shrink-0 transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw size={15} className={cn(syncingStrava && "animate-spin")} />
+                  </button>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-[15px]">Sincronização Strava</h3>
-                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
-                  Busca até 15 atividades recentes da sua conta Strava, sem duplicar o que já foi importado (de qualquer fonte).
+
+              {!stravaConnected ? (
+                isStravaConfigured() && (
+                  <Button onClick={handleConnectStrava} disabled={connectingStrava} className="mt-3.5 w-full rounded-xl bg-[#FC6100] hover:bg-[#FC6100]/90">
+                    Conectar com Strava
+                  </Button>
+                )
+              ) : (
+                <p className="mt-3.5 text-[11px] text-muted-foreground">
+                  {syncingStrava
+                    ? "Sincronizando…"
+                    : stravaLastSync
+                      ? `Última sincronização: ${new Date(stravaLastSync).toLocaleString('pt-BR')}`
+                      : "Ainda não sincronizado — toque no ícone de atualizar."}
                 </p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <Button onClick={handleStravaSync} disabled={syncingStrava} className="rounded-xl gap-2 bg-[#FC6100] hover:bg-[#FC6100]/90">
-                {syncingStrava ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-                {syncingStrava ? "Sincronizando…" : "Sincronizar Strava agora"}
-              </Button>
-              {stravaLastSync && (
-                <span className="text-[11px] text-muted-foreground">
-                  Última sincronização: {new Date(stravaLastSync).toLocaleString('pt-BR')}
-                </span>
               )}
             </div>
-          </section>
-        )}
 
-        <section className="card-plain">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-              <RefreshCw size={18} className={cn(syncing && "animate-spin")} />
+            {/* COROS */}
+            <div className="rounded-2xl border border-border p-4">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleToggle('coros')}
+                  className={cn(
+                    "size-12 rounded-xl flex items-center justify-center shrink-0 transition-all",
+                    corosConnected ? "bg-foreground text-background" : "bg-secondary/60 text-foreground"
+                  )}
+                >
+                  <CorosLogo />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-[14px] flex items-center gap-1.5">
+                    Coros
+                    {corosConnected && <CheckCircle2 size={13} />}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {corosConnected ? "Sincronização ativada" : "Toque para ativar"}
+                  </p>
+                </div>
+                {corosConnected && (
+                  <button
+                    type="button"
+                    onClick={handleAutoSync}
+                    disabled={syncing || !corosEmail.trim() || !corosPassword.trim()}
+                    title="Sincronizar COROS agora"
+                    aria-label="Sincronizar COROS agora"
+                    className="size-9 rounded-lg bg-secondary/60 hover:bg-primary/15 hover:text-primary flex items-center justify-center shrink-0 transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw size={15} className={cn(syncing && "animate-spin")} />
+                  </button>
+                )}
+              </div>
+
+              {corosConnected && (
+                <div className="mt-3.5 space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="email"
+                      value={corosEmail}
+                      onChange={(e) => setCorosEmail(e.target.value)}
+                      placeholder="Email da conta COROS"
+                      disabled={syncing}
+                      className="h-10 rounded-lg border border-border bg-secondary/30 px-3 text-[13px] outline-none focus:border-primary/50"
+                    />
+                    <div className="relative">
+                      <input
+                        type={showCorosPassword ? "text" : "password"}
+                        value={corosPassword}
+                        onChange={(e) => setCorosPassword(e.target.value)}
+                        placeholder="Senha"
+                        disabled={syncing}
+                        className="h-10 w-full rounded-lg border border-border bg-secondary/30 px-3 pr-9 text-[13px] outline-none focus:border-primary/50"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCorosPassword((v) => !v)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        aria-label={showCorosPassword ? "Ocultar senha" : "Mostrar senha"}
+                      >
+                        {showCorosPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground flex items-start gap-1.5 leading-relaxed">
+                    <ShieldAlert size={12} className="text-amber-500 shrink-0 mt-0.5" />
+                    API não-oficial: sua senha é usada uma vez pra logar na COROS e nunca é guardada.
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {syncing
+                      ? "Sincronizando…"
+                      : lastSync
+                        ? `Última sincronização: ${new Date(lastSync).toLocaleString('pt-BR')}`
+                        : "Ainda não sincronizado — preencha email/senha e toque no ícone de atualizar."}
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-[15px]">Sincronização automática (COROS)</h3>
-              <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
-                Busca suas atividades mais recentes direto da sua conta COROS — sem precisar esperar o export e fazer upload manual. Traz até 15
-                atividades novas por vez, sem repetir o que já foi importado.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-secondary/40 border border-border mb-4">
-            <ShieldAlert size={15} className="text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Isso usa a API não-oficial da COROS (sem OAuth) — sua senha é enviada uma única vez pra um Cloud Function nosso, que a usa só pra
-              fazer login na COROS e nunca a guarda. Ainda assim, é uma integração não-oficial: use por sua conta e risco. Se preferir não digitar
-              sua senha aqui, use a importação manual abaixo.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-            <input
-              type="email"
-              value={corosEmail}
-              onChange={(e) => setCorosEmail(e.target.value)}
-              placeholder="Email da conta COROS"
-              disabled={syncing}
-              className="h-11 rounded-xl border border-border bg-secondary/30 px-3.5 text-sm outline-none focus:border-primary/50"
-            />
-            <div className="relative">
-              <input
-                type={showCorosPassword ? "text" : "password"}
-                value={corosPassword}
-                onChange={(e) => setCorosPassword(e.target.value)}
-                placeholder="Senha"
-                disabled={syncing}
-                className="h-11 w-full rounded-xl border border-border bg-secondary/30 px-3.5 pr-10 text-sm outline-none focus:border-primary/50"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCorosPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showCorosPassword ? "Ocultar senha" : "Mostrar senha"}
-              >
-                {showCorosPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <Button onClick={handleAutoSync} disabled={syncing} className="rounded-xl gap-2">
-              {syncing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-              {syncing ? "Sincronizando…" : "Sincronizar agora"}
-            </Button>
-            {lastSync && (
-              <span className="text-[11px] text-muted-foreground">
-                Última sincronização: {new Date(lastSync).toLocaleString('pt-BR')}
-              </span>
-            )}
           </div>
         </section>
 

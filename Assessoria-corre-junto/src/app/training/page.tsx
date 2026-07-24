@@ -33,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, fileToDataURI } from '@/lib/utils';
 import { parseFitFile, fitSummaryToText, type FitSummary } from '@/lib/fit-parser';
 import type { Workout, ImportedActivity } from "@/lib/types";
@@ -279,17 +280,36 @@ export default function TrainingPage() {
               <p className="text-[13px] text-muted-foreground mt-1">Planilha sincronizada na nuvem.</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto">
-              {plan && isGoogleCalendarConfigured() && profile?.googleCalendarIds?.corrida && (
-                <Button variant="outline" onClick={handleCheckGoogleCalendarChanges} disabled={checkingGoogle} className="rounded-xl gap-2">
-                  {checkingGoogle ? <Loader2 size={14} className="animate-spin" /> : <RefreshCcw size={14} />}
-                  {checkingGoogle ? "Verificando…" : "Verificar mudanças"}
-                </Button>
-              )}
               {plan && isGoogleCalendarConfigured() && (
-                <Button variant="outline" onClick={handleGoogleCalendarSync} disabled={syncingGoogle} className="rounded-xl gap-2">
-                  {syncingGoogle ? <Loader2 size={14} className="animate-spin" /> : <CalendarPlus size={14} />}
-                  {syncingGoogle ? "Sincronizando…" : "Sincronizar c/ Google Agenda"}
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      disabled={syncingGoogle || checkingGoogle}
+                      className="rounded-xl gap-2"
+                      title="Sincronização com a Google Agenda"
+                    >
+                      {syncingGoogle || checkingGoogle ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <CalendarIcon size={14} />
+                      )}
+                      Google Agenda
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="rounded-xl w-[220px]">
+                    <DropdownMenuItem onClick={handleGoogleCalendarSync} disabled={syncingGoogle} className="gap-2.5 cursor-pointer">
+                      <CalendarPlus size={15} />
+                      {syncingGoogle ? "Sincronizando…" : "Sincronizar plano"}
+                    </DropdownMenuItem>
+                    {profile?.googleCalendarIds?.corrida && (
+                      <DropdownMenuItem onClick={handleCheckGoogleCalendarChanges} disabled={checkingGoogle} className="gap-2.5 cursor-pointer">
+                        <RefreshCcw size={15} />
+                        {checkingGoogle ? "Verificando…" : "Verificar mudanças"}
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               {plan && (
                 <Button variant="outline" onClick={handleExportICS} className="rounded-xl gap-2">
